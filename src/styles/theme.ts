@@ -13,19 +13,41 @@ export const theme = createTheme({
       dark: '#087f23',
     },
     background: {
-      default: '#f1f8e9',
+      default: '#f5f5f5',
       paper: '#ffffff',
     },
     text: {
-      primary: '#2e7d32',
-      secondary: '#558b2f',
+      primary: '#000000',
+      secondary: '#000000',
     },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: [
+      '-apple-system',
+      'BlinkMacSystemFont',
+      '"Segoe UI"',
+      'Roboto',
+      '"Helvetica Neue"',
+      'Arial',
+      'sans-serif',
+    ].join(','),
     h4: {
-      fontWeight: 700,
-      color: '#2e7d32',
+      fontWeight: 500,
+      color: '#000000',
+    },
+    h5: {
+      fontWeight: 500,
+      color: '#000000',
+    },
+    h6: {
+      fontWeight: 500,
+      color: '#000000',
+    },
+    body1: {
+      color: '#000000',
+    },
+    body2: {
+      color: '#000000',
     },
   },
   components: {
@@ -47,6 +69,21 @@ export const theme = createTheme({
               borderColor: '#2e7d32',
             },
           },
+        },
+      },
+    },
+    MuiTypography: {
+      defaultProps: {
+        color: 'text.primary',
+      },
+    },
+    MuiBreadcrumbs: {
+      styleOverrides: {
+        root: {
+          color: '#000000',
+        },
+        li: {
+          color: '#000000',
         },
       },
     },

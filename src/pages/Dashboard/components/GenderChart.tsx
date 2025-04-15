@@ -7,8 +7,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { ChartCard, CustomTooltip } from './ChartCard';
-import { useTheme } from '@mui/material';
+import { useTheme, Paper, Box, Typography } from '@mui/material';
+import WcIcon from '@mui/icons-material/Wc'; // 性別 icon
 
 const genderData = [
   { name: '男性', value: 60 },
@@ -21,27 +21,54 @@ export const GenderChart: React.FC = () => {
   const theme = useTheme();
 
   return (
-    <ChartCard title="性別分布">
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie
-            data={genderData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-          >
-            {genderData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </ChartCard>
+    <Paper sx={{ p: 3, height: '100%', borderRadius: 5, width: '400px' }}>
+      {/* 標題區塊 */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <Box
+          sx={{
+            backgroundColor: 'primary.main',
+            borderRadius: '50%',
+            width: 40,
+            height: 40,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mr: 2,
+          }}
+        >
+          <WcIcon sx={{ color: 'white' }} />
+        </Box>
+        <Typography variant="h6">性別分佈</Typography>
+      </Box>
+
+      {/* 圖表區塊 */}
+      <Box sx={{ width: '100%', height: 300 }}>
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie
+              data={genderData}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ name, percent }) =>
+                `${name} ${(percent * 100).toFixed(0)}%`
+              }
+              outerRadius={80}
+              fill="#8884d8"
+              dataKey="value"
+            >
+              {genderData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </Box>
+    </Paper>
   );
-}; 
+};

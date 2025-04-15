@@ -39,26 +39,22 @@ const Login: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     try {
       await login(username, password);
       navigate('/dashboard');
     } catch (error) {
-      setError('登入失敗，請檢查用戶名和密碼');
+      setError('登入失敗，請檢查帳號密碼');
     }
   };
 
-  const handleAzureSSO = async () => {
+  const handleAzureLogin = async () => {
     try {
-      setIsAzureLoading(true);
       await azureLogin();
+      navigate('/dashboard');
     } catch (error) {
-      setError('Azure SSO 登入失敗');
-    } finally {
-      setIsAzureLoading(false);
+      setError('Azure 登入失敗');
     }
   };
 
@@ -253,7 +249,7 @@ const Login: React.FC = () => {
               color="primary"
               fullWidth
               sx={{ mt: 2 }}
-              onClick={handleAzureSSO}
+              onClick={handleAzureLogin}
               disabled={isAzureLoading}
             >
               {isAzureLoading ? '登入中...' : '使用 Azure SSO 登入'}

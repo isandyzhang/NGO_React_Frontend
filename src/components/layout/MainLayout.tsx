@@ -1,30 +1,31 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import styled from 'styled-components';
+import { Box } from '@mui/material';
 import Sidebar from './Sidebar';
-
-const LayoutContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  background-color: #f5f5f5;
-`;
-
-const MainContent = styled.main`
-  flex: 1;
-  margin-left: 240px; // 與 Sidebar 寬度相同
-  padding: 20px;
-  min-height: 100vh;
-  background-color: #f5f5f5;
-`;
+import { useAuth } from '../../hooks/useAuth';
 
 const MainLayout: React.FC = () => {
+  const { logout } = useAuth();
+  
   return (
-    <LayoutContainer>
-      <Sidebar onLogout={() => {}} />
-      <MainContent>
-        <Outlet />
-      </MainContent>
-    </LayoutContainer>
+    <Box sx={{
+      display: 'flex',
+      minHeight: '100vh',
+      bgcolor: '#ededed',
+      position: 'relative',
+    }}>
+      <Sidebar onLogout={logout} />
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          padding: 3,
+          bgcolor: '#ededed',
+        }}
+  >
+  <Outlet />
+</Box>
+    </Box>
   );
 };
 

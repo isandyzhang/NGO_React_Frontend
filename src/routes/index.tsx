@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Login from '../pages/Login';
 import { Dashboard } from '../pages/Dashboard/Dashboard';
 import MainLayout from '../components/layout/MainLayout';
@@ -11,12 +11,21 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <ProtectedRoute><MainLayout /></ProtectedRoute>,
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
-        path: '/dashboard',
+        index: true,
+        element: <Navigate to="/dashboard" replace />,
+      },
+      {
+        path: 'dashboard',
         element: <Dashboard />,
-        },
+      },
+      // 这里可以添加更多子路由
     ],
   },
 ]); 

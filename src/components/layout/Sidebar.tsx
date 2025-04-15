@@ -42,29 +42,39 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
 
   return (
     <Drawer
-      variant={isMobile ? 'temporary' : 'permanent'}
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: drawerWidth,
-          background: theme.palette.grey[900],
-          color: theme.palette.common.white,
-          borderRight: 'none',
-          boxSizing: 'border-box',
-          height: '95%',
-          margin: '24px',
-          position: 'fixed',
-          display: 'flex',
-          flexDirection: 'column',
-          borderRadius: '15px',
-        },
-      }}
-    >
+    variant={isMobile ? 'temporary' : 'permanent'}
+    sx={{
+      width: drawerWidth,
+      flexShrink: 0,
+      '& .MuiDrawer-paper': {
+      width: drawerWidth,
+      background: theme.palette.grey[900],
+      color: 'common.white',
+      borderRight: 'none',
+      borderRadius: '15px',
+      boxSizing: 'border-box',
+      display: 'flex',
+      margin: '24px',
+      flexDirection: 'column',
+      height: 'calc(100vh - 52px)',
+      marginTop: '24px', 
+    },
+    }}
+  >
+  
       {/* Logo 區塊 */}
       <Box sx={{ p: 3, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <Typography variant="h5" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Assessment sx={{ fontSize: 28 }} />
+        <Typography 
+          variant="h5" 
+          sx={{ 
+            fontWeight: 600, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            color: 'common.white'
+          }}
+        >
+          <Assessment sx={{ fontSize: 28, color: 'common.white' }} />
           個案管理系統
         </Typography>
       </Box>
@@ -73,8 +83,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <Avatar sx={{ width: 40, height: 40, bgcolor: theme.palette.primary.main }}>A</Avatar>
         <Box>
-          <Typography variant="subtitle1">管理員</Typography>
-          <Typography variant="body2" color="rgba(255,255,255,0.7)">admin@example.com</Typography>
+          <Typography variant="subtitle1" sx={{ color: 'common.white' }}>管理員</Typography>
+          <Typography variant="body2" sx={{ color: 'common.white' }}>admin@example.com</Typography>
         </Box>
       </Box>
 
@@ -89,7 +99,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
             sx={{
               borderRadius: '12px',
               mb: 1,
-              color: 'inherit',
+              color: 'common.white',
               bgcolor: location.pathname === item.path ? 'rgba(255,255,255,0.1)' : 'transparent',
               '&:hover': {
                 bgcolor: 'rgba(255,255,255,0.05)',
@@ -97,8 +107,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
               transition: 'all 0.2s',
             }}
           >
-            <ListItemIcon sx={{ color: 'inherit', minWidth: '40px' }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '1rem', fontWeight: location.pathname === item.path ? 600 : 400 }} />
+            <ListItemIcon sx={{ color: 'common.white', minWidth: '40px' }}>{item.icon}</ListItemIcon>
+            <ListItemText 
+              primary={item.text} 
+              primaryTypographyProps={{ 
+                fontSize: '1rem', 
+                fontWeight: location.pathname === item.path ? 600 : 400,
+                color: 'common.white'
+              }} 
+            />
           </ListItemButton>
         ))}
       </List>
@@ -111,16 +128,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
             onClick={onLogout}
             sx={{
               borderRadius: '12px',
-              color: 'rgba(255,255,255,0.7)',
+              color: 'common.white',
               '&:hover': {
                 bgcolor: 'rgba(255,255,255,0.05)',
               },
             }}
           >
-            <ListItemIcon sx={{ color: 'inherit', minWidth: '40px' }}>
+            <ListItemIcon sx={{ color: 'common.white', minWidth: '40px' }}>
               <ExitToApp />
             </ListItemIcon>
-            <ListItemText primary="登出" primaryTypographyProps={{ fontSize: '0.95rem' }} />
+            <ListItemText 
+              primary="登出" 
+              primaryTypographyProps={{ 
+                fontSize: '0.95rem',
+                color: 'common.white'
+              }} 
+            />
           </ListItemButton>
         </List>
       </Box>

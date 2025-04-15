@@ -1,69 +1,40 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import  { createContext, useContext, useState, ReactNode } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  user: any | null;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
   azureLogin: () => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = localStorage.getItem('isAuthenticated');
-    return auth === 'true';
-  });
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const auth = localStorage.getItem('isAuthenticated');
-    if (auth === 'true') {
-      setIsAuthenticated(true);
-    }
-  }, []);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<any | null>(null);
 
   const login = async (username: string, password: string) => {
-    // 模擬 API 調用
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        if (username && password) {
-          setIsAuthenticated(true);
-          localStorage.setItem('isAuthenticated', 'true');
-          navigate('/dashboard');
-          resolve();
-        } else {
-          reject(new Error('Invalid credentials'));
-        }
-      }, 1000);
-    });
+    // 模拟 API 调用
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setUser({ username });
+    setIsAuthenticated(true);
   };
 
   const azureLogin = async () => {
-    // 模擬 Azure SSO 登入
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        try {
-          setIsAuthenticated(true);
-          localStorage.setItem('isAuthenticated', 'true');
-          navigate('/dashboard');
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      }, 1000);
-    });
+    // 模拟 Azure SSO 登录
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setUser({ username: 'azure_user' });
+    setIsAuthenticated(true);
   };
 
   const logout = () => {
+    setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('isAuthenticated');
-    navigate('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, azureLogin }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, azureLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

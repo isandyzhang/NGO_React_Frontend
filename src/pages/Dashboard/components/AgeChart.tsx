@@ -16,7 +16,7 @@ export const AgeChart: React.FC = () => {
   const theme = useTheme();
 
   return (
-    <Paper sx={{ p: 3, height: '100%' }}>
+    <Paper sx={{ p: 3, height: '100%', borderRadius: 5 ,width:'300px'}}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <Box
           sx={{

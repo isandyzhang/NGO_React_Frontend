@@ -18,7 +18,7 @@ const schoolData: SchoolData[] = [
 
 export const SchoolDistribution: React.FC = () => {
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: 3, borderRadius: 5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <Box
           sx={{

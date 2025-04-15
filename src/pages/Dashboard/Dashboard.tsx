@@ -1,21 +1,21 @@
 import React from 'react';
-import { Box, Typography, Container, Breadcrumbs, Link } from '@mui/material';
+import { Box, Typography, Breadcrumbs, Grid } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import HomeIcon from '@mui/icons-material/Home';
-import { DashboardGrid } from './components/DashboardGrid';
+
 import { SchoolDistribution } from './components/SchoolDistribution';
 import { AgeChart } from './components/AgeChart';
-import { QuarterlyChart } from './components/QuarterlyChart';
 import { GenderChart } from './components/GenderChart';
 import { SpecialStatusChart } from './components/SpecialStatusChart';
 import { IncomeChart } from './components/IncomeChart';
 
 export const Dashboard: React.FC = () => {
   return (
-    <Box>
-      <Box sx={{ mb: 3 }}>
+    <Box sx={{ width: '100%', px: { xs: 2, sm: 3 }, py: 2 }}>
+      {/* 麵包屑導覽 */}
+      <Box sx={{ mb: 2 }}>
         <Breadcrumbs aria-label="breadcrumb">
-          <Link
+          <Box
             component={RouterLink}
             to="/"
             sx={{
@@ -30,26 +30,29 @@ export const Dashboard: React.FC = () => {
           >
             <HomeIcon sx={{ mr: 0.5, fontSize: 20 }} />
             首頁
-          </Link>
-          <Typography color="text.primary">儀表板</Typography>
+          </Box>
+          <Typography>儀表板</Typography>
         </Breadcrumbs>
       </Box>
-
-      <Box sx={{ flexGrow: 1 }}>
-        <Container maxWidth="xl">
-          <Typography variant="h4" component="h1" gutterBottom>
-            儀表板
-          </Typography>
-          <DashboardGrid>
-            <SchoolDistribution />
-            <AgeChart />
-            <GenderChart />
-            <QuarterlyChart />
-            <SpecialStatusChart />
-            <IncomeChart />
-          </DashboardGrid>
-        </Container>
-      </Box>
+      
+      {/* 圖表區塊 */}
+      <Grid container spacing={2} justifyContent="flex-start" alignItems="stretch">
+        <Grid>
+          <SchoolDistribution />
+        </Grid>
+        <Grid>
+          <AgeChart />
+        </Grid>
+        <Grid>
+          <GenderChart />
+        </Grid>
+        <Grid>
+          <SpecialStatusChart />
+        </Grid>
+        <Grid>
+          <IncomeChart />
+        </Grid>
+      </Grid>
     </Box>
   );
-}; 
+};
