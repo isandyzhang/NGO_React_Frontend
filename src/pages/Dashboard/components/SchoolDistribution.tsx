@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography, Paper, useTheme } from '@mui/material';
 import LanguageIcon from '@mui/icons-material/Language';
 
 interface SchoolData {
@@ -17,12 +17,14 @@ const schoolData: SchoolData[] = [
 ];
 
 export const SchoolDistribution: React.FC = () => {
+  const theme = useTheme();
+
   return (
-    <Paper sx={{ p: 3, borderRadius: 5 }}>
+    <Paper sx={{ p: 3, borderRadius: 5, width: '620px', height: '350px' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <Box
           sx={{
-            backgroundColor: 'primary.main',
+            backgroundColor: theme.palette.primary.main,
             borderRadius: '50%',
             width: 40,
             height: 40,
@@ -45,7 +47,7 @@ export const SchoolDistribution: React.FC = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             py: 2,
-            borderBottom: index < schoolData.length - 1 ? '1px solid #eee' : 'none',
+            borderBottom: index < schoolData.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
           }}
         >
           <Box>

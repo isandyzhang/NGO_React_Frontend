@@ -1,7 +1,6 @@
 import React from 'react';
 import { Paper, Box, Typography } from '@mui/material';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { useTheme } from '@mui/material/styles';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Legend, Tooltip } from 'recharts';
 import TimelineIcon from '@mui/icons-material/Timeline';
 
 const data = [
@@ -12,11 +11,11 @@ const data = [
   { name: '18歲以上', value: 60 },
 ];
 
-export const AgeChart: React.FC = () => {
-  const theme = useTheme();
+const COLORS = ['#4caf50', '#2196f3', '#ff9800', '#f44336', '#9c27b0'];
 
+export const AgeChart: React.FC = () => {
   return (
-    <Paper sx={{ p: 3, height: '100%', borderRadius: 5 ,width:'300px'}}>
+    <Paper sx={{ p: 3, height: '350px', borderRadius: 5, width: '620px' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <Box
           sx={{
@@ -41,11 +40,13 @@ export const AgeChart: React.FC = () => {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" />
             <YAxis />
-            <Bar
-              dataKey="value"
-              fill={theme.palette.primary.main}
-              radius={[4, 4, 0, 0]}
-            />
+            <Legend />
+            <Tooltip />
+            <Bar dataKey="value" name="人數" radius={[4, 4, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </Box>

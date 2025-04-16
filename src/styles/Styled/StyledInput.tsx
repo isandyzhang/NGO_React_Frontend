@@ -1,22 +1,22 @@
 import { styled, TextField } from '@mui/material';
 
-export const StyledInput = styled(TextField)({
+export const StyledInput = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     '& fieldset': {
-      borderColor: '#2e7d32',
+      borderColor: theme.palette.primary.main,
     },
     '&:hover fieldset': {
-      borderColor: '#60ad5e',
+      borderColor: theme.palette.primary.light,
     },
     '&.Mui-focused fieldset': {
-      borderColor: '#005005',
+      borderColor: theme.palette.primary.dark,
     },
   },
   '& .MuiInputLabel-root': {
-    color: '#2e7d32',
+    color: theme.palette.primary.main,
     '&.Mui-focused': {
-      color: '#005005',
+      color: theme.palette.primary.dark,
     },
   },
   margin: '8px 0',
-});
+}));

@@ -15,18 +15,18 @@ const genderData = [
   { name: '女性', value: 40 },
 ];
 
-const COLORS = ['#0088FE', '#FF69B4'];
+const COLORS = [ '#2196f3','#f44336'];
 
 export const GenderChart: React.FC = () => {
   const theme = useTheme();
 
   return (
-    <Paper sx={{ p: 3, height: '100%', borderRadius: 5, width: '400px' }}>
+    <Paper sx={{ p: 3, borderRadius: 5, width: '620px', height: '350px' }}>
       {/* 標題區塊 */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <Box
           sx={{
-            backgroundColor: 'primary.main',
+            backgroundColor: theme.palette.primary.main,
             borderRadius: '50%',
             width: 40,
             height: 40,
@@ -54,7 +54,6 @@ export const GenderChart: React.FC = () => {
                 `${name} ${(percent * 100).toFixed(0)}%`
               }
               outerRadius={80}
-              fill="#8884d8"
               dataKey="value"
             >
               {genderData.map((entry, index) => (

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Paper, Box, Typography, useTheme } from '@mui/material';
 import {
   BarChart,
   Bar,
@@ -8,9 +9,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Cell,
 } from 'recharts';
-import { ChartCard, CustomTooltip } from './ChartCard';
-import { useTheme } from '@mui/material';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 
 const incomeData = [
   { name: '0-20萬', value: 30 },
@@ -20,33 +21,44 @@ const incomeData = [
   { name: '80萬以上', value: 10 },
 ];
 
+const COLORS = ['#4caf50', '#2196f3', '#ff9800', '#f44336', '#9c27b0'];
+
 export const IncomeChart: React.FC = () => {
   const theme = useTheme();
 
   return (
-    <ChartCard title="家庭收入分布">
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart
-          data={incomeData}
-          margin={{
-            top: 5,
-            right: 30,
-            left: 20,
-            bottom: 5,
+    <Paper sx={{ p: 3, borderRadius: 5, width: '620px', height: '350px' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <Box
+          sx={{
+            backgroundColor: theme.palette.primary.main,
+            borderRadius: '50%',
+            width: 40,
+            height: 40,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mr: 2,
           }}
         >
+          <AttachMoneyIcon sx={{ color: 'white' }} />
+        </Box>
+        <Typography variant="h6">家庭收入分布</Typography>
+      </Box>
+      <ResponsiveContainer width="100%" height="80%">
+        <BarChart data={incomeData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip />
           <Legend />
-          <Bar
-            dataKey="value"
-            name="人數"
-            fill={theme.palette.primary.main}
-          />
+          <Bar dataKey="value" name="人數" radius={[4, 4, 0, 0]}>
+            {incomeData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </ChartCard>
+    </Paper>
   );
-}; 
+};
