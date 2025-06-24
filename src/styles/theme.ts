@@ -72,9 +72,54 @@ export const theme = createTheme({
         },
       },
     },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12, // 統一圓角
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', // 統一陰影
+          transition: 'box-shadow 0.2s ease-in-out, transform 0.1s ease-in-out',
+          '&:hover': {
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', // hover 陰影效果
+          },
+        },
+      },
+    },
+    MuiCardContent: {
+      styleOverrides: {
+        root: {
+          padding: '20px', // 統一內邊距
+          '&:last-child': {
+            paddingBottom: '20px', // 保持底部間距一致
+          },
+        },
+      },
+    },
     MuiTypography: {
       defaultProps: {
         color: 'text.primary',
+      },
+      styleOverrides: {
+        h4: {
+          fontWeight: 600, // 統一標題字重
+          letterSpacing: '-0.01em', // 字間距調整
+        },
+        h5: {
+          fontWeight: 600,
+          letterSpacing: '-0.01em',
+        },
+        h6: {
+          fontWeight: 600,
+          letterSpacing: '-0.01em',
+        },
+        body1: {
+          fontSize: '0.95rem',
+          lineHeight: 1.6,
+        },
+        body2: {
+          fontSize: '0.875rem',
+          lineHeight: 1.6,
+          opacity: 0.8, // 次要文字稍微透明
+        },
       },
     },
     MuiBreadcrumbs: {

@@ -20,7 +20,8 @@ const MainLayout: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          padding: 3,
+          px: 7,  // 左右 padding 7
+          py: 3, 
           bgcolor: theme.palette.background.default,
         }}
       >

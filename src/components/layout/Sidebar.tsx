@@ -26,7 +26,7 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-const drawerWidth = 280;
+const drawerWidth = 300;
 
 const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
   const theme = useTheme();
@@ -34,10 +34,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
   const location = useLocation();
 
   const menuItems = [
-    { text: '儀表板', icon: <Dashboard />, path: '/' },
-    { text: '個案管理', icon: <People />, path: '/casesmanagement' },
-    { text: '新增個案', icon: <Add />, path: '/new-case' },
-    { text: '活動管理', icon: <EventIcon />, path: '/activities' },
+    { text: '首頁', icon: <Dashboard />, path: '/' },
+    { text: '個案資料管理', icon: <People />, path: '/' },
+    { text: '活動管理', icon: <Add />, path: '/' },
+    { text: '行事曆管理', icon: <EventIcon />, path: '/' },
+    { text: '行政與物資管理', icon: <EventIcon />, path: '/' },
   ];
 
   return (

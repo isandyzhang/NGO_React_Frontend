@@ -11,8 +11,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<any | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [user, setUser] = useState<any>({
+    id: '1',
+    displayName: 'Test User',
+    email: 'test@example.com',
+    roles: ['user'],
+  });
 
   const login = async (username: string, password: string) => {
     // 模拟 API 调用

@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Login from '../pages/Login';
-import { Dashboard } from '../pages/Dashboard/Dashboard';
+import Dashboard from '../components/Dashboard/Dashboard';
 import MainLayout from '../components/layout/MainLayout';
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
 

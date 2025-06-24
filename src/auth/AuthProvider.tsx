@@ -12,8 +12,18 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [user, setUser] = useState<User | {
+    id: '1',
+    displayName: 'Test User',
+    email: 'test@example.com',
+    roles: ['user'],
+  }>({
+    id: '1',
+    displayName: 'Test User',
+    email: 'test@example.com',
+    roles: ['user'],
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -12,6 +12,21 @@
   --sidebar-width: 250px;
   --border-radius: 4px;
   
+  /* 卡片相關樣式變數 */
+  --card-border-radius: 12px;
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --card-border: 1px solid rgba(0, 0, 0, 0.06);
+  --card-padding: 20px;
+  --card-transition: box-shadow 0.2s ease-in-out, transform 0.1s ease-in-out;
+  
+  /* 字體相關 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --letter-spacing-tight: -0.01em;
+  --line-height-relaxed: 1.6;
+  
   /* 间距 */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
