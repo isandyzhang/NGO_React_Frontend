@@ -1,9 +1,15 @@
 export interface User {
-  id: string;
-  displayName: string;
+  id: string | number;
+  displayName?: string;
+  username?: string;
   email: string;
-  roles: string[];
+  fullName?: string;
+  roles?: string[];
+  role?: 'admin' | 'manager' | 'staff';
   department?: string;
+  avatar?: string;
+  createdAt?: string;
+  lastLoginAt?: string;
 }
 
 export interface AuthState {

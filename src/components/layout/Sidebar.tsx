@@ -18,52 +18,85 @@ import {
   Add,
   Assessment,
   ExitToApp,
-  Event as EventIcon,
+  Inventory,
+  Event,
+  Folder,
+  Home,
+  Person,
+  LocalShipping,
+  CalendarToday,
 } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
 
+// 組件 Props 介面定義
 interface SidebarProps {
-  onLogout: () => void;
+  onLogout: () => void; // 登出處理函數
+  open?: boolean; // 控制側邊欄開關 (mobile 模式使用)
+  onClose?: () => void; // 關閉側邊欄回調函數
 }
 
+// 側邊欄寬度常數
 const drawerWidth = 300;
 
-const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
+/**
+ * 側邊欄導航組件 (Sidebar)
+ * 
+ * 主要功能：
+ * 1. 系統導航 - 提供各頁面間的快速切換
+ * 2. 使用者資訊顯示 - 顯示當前登入用戶的基本資訊
+ * 3. 系統品牌展示 - 顯示系統 Logo 和名稱
+ * 4. 登出功能 - 提供安全登出選項
+ * 5. 響應式設計 - 在行動裝置上適當調整顯示方式
+ * 
+ * 特色：
+ * - 深色主題設計，提供專業視覺效果
+ * - 當前頁面高亮顯示，提供清晰的導航指示
+ * - 圓角設計和過渡動畫，提升使用者體驗
+ * - 支援桌面版和行動版不同的顯示模式
+ */
+const Sidebar: React.FC<SidebarProps> = ({ onLogout, open = true, onClose }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
 
+  // 導航選單項目配置
   const menuItems = [
-    { text: '首頁', icon: <Dashboard />, path: '/' },
-    { text: '個案資料管理', icon: <People />, path: '/' },
-    { text: '活動管理', icon: <Add />, path: '/' },
-    { text: '行事曆管理', icon: <EventIcon />, path: '/' },
-    { text: '行政與物資管理', icon: <EventIcon />, path: '/' },
+    { text: '首頁', icon: <Home />, path: '/dashboard' },
+    { text: '個案資料管理', icon: <Folder />, path: '/case-management' },
+    { text: '活動管理', icon: <Add />, path: '/event-management' },
+    { text: '行事曆管理', icon: <CalendarToday />, path: '/calendar-management' },
+    { text: '物資管理', icon: <LocalShipping />, path: '/supplies-management' },
   ];
 
   return (
     <Drawer
     variant={isMobile ? 'temporary' : 'permanent'}
+    open={isMobile ? open : true}
+    onClose={isMobile ? onClose : undefined}
     sx={{
       width: drawerWidth,
       flexShrink: 0,
       '& .MuiDrawer-paper': {
-      width: drawerWidth,
-      background: theme.palette.grey[900],
-      color: 'common.white',
-      borderRight: 'none',
-      borderRadius: '15px',
-      boxSizing: 'border-box',
-      display: 'flex',
-      margin: '24px',
-      flexDirection: 'column',
-      height: 'calc(100vh - 52px)',
-      marginTop: '24px', 
-    },
+        width: drawerWidth,
+        background: theme.palette.grey[900],
+        color: 'common.white',
+        borderRight: 'none',
+        borderRadius: isMobile ? '0' : '15px',
+        boxSizing: 'border-box',
+        display: 'flex',
+        margin: isMobile ? '0' : '24px',
+        marginRight: isMobile ? '0' : '24px',
+        flexDirection: 'column',
+        height: isMobile ? '100vh' : 'calc(100vh - 48px)',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        zIndex: 1300,
+      },
     }}
   >
   
-      {/* Logo 區塊 */}
+      {/* 系統 Logo 和品牌名稱區塊 */}
       <Box sx={{ p: 3, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <Typography 
           variant="h5" 
@@ -80,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
         </Typography>
       </Box>
 
-      {/* 使用者資訊 */}
+      {/* 當前使用者資訊顯示區塊 */}
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <Avatar sx={{ width: 40, height: 40, bgcolor: theme.palette.primary.main }}>A</Avatar>
         <Box>
@@ -89,7 +122,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
         </Box>
       </Box>
 
-      {/* 主選單 */}
+      {/* 主要導航選單 */}
       <List sx={{ px: 2, py: 3 }}>
         {menuItems.map((item) => (
           <ListItemButton
@@ -110,18 +143,23 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
           >
             <ListItemIcon sx={{ color: 'common.white', minWidth: '40px' }}>{item.icon}</ListItemIcon>
             <ListItemText 
-              primary={item.text} 
-              primaryTypographyProps={{ 
-                fontSize: '1rem', 
-                fontWeight: location.pathname === item.path ? 600 : 400,
-                color: 'common.white'
-              }} 
+              primary={
+                <Typography
+                  sx={{
+                    fontSize: '1rem',
+                    fontWeight: location.pathname === item.path ? 600 : 400,
+                    color: 'common.white'
+                  }}
+                >
+                  {item.text}
+                </Typography>
+              }
             />
           </ListItemButton>
         ))}
       </List>
 
-      {/* 登出按鈕 */}
+      {/* 底部登出功能區塊 */}
       <Box mt="auto">
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
         <List sx={{ p: 2 }}>
@@ -139,11 +177,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
               <ExitToApp />
             </ListItemIcon>
             <ListItemText 
-              primary="登出" 
-              primaryTypographyProps={{ 
-                fontSize: '0.95rem',
-                color: 'common.white'
-              }} 
+              primary={
+                <Typography
+                  sx={{
+                    fontSize: '0.95rem',
+                    color: 'common.white'
+                  }}
+                >
+                  登出
+                </Typography>
+              }
             />
           </ListItemButton>
         </List>

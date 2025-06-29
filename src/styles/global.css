@@ -1,18 +1,36 @@
 :root {
-  /* 主题颜色 */
-  --primary-color: #1a73e8;
-  --secondary-color: #5f6368;
-  --background-color: #ffffff;
-  --text-color: #202124;
+  /* 主题颜色 - 與 theme.ts 同步 */
+  --primary-color: #4caf50;
+  --primary-light: #60ad5e;
+  --primary-dark: #005005;
+  --secondary-color: #4caf50;
+  --background-color: #f5f5f5;
+  --background-paper: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #000000;
   --error-color: #d93025;
-  --success-color: #1e8e3e;
+  --success-color: #4caf50;
+  
+  /* 自定義顏色 - 與 theme.customColors 同步 */
+  --color-change-positive: #6b7280;
+  --color-change-negative: #9ca3af;
+  --color-icon: #6b7280;
+  
+  /* 字體顏色 - 與 theme.customTypography 同步 */
+  --color-page-title: #111827;
+  --color-card-title: #1f2937;
+  --color-card-value: #111827;
+  --color-card-label: #6b7280;
+  --color-chart-label: #374151;
+  --color-legend-label: #4b5563;
+  --color-metric-value: #111827;
   
   /* 布局 */
   --header-height: 64px;
   --sidebar-width: 250px;
-  --border-radius: 4px;
+  --border-radius: 8px;
   
-  /* 卡片相關樣式變數 */
+  /* 卡片相關樣式變數 - 與 theme.components.MuiCard 同步 */
   --card-border-radius: 12px;
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
@@ -20,12 +38,17 @@
   --card-padding: 20px;
   --card-transition: box-shadow 0.2s ease-in-out, transform 0.1s ease-in-out;
   
-  /* 字體相關 */
+  /* 字體相關 - 與 theme.typography 同步 */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
+  --font-weight-bold: 700;
   --letter-spacing-tight: -0.01em;
+  --letter-spacing-normal: -0.005em;
   --line-height-relaxed: 1.6;
+  --line-height-normal: 1.5;
+  --line-height-tight: 1.4;
   
   /* 间距 */
   --spacing-xs: 4px;
@@ -41,11 +64,57 @@
   box-sizing: border-box;
 }
 
+html {
+  /* 強制始終顯示滾動條，避免頁面切換時的跳動 */
+  overflow-y: scroll;
+  /* 平滑滾動 */
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: var(--text-color);
   background-color: var(--background-color);
   line-height: 1.5;
+  /* 移除默認的 margin 和 padding */
+  margin: 0;
+  padding: 0;
+  /* 確保 body 不會產生滾動條 */
+  overflow-x: hidden;
+}
+
+/* 確保根容器穩定 */
+#root {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  /* 防止內容跳動 */
+  overflow-x: hidden;
+}
+
+/* 防止 MUI 組件造成的跳動 */
+.MuiBox-root {
+  /* 確保所有 Box 組件使用一致的盒模型 */
+  box-sizing: border-box;
+}
+
+/* 確保滾動條一致性 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .container {
@@ -72,4 +141,88 @@ body {
 .mt-3 { margin-top: var(--spacing-lg); }
 .mb-1 { margin-bottom: var(--spacing-sm); }
 .mb-2 { margin-bottom: var(--spacing-md); }
-.mb-3 { margin-bottom: var(--spacing-lg); } 
+.mb-3 { margin-bottom: var(--spacing-lg); }
+
+/* 查詢個案編輯動畫 */
+@keyframes expandEdit {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInScale {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  0% {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes expandDetails {
+  0% {
+    transform: scaleY(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scaleY(1.01);
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes expandEditRow {
+  0% {
+    max-height: 60px;
+    opacity: 0.7;
+    transform: scaleY(0.8);
+  }
+  50% {
+    max-height: 140px;
+    opacity: 0.9;
+    transform: scaleY(1.05);
+  }
+  100% {
+    max-height: 120px;
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes slideDownExpand {
+  0% {
+    transform: translateY(-10px) scaleY(0.9);
+    opacity: 0.6;
+  }
+  60% {
+    transform: translateY(2px) scaleY(1.02);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(0) scaleY(1);
+    opacity: 1;
+  }
+} 

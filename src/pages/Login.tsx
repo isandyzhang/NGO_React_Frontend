@@ -15,23 +15,53 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { theme } from '../styles/theme';
-import { StyledInput } from '../styles/Styled/StyledInput';
-import { StyledButton } from '../styles/Styled/StyledButton';
+import { commonStyles } from '../styles/commonStyles';
 import { useAuth } from '../hooks/useAuth';
 
+/**
+ * 登入頁面組件
+ * 
+ * 主要功能：
+ * 1. 提供傳統帳號密碼登入功能
+ * 2. 支援 Azure AD 單一登入（SSO）
+ * 3. 包含載入動畫和錯誤處理
+ * 4. 隱藏的遊戲功能（娛樂用途）
+ * 5. 響應式設計，適配各種螢幕尺寸
+ * 
+ * 特色：
+ * - 使用 Framer Motion 製作平滑動畫效果
+ * - 整合 Lottie 動畫提升使用者體驗
+ * - 包含密碼顯示/隱藏功能
+ */
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  
+  // 頁面載入狀態（控制初始載入動畫）
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Azure 登入載入狀態
   const [isAzureLoading, setIsAzureLoading] = useState(false);
+  
+  // 表單輸入欄位狀態
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // 隱藏遊戲功能相關狀態
   const [gameResult, setGameResult] = useState<string | null>(null);
   const [userNumber, setUserNumber] = useState<number | null>(null);
   const [showGameInput, setShowGameInput] = useState(false);
+  
+  // 錯誤訊息狀態
   const [error, setError] = useState('');
+  
+  // 從身份驗證 hook 獲取登入功能
   const { login, azureLogin } = useAuth();
 
+  /**
+   * 組件掛載時的初始化效果
+   * 設定載入動畫持續時間
+   */
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -39,6 +69,10 @@ const Login: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
   
+  /**
+   * 處理傳統登入表單提交
+   * @param event - 表單提交事件
+   */
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
@@ -49,6 +83,10 @@ const Login: React.FC = () => {
     }
   };
 
+  /**
+   * 處理 Azure AD 登入
+   * 提供單一登入（SSO）功能
+   */
   const handleAzureLogin = async () => {
     try {
       await azureLogin();
@@ -58,10 +96,18 @@ const Login: React.FC = () => {
     }
   };
 
+  /**
+   * 啟動隱藏的數字遊戲
+   * 娛樂功能：與系統 PK 數字大小
+   */
   const playGame = () => {
     setShowGameInput(true);
   };
 
+  /**
+   * 執行數字 PK 遊戲
+   * 比較用戶輸入與系統隨機數字
+   */
   const handlePK = () => {
     if (userNumber === null) return;
     const aiNumber = Math.floor(Math.random() * 10) + 1;
@@ -76,6 +122,7 @@ const Login: React.FC = () => {
 
   return (
     <ThemeProvider theme={theme}>
+      {/* 載入動畫覆蓋層 */}
       <AnimatePresence>
         {isLoading && (
           <Box
@@ -96,6 +143,7 @@ const Login: React.FC = () => {
               zIndex: 9999,
             }}
           >
+            {/* Lottie 載入動畫 */}
             <Box sx={{ width: 300, height: 300 }}>
               <DotLottieReact
                 src="https://lottie.host/6f8fd7f9-a149-4d2a-a15e-d54b64793df0/Vw9Cdzfb0k.lottie"
@@ -108,6 +156,7 @@ const Login: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* 主要登入界面 */}
       <Box
         width="100vw"
         display="flex"
@@ -121,6 +170,7 @@ const Login: React.FC = () => {
           backgroundColor: theme.palette.background.default,
         }}
       >
+        {/* 登入卡片容器 */}
         <Box
           component={motion.div}
           initial={{ opacity: 0, y: 20 }}
@@ -137,6 +187,7 @@ const Login: React.FC = () => {
             width: '90%',
           }}
         >
+          {/* 左側品牌展示區域（桌面版才顯示） */}
           <Box
             sx={{
               width: '85%',
@@ -150,6 +201,7 @@ const Login: React.FC = () => {
               padding: 4,
             }}
           >
+            {/* 品牌 Logo 區域 */}
             <Box
               sx={{
                 width: '100%',
@@ -160,6 +212,7 @@ const Login: React.FC = () => {
                 pb: 4                        
               }}
             >
+              {/* 可互動的 Logo，懸停時會旋轉 */}
               <motion.img
                 src="/images/logo.png"
                 alt="個案管理系統"
@@ -170,6 +223,7 @@ const Login: React.FC = () => {
             </Box>
           </Box>
 
+          {/* 右側登入表單區域 */}
           <Box sx={{ 
             width: '55%', 
             padding: 4, 
@@ -182,13 +236,16 @@ const Login: React.FC = () => {
               Login
             </Typography>
 
+            {/* 錯誤訊息顯示 */}
             {error && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 {error}
               </Alert>
             )}
 
+            {/* 登入表單 */}
             <form onSubmit={handleSubmit}>
+              {/* 帳號輸入欄位 */}
               <TextField
                 label="帳號"
                 variant="outlined"
@@ -244,41 +301,48 @@ const Login: React.FC = () => {
               </Button>
             </form>
 
-            <StyledButton
+            <Button
               variant="outlined"
               color="primary"
               fullWidth
-              sx={{ mt: 2 }}
+              sx={{ 
+                mt: 2,
+                ...commonStyles.secondaryButton
+              }}
               onClick={handleAzureLogin}
               disabled={isAzureLoading}
             >
               {isAzureLoading ? '登入中...' : '使用 Azure SSO 登入'}
-            </StyledButton>
+            </Button>
 
-            <StyledButton
+            <Button
               variant="outlined"
               color="secondary"
               fullWidth
-              sx={{ mt: 2 }}
+              sx={{ 
+                mt: 2,
+                ...commonStyles.secondaryButton
+              }}
               startIcon={<Casino />}
               onClick={playGame}
             >
               比大小登入
-            </StyledButton>
+            </Button>
 
             {showGameInput && (
               <Box display="flex" paddingTop={2} gap={2} alignItems="center">
-                <StyledInput
+                <TextField
                   label="輸入一個數字 (1-10)"
                   type="number"
                   fullWidth
                   value={userNumber ?? ''}
-                  onChange={(e) => setUserNumber(Number(e.target.value))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUserNumber(Number(e.target.value))}
                   inputProps={{
                     min: 1,
                     max: 10,
                   }}
                   sx={{
+                    ...commonStyles.formInput,
                     '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
                       '-webkit-appearance': 'none',
                     },
@@ -289,13 +353,16 @@ const Login: React.FC = () => {
                   variant="outlined"
                   margin="normal"
                 />
-                <StyledButton 
+                <Button 
                   variant="outlined" 
                   onClick={handlePK} 
-                  sx={{ height: '56px' }}
+                  sx={{ 
+                    height: '56px',
+                    ...commonStyles.secondaryButton
+                  }}
                 >
                   PK
-                </StyledButton>
+                </Button>
               </Box>
             )}
 
