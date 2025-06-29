@@ -1,76 +1,114 @@
+/* ===================================
+ * 全域樣式表 (Global Styles)
+ * ===================================
+ * 
+ * 🎯 文件目的：
+ * - 定義整個應用程式的基礎樣式
+ * - 設置 CSS 變數供全域使用
+ * - 處理瀏覽器兼容性問題
+ * - 提供基礎的佈局和動畫效果
+ * 
+ * 📋 主要功能：
+ * 1. CSS 變數定義 (CSS Variables)
+ * 2. 基礎重置樣式 (Reset Styles)
+ * 3. 滾動條樣式 (Scrollbar Styles)
+ * 4. MUI 組件樣式覆蓋 (MUI Overrides)
+ * 5. 動畫效果定義 (Animations)
+ * 6. 響應式工具類 (Utility Classes)
+ * 
+ * 🔧 使用方式：
+ * - 在 main.tsx 中全域引入
+ * - CSS 變數可在任何地方使用：var(--primary-color)
+ */
+
+/* ===================================
+ * 🎨 CSS 變數定義 (CSS Variables)
+ * ===================================
+ * 用於統一管理顏色、字體、間距等設計 token
+ * 🔍 重點：與 theme.ts 保持同步，確保一致性
+ */
 :root {
-  /* 主题颜色 - 與 theme.ts 同步 */
-  --primary-color: #4caf50;
-  --primary-light: #60ad5e;
-  --primary-dark: #005005;
-  --secondary-color: #4caf50;
-  --background-color: #f5f5f5;
-  --background-paper: #ffffff;
-  --text-primary: #000000;
-  --text-secondary: #000000;
-  --error-color: #d93025;
-  --success-color: #4caf50;
+  /* 主題顏色 - 與 theme.ts 同步 */
+  --primary-color: #4caf50;           /* 主綠色 - 品牌色 */
+  --primary-light: #60ad5e;           /* 淺綠色 - hover 狀態 */
+  --primary-dark: #005005;            /* 深綠色 - active 狀態 */
+  --secondary-color: #4caf50;         /* 次要色 - 與主色保持一致 */
+  --background-color: #f5f5f5;        /* 頁面背景 - 淺灰色 */
+  --background-paper: #ffffff;        /* 卡片背景 - 純白色 */
+  --text-primary: #000000;            /* 主要文字色 - 黑色 */
+  --text-secondary: #000000;          /* 次要文字色 - 黑色 */
+  --error-color: #d93025;             /* 錯誤色 - 紅色 */
+  --success-color: #4caf50;           /* 成功色 - 綠色 */
   
   /* 自定義顏色 - 與 theme.customColors 同步 */
-  --color-change-positive: #6b7280;
-  --color-change-negative: #9ca3af;
-  --color-icon: #6b7280;
+  --color-change-positive: #6b7280;   /* 正向變化指示色 */
+  --color-change-negative: #9ca3af;   /* 負向變化指示色 */
+  --color-icon: #6b7280;              /* 圖示顏色 */
   
   /* 字體顏色 - 與 theme.customTypography 同步 */
-  --color-page-title: #111827;
-  --color-card-title: #1f2937;
-  --color-card-value: #111827;
-  --color-card-label: #6b7280;
-  --color-chart-label: #374151;
-  --color-legend-label: #4b5563;
-  --color-metric-value: #111827;
+  --color-page-title: #111827;        /* 頁面標題色 */
+  --color-card-title: #1f2937;        /* 卡片標題色 */
+  --color-card-value: #111827;        /* 卡片數值色 */
+  --color-card-label: #6b7280;        /* 卡片標籤色 */
+  --color-chart-label: #374151;       /* 圖表標籤色 */
+  --color-legend-label: #4b5563;      /* 圖例標籤色 */
+  --color-metric-value: #111827;      /* 指標數值色 */
   
-  /* 布局 */
-  --header-height: 64px;
-  --sidebar-width: 250px;
-  --border-radius: 8px;
+  /* 佈局相關變數 */
+  --header-height: 64px;              /* 頁首高度 */
+  --sidebar-width: 250px;             /* 側邊欄寬度 */
+  --border-radius: 8px;               /* 基礎圓角 */
   
   /* 卡片相關樣式變數 - 與 theme.components.MuiCard 同步 */
-  --card-border-radius: 12px;
-  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --card-border: 1px solid rgba(0, 0, 0, 0.06);
-  --card-padding: 20px;
-  --card-transition: box-shadow 0.2s ease-in-out, transform 0.1s ease-in-out;
+  --card-border-radius: 12px;         /* 卡片圓角 */
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);           /* 卡片陰影 */
+  --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);    /* 卡片 hover 陰影 */
+  --card-border: 1px solid rgba(0, 0, 0, 0.06);           /* 卡片邊框 */
+  --card-padding: 20px;               /* 卡片內邊距 */
+  --card-transition: box-shadow 0.2s ease-in-out, transform 0.1s ease-in-out; /* 卡片過渡效果 */
   
-  /* 字體相關 - 與 theme.typography 同步 */
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-  --letter-spacing-tight: -0.01em;
-  --letter-spacing-normal: -0.005em;
-  --line-height-relaxed: 1.6;
-  --line-height-normal: 1.5;
-  --line-height-tight: 1.4;
+  /* 字體相關變數 - 與 theme.typography 同步 */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* 系統字體堆疊 */
+  --font-weight-normal: 400;          /* 正常字重 */
+  --font-weight-medium: 500;          /* 中等字重 */
+  --font-weight-semibold: 600;        /* 半粗體字重 */
+  --font-weight-bold: 700;            /* 粗體字重 */
+  --letter-spacing-tight: -0.01em;    /* 緊密字間距 */
+  --letter-spacing-normal: -0.005em;  /* 正常字間距 */
+  --line-height-relaxed: 1.6;         /* 寬鬆行高 */
+  --line-height-normal: 1.5;          /* 正常行高 */
+  --line-height-tight: 1.4;           /* 緊密行高 */
   
-  /* 间距 */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
+  /* 間距系統 - 統一的間距規範 */
+  --spacing-xs: 4px;                  /* 極小間距 */
+  --spacing-sm: 8px;                  /* 小間距 */
+  --spacing-md: 16px;                 /* 中等間距 */
+  --spacing-lg: 24px;                 /* 大間距 */
+  --spacing-xl: 32px;                 /* 極大間距 */
 }
 
+/* ===================================
+ * 🔄 基礎重置樣式 (Reset Styles)
+ * ===================================
+ * 消除瀏覽器預設樣式，確保跨瀏覽器一致性
+ */
+
+/** 全域盒模型重置 */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/** HTML 根元素設置 */
 html {
-  /* 強制始終顯示滾動條，避免頁面切換時的跳動 */
+  /* 🔍 重點：強制始終顯示滾動條，避免頁面切換時的跳動 */
   overflow-y: scroll;
-  /* 平滑滾動 */
+  /* 平滑滾動效果 */
   scroll-behavior: smooth;
 }
 
+/** 頁面主體設置 */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: var(--text-color);
@@ -79,11 +117,12 @@ body {
   /* 移除默認的 margin 和 padding */
   margin: 0;
   padding: 0;
-  /* 確保 body 不會產生滾動條 */
+  /* 🔍 重點：確保 body 不會產生水平滾動條 */
   overflow-x: hidden;
 }
 
-/* 確保根容器穩定 */
+/** React 根容器設置 */
+/* 🔍 重點：確保根容器穩定，防止佈局跳動 */
 #root {
   min-height: 100vh;
   width: 100%;
@@ -92,137 +131,218 @@ body {
   overflow-x: hidden;
 }
 
-/* 防止 MUI 組件造成的跳動 */
+/* ===================================
+ * 🎨 MUI 組件樣式覆蓋 (MUI Overrides)
+ * ===================================
+ * 針對 Material-UI 組件的全域樣式調整
+ */
+
+/** 防止 MUI 組件造成的佈局跳動 */
 .MuiBox-root {
   /* 確保所有 Box 組件使用一致的盒模型 */
   box-sizing: border-box;
 }
 
-/* 確保滾動條一致性 */
+/* MUI 分頁按鈕移除 focus 框線 */
+/* 🔍 重點：移除點擊時的醜陋邊框，提升視覺體驗 */
+.MuiButton-root:focus,
+.MuiTab-root:focus,
+.MuiButtonBase-root:focus,
+.MuiButton-root:focus-visible,
+.MuiTab-root:focus-visible,
+.MuiButtonBase-root:focus-visible,
+.MuiButton-root:active,
+.MuiTab-root:active,
+.MuiButtonBase-root:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ===================================
+ * 📜 滾動條樣式 (Scrollbar Styles)
+ * ===================================
+ * 自定義滾動條外觀，提升視覺一致性
+ */
+
+/** WebKit 瀏覽器滾動條樣式 */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 8px;                         /* 滾動條寬度 */
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: #f1f1f1;               /* 軌道背景色 */
+  border-radius: 4px;                /* 軌道圓角 */
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
+  background: #c1c1c1;               /* 滑塊背景色 */
+  border-radius: 4px;                /* 滑塊圓角 */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: #a8a8a8;               /* 滑塊 hover 色 */
 }
 
+/* ===================================
+ * 🏗️ 佈局工具類 (Layout Utilities)
+ * ===================================
+ * 常用的佈局樣式類
+ */
+
+/** 容器樣式 */
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-md);
+  max-width: 1200px;                 /* 最大寬度限制 */
+  margin: 0 auto;                    /* 水平居中 */
+  padding: 0 var(--spacing-md);      /* 左右內邊距 */
 }
 
-/* 表单样式 */
+/** 表單樣式 */
 .form-group {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-md);  /* 表單組間距 */
 }
 
 .form-label {
   display: block;
-  margin-bottom: var(--spacing-xs);
-  font-weight: 500;
+  margin-bottom: var(--spacing-xs);  /* 標籤下邊距 */
+  font-weight: 500;                  /* 標籤字重 */
 }
 
-/* 通用工具类 */
+/* ===================================
+ * 🛠️ 通用工具類 (Utility Classes)
+ * ===================================
+ * 快速應用常用樣式的工具類
+ */
+
+/** 文字對齊 */
 .text-center { text-align: center; }
+
+/** 上邊距工具類 */
 .mt-1 { margin-top: var(--spacing-sm); }
 .mt-2 { margin-top: var(--spacing-md); }
 .mt-3 { margin-top: var(--spacing-lg); }
+
+/** 下邊距工具類 */
 .mb-1 { margin-bottom: var(--spacing-sm); }
 .mb-2 { margin-bottom: var(--spacing-md); }
 .mb-3 { margin-bottom: var(--spacing-lg); }
 
-/* 查詢個案編輯動畫 */
+/* ===================================
+ * 🎬 動畫效果定義 (Animation Definitions)
+ * ===================================
+ * 用於提升用戶體驗的動畫效果
+ * 🔍 重點：這些動畫在 commonStyles.ts 中被引用
+ */
+
+/** 查詢個案編輯動畫 - 用於編輯狀態的視覺反饋 */
 @keyframes expandEdit {
   0% {
-    transform: scale(0.95);
-    opacity: 0.8;
+    transform: scale(0.95);           /* 初始縮小 */
+    opacity: 0.8;                    /* 初始透明度 */
   }
   50% {
-    transform: scale(1.02);
+    transform: scale(1.02);           /* 中間放大 */
   }
   100% {
-    transform: scale(1);
-    opacity: 1;
+    transform: scale(1);              /* 最終正常大小 */
+    opacity: 1;                      /* 最終完全不透明 */
   }
 }
 
+/** 淡入縮放動畫 - 用於元素出現效果 */
 @keyframes fadeInScale {
   0% {
-    transform: scale(0.9);
-    opacity: 0;
+    transform: scale(0.9);            /* 初始縮小 */
+    opacity: 0;                      /* 初始透明 */
   }
   100% {
-    transform: scale(1);
-    opacity: 1;
+    transform: scale(1);              /* 最終正常大小 */
+    opacity: 1;                      /* 最終不透明 */
   }
 }
 
+/** 右滑入動畫 - 用於側邊元素出現 */
 @keyframes slideInRight {
   0% {
-    transform: translateX(20px);
-    opacity: 0;
+    transform: translateX(20px);      /* 初始右偏移 */
+    opacity: 0;                      /* 初始透明 */
   }
   100% {
-    transform: translateX(0);
-    opacity: 1;
+    transform: translateX(0);         /* 最終位置 */
+    opacity: 1;                      /* 最終不透明 */
   }
 }
 
+/** 展開詳情動畫 - 用於詳情面板展開 */
 @keyframes expandDetails {
   0% {
-    transform: scaleY(0.95);
-    opacity: 0.8;
+    transform: scaleY(0.95);          /* 初始垂直縮小 */
+    opacity: 0.8;                    /* 初始透明度 */
   }
   50% {
-    transform: scaleY(1.01);
+    transform: scaleY(1.01);          /* 中間垂直放大 */
   }
   100% {
-    transform: scaleY(1);
-    opacity: 1;
+    transform: scaleY(1);             /* 最終正常大小 */
+    opacity: 1;                      /* 最終完全不透明 */
   }
 }
 
+/** 展開編輯行動畫 - 用於表格行編輯狀態 */
 @keyframes expandEditRow {
   0% {
-    max-height: 60px;
-    opacity: 0.7;
-    transform: scaleY(0.8);
+    max-height: 60px;                /* 初始高度限制 */
+    opacity: 0.7;                    /* 初始透明度 */
   }
   50% {
-    max-height: 140px;
-    opacity: 0.9;
-    transform: scaleY(1.05);
+    max-height: 120px;               /* 中間高度 */
+    opacity: 0.9;                    /* 中間透明度 */
   }
   100% {
-    max-height: 120px;
-    opacity: 1;
-    transform: scaleY(1);
+    max-height: 200px;               /* 最終高度 */
+    opacity: 1;                      /* 最終完全不透明 */
   }
 }
 
+/** 下滑展開動畫 - 用於下拉內容展開 */
 @keyframes slideDownExpand {
   0% {
-    transform: translateY(-10px) scaleY(0.9);
-    opacity: 0.6;
-  }
-  60% {
-    transform: translateY(2px) scaleY(1.02);
-    opacity: 0.9;
+    max-height: 0;                   /* 初始高度為0 */
+    opacity: 0;                      /* 初始透明 */
+    transform: translateY(-10px);     /* 初始上偏移 */
   }
   100% {
-    transform: translateY(0) scaleY(1);
-    opacity: 1;
+    max-height: 300px;               /* 最終高度 */
+    opacity: 1;                      /* 最終不透明 */
+    transform: translateY(0);         /* 最終位置 */
+  }
+}
+
+/* ===================================
+ * 📱 響應式設計 (Responsive Design)
+ * ===================================
+ * 針對不同螢幕尺寸的樣式調整
+ */
+
+/** 平板設備 (768px 以下) */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 var(--spacing-sm);    /* 減少左右內邊距 */
+  }
+  
+  :root {
+    --card-padding: 16px;            /* 減少卡片內邊距 */
+  }
+}
+
+/** 手機設備 (480px 以下) */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 var(--spacing-xs);    /* 進一步減少內邊距 */
+  }
+  
+  :root {
+    --card-padding: 12px;            /* 進一步減少卡片內邊距 */
+    --spacing-md: 12px;              /* 調整中等間距 */
+    --spacing-lg: 16px;              /* 調整大間距 */
   }
 } 

@@ -12,7 +12,8 @@ import {
 } from '@mui/icons-material';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
-import { AddSupplyRequestTab, SupplyOverviewTab } from '../components/SuppliesManagementPage';
+import AddSupplyRequestTab from '../components/SuppliesManagementPage/AddSupplyRequestTab';
+import SupplyOverviewTab from '../components/SuppliesManagementPage/SupplyOverviewTab';
 
 /**
  * 物資管理頁面組件

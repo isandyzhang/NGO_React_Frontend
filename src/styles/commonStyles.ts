@@ -1,14 +1,36 @@
 import { THEME_COLORS } from './theme';
 
 /**
- * 共用樣式定義
+ * ===================================
+ * 共用樣式定義 (Common Styles)
+ * ===================================
  * 
- * 這個檔案包含了整個應用程式中常用的樣式模式，
- * 幫助保持樣式的一致性並減少重複代碼。
+ * 🎯 文件目的：
+ * - 統一整個應用程式的視覺樣式
+ * - 減少重複代碼，提高維護性
+ * - 確保設計一致性和品牌統一
+ * 
+ * 📋 主要功能：
+ * 1. 表單組件樣式 (Forms)
+ * 2. 按鈕樣式 (Buttons) 
+ * 3. 表格樣式 (Tables)
+ * 4. 卡片樣式 (Cards)
+ * 5. 狀態樣式 (Status)
+ * 6. 動畫效果 (Animations)
+ * 7. 響應式間距 (Responsive Spacing)
+ * 
+ * 🔧 使用方式：
+ * import { commonStyles } from './commonStyles';
+ * sx={{ ...commonStyles.primaryButton }}
  */
 
 export const commonStyles = {
-  // 表單相關樣式
+  // ===================================
+  // 📝 表單相關樣式 (Form Styles)
+  // ===================================
+  // 用於統一所有表單組件的外觀和行為
+  
+  /** 表單區塊容器 - 用於包裹表單內容的主要容器 */
   formSection: {
     bgcolor: THEME_COLORS.BACKGROUND_CARD,
     borderRadius: 2,
@@ -17,24 +39,28 @@ export const commonStyles = {
     border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
   },
   
+  /** 表單標題 - 用於表單區塊的主標題 */
   formHeader: {
     fontWeight: 600,
     color: THEME_COLORS.TEXT_PRIMARY,
     mb: 2,
   },
   
+  /** 表單標籤 - 用於輸入框上方的標籤文字 */
   formLabel: {
     mb: 1,
     color: THEME_COLORS.TEXT_SECONDARY,
     fontWeight: 500,
   },
   
-  // 表單輸入框樣式 - 邊框樣式由全局主題提供，這裡只定義額外樣式
+  /** 基礎輸入框 - 適用於 TextField 組件 */
+  // 🔍 重點：邊框樣式由全局主題 (theme.ts) 統一管理
   formInput: {
     bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
   },
   
-  // Select 組件專用樣式 - 邊框樣式由全局主題提供，這裡只定義額外樣式  
+  /** 下拉選單 - 適用於 Select 組件 */
+  // 🔍 重點：包含 disabled 狀態的特殊處理
   formSelect: {
     bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
     // 確保 disabled 狀態下的樣式
@@ -48,7 +74,8 @@ export const commonStyles = {
     },
   },
   
-  // 日期選擇器專用樣式
+  /** 日期選擇器 - 適用於日期/時間輸入 */
+  // 🔍 重點：使用等寬字體確保日期對齊，包含自定義圖示
   formDatePicker: {
     bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
     '& fieldset': { borderColor: THEME_COLORS.BORDER_LIGHT },
@@ -71,7 +98,7 @@ export const commonStyles = {
       marginLeft: 0,
       marginTop: '6px',
     },
-    // 日期選擇器圖示樣式
+    // 自定義日期選擇器圖示 - 使用 SVG 圖示替換默認樣式
     '& input[type="date"]::-webkit-calendar-picker-indicator': {
       backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='${THEME_COLORS.PRIMARY.replace('#', '%23')}'%3e%3cpath fill-rule='evenodd' d='M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z' clip-rule='evenodd'/%3e%3c/svg%3e")`,
       backgroundSize: '20px 20px',
@@ -84,13 +111,18 @@ export const commonStyles = {
         opacity: 1,
       },
     },
-    // Focus 狀態增強
+    // Focus 狀態增強 - 添加柔和的光暈效果
     '&.Mui-focused': {
       boxShadow: `0 0 0 2px ${THEME_COLORS.PRIMARY}20`, // 20% 透明度的主色光暈
     },
   },
   
-  // 按鈕樣式
+  // ===================================
+  // 🔘 按鈕樣式 (Button Styles)
+  // ===================================
+  // 統一所有按鈕的外觀，確保品牌一致性
+  
+  /** 主要按鈕 - 用於主要操作 (如提交、確認) */
   primaryButton: {
     bgcolor: THEME_COLORS.PRIMARY,
     color: 'white !important',
@@ -106,6 +138,7 @@ export const commonStyles = {
     },
   },
 
+  /** 上傳按鈕 - 用於文件上傳操作 */
   uploadButton: {
     color: THEME_COLORS.PRIMARY,
     borderColor: THEME_COLORS.PRIMARY,
@@ -115,6 +148,7 @@ export const commonStyles = {
     },
   },
 
+  /** 移除按鈕 - 用於刪除項目的小按鈕 */
   removeButton: {
     color: THEME_COLORS.TEXT_MUTED,
     textTransform: 'lowercase',
@@ -126,6 +160,7 @@ export const commonStyles = {
     },
   },
   
+  /** 危險按鈕 - 用於刪除、取消等危險操作 */
   dangerButton: {
     bgcolor: THEME_COLORS.ERROR,
     color: 'white !important',
@@ -137,6 +172,7 @@ export const commonStyles = {
     },
   },
   
+  /** 次要按鈕 - 用於取消、返回等次要操作 */
   secondaryButton: {
     bgcolor: 'transparent',
     color: THEME_COLORS.TEXT_MUTED,
@@ -147,7 +183,12 @@ export const commonStyles = {
     },
   },
   
-  // 表格樣式
+  // ===================================
+  // 📊 表格樣式 (Table Styles)
+  // ===================================
+  // 用於數據表格的統一樣式
+  
+  /** 表格標題行 - 用於表格的 header */
   tableHeader: {
     bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
     fontWeight: 600,
@@ -155,18 +196,24 @@ export const commonStyles = {
     borderBottom: `2px solid ${THEME_COLORS.BORDER_LIGHT}`,
   },
   
+  /** 表格數據行 - 用於表格的數據單元格 */
   tableCell: {
     color: THEME_COLORS.TEXT_SECONDARY,
     borderBottom: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
   },
   
+  /** 可編輯行 - 用於表格中正在編輯的行 */
   editableRow: {
     bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
     border: `1px solid ${THEME_COLORS.PRIMARY}`,
-    borderLeft: `4px solid ${THEME_COLORS.PRIMARY}`,
+    borderLeft: `4px solid ${THEME_COLORS.PRIMARY}`, // 左側強調邊框
   },
   
-  // 搜尋框樣式
+  // ===================================
+  // 🔍 搜尋相關樣式 (Search Styles)
+  // ===================================
+  
+  /** 搜尋框 - 用於搜尋功能的輸入框 */
   searchBox: {
     color: THEME_COLORS.TEXT_MUTED,
     borderColor: THEME_COLORS.BORDER_DEFAULT,
@@ -176,7 +223,13 @@ export const commonStyles = {
     },
   },
   
-  // 狀態標籤樣式
+  // ===================================
+  // 🏷️ 狀態標籤樣式 (Status Chip Styles)
+  // ===================================
+  // 用於顯示不同狀態的彩色標籤
+  
+  /** 狀態標籤顏色配置 */
+  // 🔍 重點：每種狀態都有對應的背景色和文字色
   statusChip: {
     upcoming: { 
       bg: '#e3f2fd', 
@@ -200,13 +253,17 @@ export const commonStyles = {
     },
   },
   
-  // 頭像樣式
+  // ===================================
+  // 👤 用戶界面元素 (UI Elements)
+  // ===================================
+  
+  /** 默認頭像 - 用於沒有照片時的頭像顯示 */
   defaultAvatar: {
     bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
     color: THEME_COLORS.TEXT_MUTED,
   },
 
-  // 照片上傳區域樣式
+  /** 照片上傳區域 - 用於照片上傳功能的容器 */
   photoUploadSection: {
     display: 'flex', 
     flexDirection: 'column', 
@@ -216,7 +273,13 @@ export const commonStyles = {
     borderBottom: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
   },
 
-  // 卡片樣式
+  // ===================================
+  // 🃏 卡片樣式 (Card Styles)
+  // ===================================
+  // 用於統計卡片和信息展示卡片
+  
+  /** 統計卡片 - 用於儀表板的統計數據顯示 */
+  // 🔍 重點：包含 hover 動畫效果，提升用戶體驗
   statsCard: {
     borderRadius: 2,
     p: 3,
@@ -224,33 +287,41 @@ export const commonStyles = {
     transition: 'all 0.2s ease-in-out',
     '&:hover': {
       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-      transform: 'translateY(-2px)',
+      transform: 'translateY(-2px)', // 向上浮動效果
     },
   },
   
+  /** 卡片標題 - 用於卡片頂部的標題文字 */
   cardTitle: {
     fontWeight: 600,
     color: THEME_COLORS.TEXT_PRIMARY,
     mb: 1,
   },
   
+  /** 卡片數值 - 用於顯示統計數字 */
   cardValue: {
     fontSize: '2rem',
     fontWeight: 700,
     color: THEME_COLORS.TEXT_PRIMARY,
   },
   
+  /** 卡片標籤 - 用於卡片中的描述文字 */
   cardLabel: {
     fontSize: '0.875rem',
     color: THEME_COLORS.TEXT_MUTED,
   },
 
-  // 分隔線文字樣式
+  // ===================================
+  // 🎨 界面元素 (Interface Elements)
+  // ===================================
+  
+  /** 分隔線文字 - 用於分隔內容的文字樣式 */
   separatorText: {
     color: THEME_COLORS.TEXT_MUTED,
   },
   
-  // 分頁標籤樣式
+  /** 分頁標籤 - 用於 Tab 組件的樣式 */
+  // 🔍 重點：包含選中狀態和 hover 效果
   tabPanel: {
     fontSize: '1rem',
     fontWeight: 500,
@@ -268,15 +339,27 @@ export const commonStyles = {
     borderColor: THEME_COLORS.BORDER_LIGHT,
   },
   
-  // 通用間距
+  // ===================================
+  // 📏 間距系統 (Spacing System)
+  // ===================================
+  // 統一的間距規範，確保布局一致性
+  
+  /** 響應式間距配置 */
+  // 🔍 重點：提供不同層級的間距選項
   spacing: {
-    section: { mb: 4 },
-    subsection: { mb: 3 },
-    element: { mb: 2 },
-    small: { mb: 1 },
+    section: { mb: 4 },     // 大區塊間距
+    subsection: { mb: 3 },  // 子區塊間距
+    element: { mb: 2 },     // 元素間距
+    small: { mb: 1 },       // 小間距
   },
   
-  // 動畫效果
+  // ===================================
+  // 🎬 動畫效果 (Animation Effects)
+  // ===================================
+  // 提升用戶體驗的動畫效果
+  
+  /** 預定義動畫效果 */
+  // 🔍 重點：對應 global.css 中定義的 @keyframes
   animations: {
     fadeIn: {
       animation: 'fadeInScale 0.3s ease-out',
@@ -290,8 +373,14 @@ export const commonStyles = {
   },
 };
 
+// ===================================
+// 🔧 輔助函數 (Helper Functions)
+// ===================================
+
 /**
- * 狀態相關的樣式輔助函數
+ * 狀態樣式獲取函數
+ * @param status 狀態字符串
+ * @returns 對應的狀態樣式
  */
 export const getStatusStyle = (status: string) => {
   return commonStyles.statusChip[status as keyof typeof commonStyles.statusChip] || 
@@ -299,7 +388,10 @@ export const getStatusStyle = (status: string) => {
 };
 
 /**
- * 表單驗證樣式 - 只處理錯誤狀態，正常樣式由全局主題提供
+ * 表單驗證樣式函數 - TextField 專用
+ * 🔍 重點：只處理錯誤狀態，正常樣式由全局主題提供
+ * @param hasError 是否有錯誤
+ * @returns 驗證樣式對象
  */
 export const getValidationStyle = (hasError: boolean) => ({
   ...commonStyles.formInput,
@@ -317,7 +409,10 @@ export const getValidationStyle = (hasError: boolean) => ({
 });
 
 /**
- * Select 組件表單驗證樣式 - 只處理錯誤狀態，正常樣式由全局主題提供
+ * Select 組件驗證樣式函數
+ * 🔍 重點：包含多層選擇器確保樣式生效
+ * @param hasError 是否有錯誤
+ * @returns Select 驗證樣式對象
  */
 export const getSelectValidationStyle = (hasError: boolean) => ({
   ...commonStyles.formSelect,
@@ -344,7 +439,10 @@ export const getSelectValidationStyle = (hasError: boolean) => ({
 });
 
 /**
- * 日期選擇器表單驗證樣式 - 只處理錯誤狀態，正常樣式由基礎樣式提供
+ * 日期選擇器驗證樣式函數
+ * 🔍 重點：包含光暈效果和輔助文字樣式
+ * @param hasError 是否有錯誤
+ * @returns 日期選擇器驗證樣式對象
  */
 export const getDatePickerValidationStyle = (hasError: boolean) => ({
   ...commonStyles.formDatePicker,
@@ -375,14 +473,17 @@ export const getDatePickerValidationStyle = (hasError: boolean) => ({
 
 /**
  * 響應式間距輔助函數
+ * 🔍 重點：根據螢幕尺寸自動調整間距大小
+ * @param size 間距大小等級
+ * @returns 響應式間距對象
  */
 export const getResponsiveSpacing = (size: 'xs' | 'sm' | 'md' | 'lg' | 'xl') => {
   const spacingMap = {
-    xs: { xs: 1, sm: 1, md: 2 },
-    sm: { xs: 1, sm: 2, md: 2 },
-    md: { xs: 2, sm: 2, md: 3 },
-    lg: { xs: 2, sm: 3, md: 4 },
-    xl: { xs: 3, sm: 4, md: 5 },
+    xs: { xs: 1, sm: 1, md: 2 },   // 最小間距
+    sm: { xs: 1, sm: 2, md: 2 },   // 小間距
+    md: { xs: 2, sm: 2, md: 3 },   // 中等間距
+    lg: { xs: 2, sm: 3, md: 4 },   // 大間距
+    xl: { xs: 3, sm: 4, md: 5 },   // 最大間距
   };
   return spacingMap[size];
 };
