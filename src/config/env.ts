@@ -1,7 +1,7 @@
 // 環境變數配置
 export const config = {
   // API 設定
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://localhost:7001/api',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5282/api',
   requestTimeout: parseInt(import.meta.env.VITE_REQUEST_TIMEOUT || '10000'),
   
   // 應用程式資訊

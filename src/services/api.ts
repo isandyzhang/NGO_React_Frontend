@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import axios from 'axios';
 import { config } from '../config/env';
 
 // API 基礎配置
@@ -8,7 +8,7 @@ const API_BASE_URL = config.apiBaseUrl;
  * 創建 Axios 實例
  * 配置統一的 API 請求設定，包括基礎 URL、超時時間和預設標頭
  */
-const apiClient: AxiosInstance = axios.create({
+const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: config.requestTimeout,
   headers: {
@@ -25,7 +25,7 @@ const apiClient: AxiosInstance = axios.create({
  * 3. 統一處理請求前的數據處理
  */
 apiClient.interceptors.request.use(
-  (config) => {
+  (config: any) => {
     // 從本地儲存獲取身份驗證令牌
     const token = localStorage.getItem('authToken');
     if (token) {
@@ -36,7 +36,7 @@ apiClient.interceptors.request.use(
     console.log('API Request:', config.method?.toUpperCase(), config.url);
     return config;
   },
-  (error) => {
+  (error: any) => {
     console.error('Request Error:', error);
     return Promise.reject(error);
   }
@@ -52,12 +52,12 @@ apiClient.interceptors.request.use(
  * 4. 提供統一的錯誤處理機制
  */
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response: any) => {
     // 開發環境下記錄響應資訊
     console.log('API Response:', response.status, response.config.url);
     return response;
   },
-  (error) => {
+  (error: any) => {
     console.error('Response Error:', error);
     
     // 處理身份驗證失效
@@ -103,24 +103,24 @@ apiClient.interceptors.response.use(
  */
 export const api = {
   // GET 請求 - 獲取資料
-  get: <T>(url: string, params?: any): Promise<T> => 
-    apiClient.get(url, { params }).then(response => response.data),
+  get: <T>(url: string, params?: any) => 
+    apiClient.get(url, { params }).then((response: any) => response.data),
   
   // POST 請求 - 創建新資料
-  post: <T>(url: string, data?: any): Promise<T> => 
-    apiClient.post(url, data).then(response => response.data),
+  post: <T>(url: string, data?: any) => 
+    apiClient.post(url, data).then((response: any) => response.data),
   
   // PUT 請求 - 完整更新資料
-  put: <T>(url: string, data?: any): Promise<T> => 
-    apiClient.put(url, data).then(response => response.data),
+  put: <T>(url: string, data?: any) => 
+    apiClient.put(url, data).then((response: any) => response.data),
   
   // DELETE 請求 - 刪除資料
-  delete: <T>(url: string): Promise<T> => 
-    apiClient.delete(url).then(response => response.data),
+  delete: <T>(url: string) => 
+    apiClient.delete(url).then((response: any) => response.data),
   
   // PATCH 請求 - 部分更新資料
-  patch: <T>(url: string, data?: any): Promise<T> => 
-    apiClient.patch(url, data).then(response => response.data),
+  patch: <T>(url: string, data?: any) => 
+    apiClient.patch(url, data).then((response: any) => response.data),
 };
 
 export default apiClient; 
