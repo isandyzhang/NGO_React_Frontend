@@ -14,11 +14,9 @@ import {
   Autocomplete,
 } from '@mui/material';
 import { 
-  Inventory,
   Add,
   Remove,
   Warning,
-  Home,
   Person,
   Badge,
 } from '@mui/icons-material';
@@ -30,13 +28,13 @@ import {
   getSelectValidationStyle 
 } from '../../styles/commonStyles';
 
-interface SupplyRequestData {
+interface EmergencySupplyRequestData {
   itemName: string;
   category: string;
   quantity: number;
-  supplyType: 'regular' | 'emergency';
-  caseName?: string;
-  caseId?: string;
+  supplyType: 'emergency';
+  caseName: string;
+  caseId: string;
 }
 
 interface CaseRecord {
@@ -48,20 +46,14 @@ interface CaseRecord {
   lastUpdate: string;
 }
 
-interface AddSupplyRequestTabProps {
-  isEmergencySupply?: boolean;
-}
-
-const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({ 
-  isEmergencySupply = false 
-}) => {
+const EmergencySupplyAddTab: React.FC = () => {
   const theme = useTheme();
   
-  const [formData, setFormData] = useState<SupplyRequestData>({
+  const [formData, setFormData] = useState<EmergencySupplyRequestData>({
     itemName: '',
-    category: isEmergencySupply ? '緊急醫療用品' : '辦公用品',
+    category: '緊急醫療用品',
     quantity: 1,
-    supplyType: isEmergencySupply ? 'emergency' : 'regular',
+    supplyType: 'emergency',
     caseName: '',
     caseId: '',
   });
@@ -120,25 +112,6 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
       lastUpdate: '2024-01-12'
     }
   ]);
-
-  // 根據物資類型更新表單資料
-  React.useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      supplyType: isEmergencySupply ? 'emergency' : 'regular',
-      category: isEmergencySupply 
-        ? (prev.category.includes('緊急') ? prev.category : '緊急醫療用品')
-        : (prev.category.includes('緊急') ? '辦公用品' : prev.category),
-      // 當切換到常駐物資時，清除個案相關資料
-      caseName: isEmergencySupply ? prev.caseName : '',
-      caseId: isEmergencySupply ? prev.caseId : '',
-    }));
-    
-    // 切換到常駐物資時重置選中的個案
-    if (!isEmergencySupply) {
-      setSelectedCase(null);
-    }
-  }, [isEmergencySupply]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -199,7 +172,7 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
     }
     
     // 緊急物資需要綁定個案
-    if (isEmergencySupply && !selectedCase) {
+    if (!selectedCase) {
       errors.caseName = true;
     }
     
@@ -208,16 +181,16 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
       return;
     }
 
-    console.log('物資需求提交:', formData);
+    console.log('緊急物資需求提交:', formData);
     // TODO: 實作物資需求提交邏輯
-    alert(`${isEmergencySupply ? '緊急' : '常駐'}物資需求已成功提交！${isEmergencySupply ? `\n綁定個案：${selectedCase?.name} (${selectedCase?.id})` : ''}`);
+    alert(`緊急物資需求已成功提交！\n綁定個案：${selectedCase?.name} (${selectedCase?.id})`);
     
     // 重置表單
     setFormData({
       itemName: '',
-      category: isEmergencySupply ? '緊急醫療用品' : '辦公用品',
+      category: '緊急醫療用品',
       quantity: 1,
-      supplyType: isEmergencySupply ? 'emergency' : 'regular',
+      supplyType: 'emergency',
       caseName: '',
       caseId: '',
     });
@@ -225,26 +198,18 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
     setFieldErrors({});
   };
 
-  // 根據物資類型提供不同的類別選項
-  const regularCategories = [
-    '辦公用品', '清潔用品', '食物飲料', '醫療用品', 
-    '教學用品', '電子設備', '家具設備', '活動用品', '其他'
-  ];
-
   const emergencyCategories = [
     '緊急醫療用品', '防護設備', '應急食品', '通訊設備',
     '照明設備', '救援工具', '臨時住所用品', '衛生用品', '其他緊急物資'
   ];
-
-  const categories = isEmergencySupply ? emergencyCategories : regularCategories;
 
   return (
     <Paper elevation={1} sx={{ 
       ...commonStyles.formSection,
       width: '100%',
       p: getResponsiveSpacing('lg'),
-      bgcolor: isEmergencySupply ? THEME_COLORS.ERROR_LIGHT : THEME_COLORS.BACKGROUND_CARD,
-      border: isEmergencySupply ? `1px solid ${THEME_COLORS.ERROR}` : `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
+      bgcolor: THEME_COLORS.ERROR_LIGHT,
+      border: `1px solid ${THEME_COLORS.ERROR}`,
     }}>
       {/* 標題 */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
@@ -254,42 +219,35 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
           gap: 1,
           p: 1.5,
           borderRadius: 2,
-          bgcolor: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY,
+          bgcolor: THEME_COLORS.ERROR,
           color: 'white'
         }}>
-          {isEmergencySupply ? (
-            <Warning sx={{ fontSize: 24 }} />
-          ) : (
-            <Home sx={{ fontSize: 24 }} />
-          )}
+          <Warning sx={{ fontSize: 24 }} />
         </Box>
         <Box>
-      <Typography variant="h5" sx={{
-        ...commonStyles.formHeader,
-            color: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY,
+          <Typography variant="h5" sx={{
+            ...commonStyles.formHeader,
+            color: THEME_COLORS.ERROR,
             mb: 0.5
-      }}>
-            新增{isEmergencySupply ? '緊急' : '常駐'}物資需求
+          }}>
+            新增緊急物資需求
           </Typography>
           <Typography variant="body2" sx={{ 
             color: THEME_COLORS.TEXT_MUTED,
             fontSize: '0.875rem'
           }}>
-            {isEmergencySupply 
-              ? '申請緊急情況下所需的物資和設備，需綁定個案'
-              : '申請日常運營所需的常規物資和設備'
-            }
-      </Typography>
+            申請緊急情況下所需的物資和設備，需綁定個案
+          </Typography>
         </Box>
       </Box>
 
       {/* 物資類型標籤 */}
       <Box sx={{ mb: 3 }}>
         <Chip
-          label={isEmergencySupply ? '緊急物資' : '常駐物資'}
-          color={isEmergencySupply ? 'error' : 'primary'}
+          label="緊急物資"
+          color="error"
           variant="filled"
-          icon={isEmergencySupply ? <Warning /> : <Home />}
+          icon={<Warning />}
           sx={{ 
             fontWeight: 600,
             px: 2,
@@ -305,117 +263,115 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
         gap: 4,
         maxWidth: 600
       }}>
-       
-        {/* 緊急物資專用：個案綁定 */}
-        {isEmergencySupply && (
-          <Box>
-            <Typography variant="body1" sx={{ 
-              ...commonStyles.formLabel,
-              mb: 2,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1
-            }}>
-              <Person sx={{ fontSize: 20, color: THEME_COLORS.ERROR }} />
-              個案綁定 *
-            </Typography>
-            <Autocomplete
-              value={selectedCase}
-              onChange={(event, newValue) => handleCaseSelection(newValue)}
-              options={caseDatabase}
-              getOptionLabel={(option) => `${option.name} (${option.id})`}
-              renderOption={(props, option) => (
-                <Box component="li" {...props} sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 1,
-                      p: 1,
-                      borderRadius: 1,
-                      bgcolor: option.status === 'active' ? THEME_COLORS.SUCCESS : THEME_COLORS.DISABLED_BG,
-                      color: 'white',
-                      minWidth: 'max-content'
+        
+        {/* 個案綁定 */}
+        <Box>
+          <Typography variant="body1" sx={{ 
+            ...commonStyles.formLabel,
+            mb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <Person sx={{ fontSize: 20, color: THEME_COLORS.ERROR }} />
+            個案綁定 *
+          </Typography>
+          <Autocomplete
+            value={selectedCase}
+            onChange={(event, newValue) => handleCaseSelection(newValue)}
+            options={caseDatabase}
+            getOptionLabel={(option) => `${option.name} (${option.id})`}
+            renderOption={(props, option) => (
+              <Box component="li" {...props} sx={{ p: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    p: 1,
+                    borderRadius: 1,
+                    bgcolor: option.status === 'active' ? THEME_COLORS.SUCCESS : THEME_COLORS.DISABLED_BG,
+                    color: 'white',
+                    minWidth: 'max-content'
+                  }}>
+                    <Badge sx={{ fontSize: 16 }} />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      {option.name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED, fontSize: '0.8rem' }}>
+                      ID: {option.id} | 年齡: {option.age}歲 | 聯絡: {option.contact}
+                    </Typography>
+                    <Typography variant="caption" sx={{ 
+                      color: option.status === 'active' ? THEME_COLORS.SUCCESS : THEME_COLORS.TEXT_MUTED,
+                      fontSize: '0.75rem'
                     }}>
-                      <Badge sx={{ fontSize: 16 }} />
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-                        {option.name}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED, fontSize: '0.8rem' }}>
-                        ID: {option.id} | 年齡: {option.age}歲 | 聯絡: {option.contact}
-                      </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: option.status === 'active' ? THEME_COLORS.SUCCESS : THEME_COLORS.TEXT_MUTED,
-                        fontSize: '0.75rem'
-                      }}>
-                        狀態: {option.status === 'active' ? '活躍' : '非活躍'} | 更新: {option.lastUpdate}
-                      </Typography>
-                    </Box>
+                      狀態: {option.status === 'active' ? '活躍' : '非活躍'} | 更新: {option.lastUpdate}
+                    </Typography>
                   </Box>
                 </Box>
-              )}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="輸入個案姓名或ID進行搜尋..."
-                  error={fieldErrors.caseName}
-                  sx={{
-                    ...commonStyles.formInput,
-                    ...getValidationStyle(fieldErrors.caseName)
-                  }}
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Person sx={{ color: THEME_COLORS.ERROR }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              )}
-              filterOptions={(options, params) => {
-                const filtered = options.filter(option => 
-                  option.name.toLowerCase().includes(params.inputValue.toLowerCase()) ||
-                  option.id.toLowerCase().includes(params.inputValue.toLowerCase())
-                );
-                return filtered;
-              }}
-              noOptionsText="找不到符合的個案"
-              sx={{ width: '100%' }}
-            />
-            {selectedCase && (
-              <Box sx={{ 
-                mt: 2, 
-                p: 2, 
-                bgcolor: THEME_COLORS.ERROR_LIGHT, 
-                borderRadius: 2,
-                border: `1px solid ${THEME_COLORS.ERROR}`
-              }}>
-                <Typography variant="body2" sx={{ 
-                  fontWeight: 600, 
-                  color: THEME_COLORS.ERROR,
-                  mb: 1
-                }}>
-                  已選擇個案
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>姓名：</strong>{selectedCase.name}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>ID：</strong>{selectedCase.id}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>年齡：</strong>{selectedCase.age}歲
-                </Typography>
-                <Typography variant="body2">
-                  <strong>聯絡方式：</strong>{selectedCase.contact}
-                </Typography>
               </Box>
             )}
-          </Box>
-        )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="輸入個案姓名或ID進行搜尋..."
+                error={fieldErrors.caseName}
+                sx={{
+                  ...commonStyles.formInput,
+                  ...getValidationStyle(fieldErrors.caseName)
+                }}
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Person sx={{ color: THEME_COLORS.ERROR }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
+            filterOptions={(options, params) => {
+              const filtered = options.filter(option => 
+                option.name.toLowerCase().includes(params.inputValue.toLowerCase()) ||
+                option.id.toLowerCase().includes(params.inputValue.toLowerCase())
+              );
+              return filtered;
+            }}
+            noOptionsText="找不到符合的個案"
+            sx={{ width: '100%' }}
+          />
+          {selectedCase && (
+            <Box sx={{ 
+              mt: 2, 
+              p: 2, 
+              bgcolor: THEME_COLORS.ERROR_LIGHT, 
+              borderRadius: 2,
+              border: `1px solid ${THEME_COLORS.ERROR}`
+            }}>
+              <Typography variant="body2" sx={{ 
+                fontWeight: 600, 
+                color: THEME_COLORS.ERROR,
+                mb: 1
+              }}>
+                已選擇個案
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>姓名：</strong>{selectedCase.name}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>ID：</strong>{selectedCase.id}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>年齡：</strong>{selectedCase.age}歲
+              </Typography>
+              <Typography variant="body2">
+                <strong>聯絡方式：</strong>{selectedCase.contact}
+              </Typography>
+            </Box>
+          )}
+        </Box>
 
         {/* 物品名稱 */}
         <Box>
@@ -429,7 +385,7 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
             value={formData.itemName}
             onChange={(e) => handleInputChange('itemName', e.target.value)}
             fullWidth
-            placeholder={isEmergencySupply ? '請輸入緊急物資名稱' : '請輸入物品名稱'}
+            placeholder="請輸入緊急物資名稱"
             error={fieldErrors.itemName}
             sx={{
               ...commonStyles.formInput,
@@ -438,8 +394,8 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
           />
         </Box>
 
-         {/* 物資分類 */}
-         <FormControl fullWidth>
+        {/* 物資分類 */}
+        <FormControl fullWidth>
           <Typography variant="body1" sx={{ 
             ...commonStyles.formLabel,
             mb: 2
@@ -454,7 +410,7 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
               ...getSelectValidationStyle(false)
             }}
           >
-            {categories.map((category) => (
+            {emergencyCategories.map((category) => (
               <MenuItem key={category} value={category}>
                 {category}
               </MenuItem>
@@ -488,7 +444,7 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
                 borderColor: 'divider',
                 '&:hover': { 
                   bgcolor: 'action.hover',
-                  borderColor: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY_DARK
+                  borderColor: THEME_COLORS.ERROR
                 }
               }}
             >
@@ -526,7 +482,7 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
                 borderColor: 'divider',
                 '&:hover': { 
                   bgcolor: 'action.hover',
-                  borderColor: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY_DARK
+                  borderColor: THEME_COLORS.ERROR
                 }
               }}
             >
@@ -547,9 +503,9 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
             onClick={() => {
               setFormData({
                 itemName: '',
-                category: isEmergencySupply ? '緊急醫療用品' : '辦公用品',
+                category: '緊急醫療用品',
                 quantity: 1,
-                supplyType: isEmergencySupply ? 'emergency' : 'regular',
+                supplyType: 'emergency',
                 caseName: '',
                 caseId: '',
               });
@@ -575,9 +531,9 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
             sx={{
               px: 4,
               py: 1.5,
-              bgcolor: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY,
+              bgcolor: THEME_COLORS.ERROR,
               '&:hover': {
-                bgcolor: isEmergencySupply ? THEME_COLORS.ERROR_DARK : THEME_COLORS.PRIMARY_DARK,
+                bgcolor: THEME_COLORS.ERROR_DARK,
               }
             }}
           >
@@ -589,4 +545,4 @@ const AddSupplyRequestTab: React.FC<AddSupplyRequestTabProps> = ({
   );
 };
 
-export default AddSupplyRequestTab; 
+export default EmergencySupplyAddTab; 

@@ -25,9 +25,12 @@ import { THEME_COLORS } from '../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../styles/commonStyles';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
-import AddSupplyRequestTab from '../components/SuppliesManagementPage/AddSupplyRequestTab';
-import InventoryTab from '../components/SuppliesManagementPage/InventoryTab';
-import RequestTab from '../components/SuppliesManagementPage/RequestTab';
+import RegularSupplyAddTab from '../components/SuppliesManagementPage/RegularSupplyAddTab';
+import EmergencySupplyAddTab from '../components/SuppliesManagementPage/EmergencySupplyAddTab';
+import RegularInventoryTab from '../components/SuppliesManagementPage/RegularInventoryTab';
+import EmergencyInventoryTab from '../components/SuppliesManagementPage/EmergencyInventoryTab';
+import RegularRequestTab from '../components/SuppliesManagementPage/RegularRequestTab';
+import EmergencyRequestTab from '../components/SuppliesManagementPage/EmergencyRequestTab';
 import DistributionTab from '../components/SuppliesManagementPage/DistributionTab';
 
 /**
@@ -62,17 +65,17 @@ const SuppliesManagement: React.FC = () => {
     {
       label: '新增物資需求',
       icon: <Add sx={{ fontSize: 20 }} />,
-      component: <AddSupplyRequestTab isEmergencySupply={isEmergencySupply} />
+      component: isEmergencySupply ? <EmergencySupplyAddTab /> : <RegularSupplyAddTab />
     },
     {
       label: '物資庫存',
       icon: <Storage sx={{ fontSize: 20 }} />,
-      component: <InventoryTab isEmergencySupply={isEmergencySupply} />
+      component: isEmergencySupply ? <EmergencyInventoryTab /> : <RegularInventoryTab />
     },
     {
       label: '物資申請及紀錄',
       icon: <Assignment sx={{ fontSize: 20 }} />,
-      component: <RequestTab isEmergencySupply={isEmergencySupply} />
+      component: isEmergencySupply ? <EmergencyRequestTab /> : <RegularRequestTab />
     },
     {
       label: isEmergencySupply ? '物資自動媒合' : '每月物資發放',
