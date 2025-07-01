@@ -96,6 +96,18 @@ export const THEME_COLORS = {
   // 不可用狀態的視覺表現
   DISABLED_BG: '#f5f5f5',               // 禁用背景色
   DISABLED_TEXT: '#bdbdbd',             // 禁用文字色
+  
+  // ===================================
+  // 📊 圖表專用顏色 (Chart Colors)
+  // ===================================
+  // 便於組件直接使用的圖表顏色常數
+  CHART_PRIMARY: '#4caf50',             // 圖表主色 - 綠色
+  CHART_SECONDARY: '#2196f3',           // 圖表次色 - 藍色
+  CHART_ACCENT_1: '#ff9800',            // 圖表強調色1 - 橙色
+  CHART_ACCENT_2: '#9c27b0',            // 圖表強調色2 - 紫色
+  CHART_DANGER: '#f44336',              // 圖表警示色 - 紅色
+  CHART_INFO: '#00bcd4',                // 圖表信息色 - 青色
+  CHART_NEUTRAL: '#795548',             // 圖表中性色 - 棕色
 } as const;
 
 // 輔助函數：獲取主題顏色
@@ -120,6 +132,20 @@ declare module '@mui/material/styles' {
       primary: string[];       // 主要數據系列色彩 - 重要數據展示
       secondary: string[];     // 次要數據系列色彩 - 輔助數據展示
       categorical: string[];   // 分類數據色彩 - 不同類別區分
+      geographic: string[];    // 地區分布專用色彩 - 用於地理數據
+      trend: {                // 趨勢數據色彩 - 用於時間序列圖表
+        positive: string;      // 正向趨勢色彩
+        negative: string;      // 負向趨勢色彩
+        neutral: string;       // 中性趨勢色彩
+        baseline: string;      // 基準線色彩
+      };
+      status: {               // 狀態指示色彩 - 用於狀態標示
+        active: string;        // 活躍狀態色彩
+        pending: string;       // 待處理狀態色彩
+        completed: string;     // 完成狀態色彩
+        cancelled: string;     // 取消狀態色彩
+        draft: string;         // 草稿狀態色彩
+      };
     };
     // 🔤 自定義字體樣式
     customTypography: {
@@ -146,6 +172,20 @@ declare module '@mui/material/styles' {
       primary?: string[];
       secondary?: string[];
       categorical?: string[];
+      geographic?: string[];
+      trend?: {
+        positive?: string;
+        negative?: string;
+        neutral?: string;
+        baseline?: string;
+      };
+      status?: {
+        active?: string;
+        pending?: string;
+        completed?: string;
+        cancelled?: string;
+        draft?: string;
+      };
     };
     customTypography?: {
       pageTitle?: React.CSSProperties;
@@ -274,35 +314,73 @@ export const theme = createTheme({
   // ===================================
   // 📊 圖表色彩配置 (Chart Color Configuration)
   // ===================================
-  // 🔍 重點：採用灰色系主調，確保數據的專業性和可讀性
+  // 🎨 設計理念：採用豐富且協調的配色方案，提升數據視覺化的吸引力
+  // 🌈 色彩策略：以綠色為主色調，搭配藍色、紫色、橙色等形成和諧的色彩組合
   chart: {
-    // 基礎圖表色彩 - 用於一般數據視覺化
+    // 基礎圖表色彩 - 用於一般數據視覺化（7色調色盤）
     colors: [
-      '#6b7280',  // 深灰色 - 主要數據
-      '#9ca3af',  // 中灰色 - 次要數據
-      '#d1d5db',  // 淺灰色 - 輔助數據
-      '#374151',  // 深灰色變體 - 對比數據
-      '#f3f4f6',  // 極淺灰 - 背景數據
+      '#4caf50',  // 主綠色 - 品牌色，代表成長和希望
+      '#2196f3',  // 藍色 - 信任和穩定
+      '#ff9800',  // 橙色 - 活力和溫暖
+      '#9c27b0',  // 紫色 - 創新和智慧
+      '#f44336',  // 紅色 - 重要性和警示
+      '#00bcd4',  // 青色 - 清新和平靜
+      '#795548',  // 棕色 - 穩重和可靠
     ],
-    // 主要數據系列 - 用於重要指標展示
+    
+    // 主要數據系列 - 用於重要指標展示（綠色系）
     primary: [
       '#4caf50',  // 主綠色 - 核心指標
-      '#60ad5e',  // 淺綠色 - 相關指標
-      '#2e7d32',  // 深綠色 - 對比指標
+      '#66bb6a',  // 中綠色 - 相關指標
+      '#388e3c',  // 深綠色 - 對比指標
+      '#81c784',  // 淺綠色 - 輔助指標
     ],
-    // 次要數據系列 - 用於輔助信息
+    
+    // 次要數據系列 - 用於輔助信息（藍色系）
     secondary: [
-      '#9ca3af',  // 中灰色
-      '#6b7280',  // 深灰色
-      '#d1d5db',  // 淺灰色
+      '#2196f3',  // 主藍色
+      '#42a5f5',  // 中藍色
+      '#1976d2',  // 深藍色
+      '#64b5f6',  // 淺藍色
     ],
-    // 分類數據色彩 - 用於不同類別區分
+    
+    // 分類數據色彩 - 用於不同類別區分（豐富多彩）
     categorical: [
-      '#6b7280',  // 類別 A
-      '#9ca3af',  // 類別 B
-      '#374151',  // 類別 C
-      '#d1d5db',  // 類別 D
+      '#4caf50',  // 經濟困難 - 綠色（主要問題）
+      '#2196f3',  // 情緒障礙 - 藍色（心理健康）
+      '#ff9800',  // 溝通障礙 - 橙色（溝通問題）
+      '#9c27b0',  // 醫療需求 - 紫色（醫療相關）
+      '#f44336',  // 成癮問題 - 紅色（嚴重問題）
+      '#00bcd4',  // 家庭暴力 - 青色（家庭問題）
+      '#795548',  // 犯罪紀錄 - 棕色（法律問題）
+      '#607d8b',  // 其他問題 - 灰藍色
     ],
+    
+    // 地區分布專用色彩 - 用於地理數據（暖色調）
+    geographic: [
+      '#4caf50',  // 北部 - 綠色
+      '#2196f3',  // 中部 - 藍色
+      '#ff9800',  // 南部 - 橙色
+      '#9c27b0',  // 東部 - 紫色
+      '#00bcd4',  // 外島 - 青色
+    ],
+    
+    // 趨勢數據色彩 - 用於時間序列圖表
+    trend: {
+      positive: '#4caf50',    // 正向趨勢 - 綠色
+      negative: '#f44336',    // 負向趨勢 - 紅色
+      neutral: '#ff9800',     // 中性趨勢 - 橙色
+      baseline: '#9e9e9e',    // 基準線 - 灰色
+    },
+    
+    // 狀態指示色彩 - 用於狀態標示
+    status: {
+      active: '#4caf50',      // 活躍狀態 - 綠色
+      pending: '#ff9800',     // 待處理狀態 - 橙色
+      completed: '#2196f3',   // 完成狀態 - 藍色
+      cancelled: '#f44336',   // 取消狀態 - 紅色
+      draft: '#9e9e9e',       // 草稿狀態 - 灰色
+    },
   },
 
   // ===================================

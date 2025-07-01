@@ -53,12 +53,16 @@ const Dashboard: React.FC = () => {
   // 最近行事曆活動狀態
   const [recentEvents, setRecentEvents] = useState<CalendarEvent[]>([]);
   
-  // 模擬通知資料
+  // 模擬通知資料 - 主要為活動相關通知
   const notifications = [
-    { id: 1, title: '新個案待審核', time: '5分鐘前', type: 'info' },
-    { id: 2, title: '志工培訓提醒', time: '1小時前', type: 'warning' },
-    { id: 3, title: '月報表已生成', time: '2小時前', type: 'success' },
-    { id: 4, title: '系統維護通知', time: '1天前', type: 'info' }
+    { id: 1, title: '【個案活動】雜貨旅遊甜點體驗營報名開始', time: '2分鐘前', type: 'info' },
+    { id: 2, title: '【志工活動】環保淨灘活動需要更多志工', time: '15分鐘前', type: 'warning' },
+    { id: 3, title: '【個案訪問】張小明個案訪問已完成', time: '1小時前', type: 'success' },
+    { id: 4, title: '【活動提醒】青少年職涯探索工作坊明日開始', time: '2小時前', type: 'warning' },
+    { id: 5, title: '【志工培訓】新志工培訓課程開放報名', time: '3小時前', type: 'info' },
+    { id: 6, title: '【個案活動】長者數位學習課程報名額滿', time: '4小時前', type: 'success' },
+    { id: 7, title: '【活動取消】因天候因素戶外活動延期', time: '5小時前', type: 'warning' },
+    { id: 8, title: '【志工活動】社區關懷訪問活動圓滿結束', time: '6小時前', type: 'success' }
   ];
 
   /**
@@ -96,25 +100,31 @@ const Dashboard: React.FC = () => {
   // 系統版本資訊
   const systemVersion = 'v1.2.3';
 
-  // 統計卡片資料 - 使用主題顏色
+  // 統計卡片資料 - 使用新的圖表顏色配置
   const statsCards = [
     {
       title: '個案人數',
       value: '156',
       icon: <Assignment />,
-      color: THEME_COLORS.INFO
-    },
-    {
-      title: '待訪個案',
-      value: '23',
-      icon: <Notifications />,
-      color: THEME_COLORS.WARNING
+      color: THEME_COLORS.CHART_PRIMARY
     },
     {
       title: '志工人數',
       value: '45',
       icon: <People />,
-      color: THEME_COLORS.SUCCESS
+      color: THEME_COLORS.CHART_SECONDARY
+    },
+    {
+      title: '活動總數',
+      value: '28',
+      icon: <CalendarToday />,
+      color: THEME_COLORS.CHART_ACCENT_1
+    },
+    {
+      title: '本月完成活動',
+      value: '12',
+      icon: <TrendingUp />,
+      color: THEME_COLORS.CHART_ACCENT_2
     }
   ];
 
@@ -124,35 +134,31 @@ const Dashboard: React.FC = () => {
     { id: 1, value: 67, label: '女生' }
   ];
 
-  // 活躍度統計資料（圓餅圖用）
-  const activityData = [
-    { id: 0, value: 124, label: '非常活躍' },
-    { id: 1, value: 32, label: '不活躍' }
+
+
+  // 全台灣個案分布資料（長條圖用）
+  const regionDistributionData = [
+    { region: '台北市', count: 45 },
+    { region: '新北市', count: 38 },
+    { region: '桃園市', count: 28 },
+    { region: '台中市', count: 22 },
+    { region: '台南市', count: 18 },
+    { region: '高雄市', count: 15 },
+    { region: '新竹縣', count: 12 },
+    { region: '彰化縣', count: 10 },
+    { region: '基隆市', count: 8 },
+    { region: '宜蘭縣', count: 6 },
+    { region: '雲林縣', count: 5 },
+    { region: '其他', count: 9 }
   ];
 
-  // 台北各區域個案分布資料（長條圖用）
-  const taipeiDistrictData = [
-    { district: '大安區', count: 28 },
-    { district: '中山區', count: 25 },
-    { district: '信義區', count: 22 },
-    { district: '中正區', count: 18 },
-    { district: '士林區', count: 16 },
-    { district: '松山區', count: 15 },
-    { district: '萬華區', count: 14 },
-    { district: '文山區', count: 12 },
-    { district: '大同區', count: 12 },
-    { district: '內湖區', count: 10 },
-    { district: '北投區', count: 8 },
-    { district: '南港區', count: 6 }
-  ];
-
-  // 事件類型配置 - 使用主題顏色
+  // 事件類型配置 - 使用新的圖表顏色
   const eventTypes = {
-    meeting: { label: '會議', color: THEME_COLORS.INFO },
-    activity: { label: '活動', color: THEME_COLORS.PRIMARY },
-    'case-visit': { label: '個案訪問', color: THEME_COLORS.WARNING },
-    training: { label: '培訓', color: theme.palette.secondary.main },
-    other: { label: '其他', color: THEME_COLORS.TEXT_MUTED },
+    meeting: { label: '會議', color: THEME_COLORS.CHART_SECONDARY },
+    activity: { label: '活動', color: THEME_COLORS.CHART_PRIMARY },
+    'case-visit': { label: '個案訪問', color: THEME_COLORS.CHART_ACCENT_1 },
+    training: { label: '培訓', color: THEME_COLORS.CHART_ACCENT_2 },
+    other: { label: '其他', color: THEME_COLORS.CHART_NEUTRAL },
   };
 
   /**
@@ -179,6 +185,11 @@ const Dashboard: React.FC = () => {
       console.error('載入行事曆活動失敗:', error);
     }
   };
+
+  // 組件載入時載入近期活動
+  useEffect(() => {
+    loadRecentEvents();
+  }, []);
 
   /**
    * 格式化事件日期時間
@@ -213,11 +224,6 @@ const Dashboard: React.FC = () => {
     
     return { date: displayDate, time: timeStr };
   };
-
-  // 載入最近活動
-  useEffect(() => {
-    loadRecentEvents();
-  }, []);
 
   // 個案面臨困難分析資料 - 使用主題顏色
   const difficultiesData = [
@@ -323,8 +329,8 @@ const Dashboard: React.FC = () => {
         onClose={handleNotificationClose}
         PaperProps={{
           sx: {
-            width: { xs: 280, sm: 320 }, 
-            maxHeight: 400,
+            width: { xs: 320, sm: 380 }, 
+            maxHeight: 500,
             mt: 1,
             borderRadius: 2,
             boxShadow: theme.shadows[8],
@@ -418,7 +424,7 @@ const Dashboard: React.FC = () => {
               flexBasis: { 
                 xs: '100%', 
                 sm: 'calc(50% - 8px)', 
-                md: 'calc(33.333% - 16px)' 
+                md: 'calc(25% - 18px)' 
               },
               minWidth: 0,
               flex: '1 1 auto'
@@ -473,7 +479,7 @@ const Dashboard: React.FC = () => {
             flexBasis: { 
               xs: '100%', 
               sm: 'calc(50% - 8px)', 
-              lg: 'calc(25% - 18px)' 
+              lg: 'calc(33.333% - 16px)' 
             },
             minWidth: 0,
             order: { xs: 1, lg: 1 }
@@ -521,13 +527,15 @@ const Dashboard: React.FC = () => {
           </StyledCard>
         </Box>
 
-        {/* 活躍個案比例 - 圓餅圖 */}
+
+
+        {/* 近期活動 */}
         <Box 
           sx={{
             flexBasis: { 
               xs: '100%', 
               sm: 'calc(50% - 8px)', 
-              lg: 'calc(25% - 18px)' 
+              lg: 'calc(33.333% - 16px)' 
             },
             minWidth: 0,
             order: { xs: 2, lg: 2 }
@@ -542,34 +550,98 @@ const Dashboard: React.FC = () => {
                   fontSize: { xs: '1rem', sm: '1.125rem' }
                 }}
               >
-                活躍個案比例
+                近期活動
               </Typography>
-              <Box 
-                sx={{ 
-                  height: { xs: 200, sm: 250, md: 280, lg: 300 },
-                  width: '100%',
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center',
-                  '& .MuiChartsLegend-root': {
-                    transform: { xs: 'scale(0.8)', md: 'scale(1)' }
-                  }
-                }}
-              >
-                <PieChart
-                  series={[
-                    {
-                      data: activityData,
-                    },
-                  ]}
-                  colors={[theme.chart.categorical[0], theme.chart.categorical[4]]}
-                  width={300}
-                  height={250}
-                  sx={{ 
-                    maxWidth: '100%', 
-                    maxHeight: '100%'
-                  }}
-                />
+              <Box sx={{ mt: 2, maxHeight: 280, overflowY: 'auto' }}>
+                {recentEvents.length > 0 ? (
+                  recentEvents.slice(0, 3).map((event, index) => {
+                    const { date, time } = formatEventDateTime(event.start);
+                    const eventType = eventTypes[event.type as keyof typeof eventTypes];
+                    
+                    return (
+                      <Box key={event.id} sx={{ 
+                        mb: 2, 
+                        p: 1.5,
+                        borderRadius: 2,
+                        bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                        border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                        '&:hover': {
+                          bgcolor: THEME_COLORS.PRIMARY_LIGHT_BG,
+                          borderColor: THEME_COLORS.PRIMARY
+                        },
+                        transition: 'all 0.2s ease'
+                      }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'flex-start',
+                          mb: 1
+                        }}>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography sx={{ 
+                              fontWeight: 600,
+                              fontSize: '0.875rem',
+                              color: THEME_COLORS.TEXT_PRIMARY,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {event.title}
+                            </Typography>
+                            <Typography sx={{ 
+                              fontSize: '0.75rem',
+                              color: THEME_COLORS.TEXT_MUTED,
+                              mt: 0.5
+                            }}>
+                              {date} {time}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label={eventType.label}
+                            size="small"
+                            sx={{
+                              backgroundColor: eventType.color,
+                              color: 'white',
+                              fontSize: '0.7rem',
+                              height: 20,
+                              ml: 1
+                            }}
+                          />
+                        </Box>
+                        {event.description && (
+                          <Typography sx={{ 
+                            fontSize: '0.75rem',
+                            color: THEME_COLORS.TEXT_SECONDARY,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical'
+                          }}>
+                            {event.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    );
+                  })
+                ) : (
+                  <Box sx={{ 
+                    textAlign: 'center', 
+                    py: 3,
+                    color: THEME_COLORS.TEXT_MUTED
+                  }}>
+                    <CalendarToday sx={{ 
+                      fontSize: 32, 
+                      mb: 1, 
+                      opacity: 0.5 
+                    }} />
+                    <Typography sx={{ 
+                      fontSize: '0.875rem'
+                    }}>
+                      近期無安排活動
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </CardContent>
           </StyledCard>
@@ -580,7 +652,7 @@ const Dashboard: React.FC = () => {
           sx={{
             flexBasis: { 
               xs: '100%', 
-              lg: 'calc(50% - 18px)' 
+              lg: 'calc(33.333% - 16px)' 
             },
             minWidth: 0,
             order: { xs: 3, lg: 3 }
@@ -595,7 +667,7 @@ const Dashboard: React.FC = () => {
                   fontSize: { xs: '1rem', sm: '1.125rem' }
                 }}
               >
-                台北市居住地區分布
+                全台個案地區分布
               </Typography>
               <Box 
                 sx={{ 
@@ -607,20 +679,20 @@ const Dashboard: React.FC = () => {
                   overflow: 'hidden'
                 }}
               >
-                                  <BarChart
-                    dataset={taipeiDistrictData}
+                <BarChart
+                    dataset={regionDistributionData}
                     xAxis={[{ 
                       scaleType: 'band', 
-                      dataKey: 'district'
+                      dataKey: 'region'
                     }]}
                     series={[
                       {
                         dataKey: 'count',
                         label: '個案人數',
-                        color: theme.chart.categorical[0]
+                        color: theme.chart.geographic[0]
                       },
                     ]}
-                    colors={theme.chart.categorical}
+                    colors={theme.chart.geographic}
                     width={500}
                     height={300}
                     sx={{ 
@@ -649,7 +721,7 @@ const Dashboard: React.FC = () => {
         </Box>
       </Box>
 
-      {/* 第三排統計區塊 */}
+      {/* 個案面臨困難分析 */}
       <Box 
         display="flex" 
         flexWrap="wrap" 
@@ -657,153 +729,11 @@ const Dashboard: React.FC = () => {
         sx={{ mb: { xs: 3, md: 4 } }}
         alignItems="stretch"
       >
-        {/* 最近行事曆活動 */}
         <Box 
           sx={{
-            flexBasis: { xs: '100%', lg: 'calc(50% - 12px)' },
+            flexBasis: { xs: '100%' },
             minWidth: 0,
-            display: 'flex',
-            order: { xs: 1, lg: 1 }
-          }}
-        >
-          <StyledCard sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
-              <Typography 
-                gutterBottom 
-                sx={{
-                  ...theme.customTypography.cardTitle,
-                  fontSize: { xs: '1rem', sm: '1.125rem' }
-                }}
-              >
-                最近行事曆活動
-              </Typography>
-              <Box sx={{ mt: 2 }}>
-                {recentEvents.length > 0 ? (
-                  recentEvents.map((event, index) => {
-                    const { date, time } = formatEventDateTime(event.start);
-                    const eventType = eventTypes[event.type as keyof typeof eventTypes];
-                    
-                    return (
-                      <Box key={event.id} sx={{ 
-                        mb: 2, 
-                        p: { xs: 1.5, sm: 2 },
-                        borderRadius: 2,
-                        bgcolor: theme.palette.background.default,
-                        border: `1px solid`,
-                        borderColor: 'divider',
-                        '&:hover': {
-                          bgcolor: 'action.hover',
-                          borderColor: theme.palette.divider
-                        },
-                        transition: 'all 0.2s ease'
-                      }}>
-                        {/* 第一行：日期時間和類型標籤 */}
-                        <Box sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          mb: 1,
-                          flexWrap: { xs: 'wrap', sm: 'nowrap' },
-                          gap: { xs: 1, sm: 0 }
-                        }}>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1,
-                            flex: { xs: '1 1 auto', sm: 'none' }
-                          }}>
-                            <Typography sx={{ 
-                              ...theme.customTypography.chartLabel,
-                              color: 'text.primary',
-                              fontWeight: 600,
-                              fontSize: { xs: '0.875rem', sm: '1rem' }
-                            }}>
-                              {date}
-                            </Typography>
-                            <Typography sx={{ 
-                              ...theme.customTypography.legendLabel,
-                              color: 'text.secondary',
-                              fontSize: { xs: '0.75rem', sm: '0.875rem' }
-                            }}>
-                              {time}
-                            </Typography>
-                          </Box>
-                          <Chip
-                            label={eventType.label}
-                            size="small"
-                            sx={{
-                              backgroundColor: eventType.color,
-                              color: 'white',
-                              fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                              height: { xs: 20, sm: 24 }
-                            }}
-                          />
-                        </Box>
-                        
-                        {/* 第二行：活動名稱 */}
-                        <Typography sx={{ 
-                          ...theme.customTypography.legendLabel,
-                          color: 'text.primary',
-                          fontWeight: 500,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          lineHeight: 1.4,
-                          fontSize: { xs: '0.875rem', sm: '1rem' }
-                        }}>
-                          {event.title}
-                        </Typography>
-                        
-                        {/* 第三行：描述（如果有的話） */}
-                        {event.description && (
-                          <Typography sx={{ 
-                            ...theme.customTypography.legendLabel,
-                            color: 'text.secondary',
-                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                            mt: 0.5,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {event.description}
-                          </Typography>
-                        )}
-                      </Box>
-                    );
-                  })
-                ) : (
-                  <Box sx={{ 
-                    textAlign: 'center', 
-                    py: { xs: 3, sm: 4 },
-                    color: 'text.secondary'
-                  }}>
-                    <CalendarToday sx={{ 
-                      fontSize: { xs: 36, sm: 48 }, 
-                      mb: 2, 
-                      opacity: 0.5 
-                    }} />
-                    <Typography sx={{ 
-                      ...theme.customTypography.legendLabel,
-                      fontSize: { xs: '0.875rem', sm: '1rem' }
-                    }}>
-                      未來7天內沒有安排活動
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            </CardContent>
-          </StyledCard>
-        </Box>
-
-        {/* 個案面臨困難分析 */}
-        <Box 
-          sx={{
-            flexBasis: { xs: '100%', lg: 'calc(50% - 12px)' },
-            minWidth: 0,
-            display: 'flex',
-            order: { xs: 2, lg: 2 }
+            display: 'flex'
           }}
         >
           <StyledCard sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>

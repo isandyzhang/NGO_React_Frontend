@@ -11,46 +11,79 @@ import { CalendarEvent } from '../components/CalendarPage';
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // 模擬資料儲存（實際應用中會連接到資料庫）
+// 使用動態日期，確保活動始終在未來幾天內
+const today = new Date();
+const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+const dayAfterTomorrow = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000);
+const threeDaysLater = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+const fourDaysLater = new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000);
+const fiveDaysLater = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
+const sixDaysLater = new Date(today.getTime() + 6 * 24 * 60 * 60 * 1000);
+
 let mockEvents: CalendarEvent[] = [
   {
     id: '1',
     title: '個案家庭訪問 - 陳小明',
-    start: new Date(2024, 11, 15, 9, 0),
-    end: new Date(2024, 11, 15, 11, 0),
+    start: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 9, 0),
+    end: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 11, 0),
     type: 'case-visit',
-    description: '定期個案家庭訪問，了解近期生活狀況',
+    description: '定期個案家庭訪問，了解近期生活狀況及物資需求評估',
   },
   {
     id: '2',
-    title: '志工培訓工作坊',
-    start: new Date(2024, 11, 18, 14, 0),
-    end: new Date(2024, 11, 18, 17, 0),
+    title: '新志工培訓工作坊',
+    start: new Date(dayAfterTomorrow.getFullYear(), dayAfterTomorrow.getMonth(), dayAfterTomorrow.getDate(), 14, 0),
+    end: new Date(dayAfterTomorrow.getFullYear(), dayAfterTomorrow.getMonth(), dayAfterTomorrow.getDate(), 17, 0),
     type: 'training',
-    description: '新進志工基礎培訓課程',
+    description: '新進志工基礎培訓課程，包含個案服務流程介紹',
   },
   {
     id: '3',
-    title: '月度團隊會議',
-    start: new Date(2024, 11, 20, 10, 0),
-    end: new Date(2024, 11, 20, 12, 0),
-    type: 'meeting',
-    description: '討論本月工作進度和下月計劃',
+    title: '個案家庭訪問 - 李阿嬤',
+    start: new Date(threeDaysLater.getFullYear(), threeDaysLater.getMonth(), threeDaysLater.getDate(), 10, 0),
+    end: new Date(threeDaysLater.getFullYear(), threeDaysLater.getMonth(), threeDaysLater.getDate(), 12, 0),
+    type: 'case-visit',
+    description: '關懷獨居長者生活狀況，檢查居家安全環境',
   },
   {
     id: '4',
-    title: '聖誕節關懷活動',
-    start: new Date(2024, 11, 24, 9, 0),
-    end: new Date(2024, 11, 24, 16, 0),
-    type: 'activity',
-    description: '為弱勢家庭舉辦聖誕節關懷活動',
+    title: '社區關懷活動籌備會議',
+    start: new Date(threeDaysLater.getFullYear(), threeDaysLater.getMonth(), threeDaysLater.getDate(), 15, 0),
+    end: new Date(threeDaysLater.getFullYear(), threeDaysLater.getMonth(), threeDaysLater.getDate(), 17, 0),
+    type: 'meeting',
+    description: '討論下週社區關懷活動的籌備工作分配',
   },
   {
     id: '5',
-    title: '年終檢討會議',
-    start: new Date(2024, 11, 30, 13, 0),
-    end: new Date(2024, 11, 30, 16, 0),
+    title: '青少年職涯探索工作坊',
+    start: new Date(fourDaysLater.getFullYear(), fourDaysLater.getMonth(), fourDaysLater.getDate(), 9, 0),
+    end: new Date(fourDaysLater.getFullYear(), fourDaysLater.getMonth(), fourDaysLater.getDate(), 16, 0),
+    type: 'activity',
+    description: '為弱勢家庭青少年舉辦職涯探索活動，邀請業界講師分享',
+  },
+  {
+    id: '6',
+    title: '長者數位學習課程',
+    start: new Date(fiveDaysLater.getFullYear(), fiveDaysLater.getMonth(), fiveDaysLater.getDate(), 13, 30),
+    end: new Date(fiveDaysLater.getFullYear(), fiveDaysLater.getMonth(), fiveDaysLater.getDate(), 16, 30),
+    type: 'activity',
+    description: '教導長者使用智慧型手機和網路服務，提升數位能力',
+  },
+  {
+    id: '7',
+    title: '個案服務督導會議',
+    start: new Date(sixDaysLater.getFullYear(), sixDaysLater.getMonth(), sixDaysLater.getDate(), 10, 0),
+    end: new Date(sixDaysLater.getFullYear(), sixDaysLater.getMonth(), sixDaysLater.getDate(), 12, 0),
     type: 'meeting',
-    description: '2024年度工作成果檢討與2025年規劃',
+    description: '個案服務進度檢討與困難案例討論',
+  },
+  {
+    id: '8',
+    title: '環保淨灘志工活動',
+    start: new Date(sixDaysLater.getFullYear(), sixDaysLater.getMonth(), sixDaysLater.getDate(), 8, 0),
+    end: new Date(sixDaysLater.getFullYear(), sixDaysLater.getMonth(), sixDaysLater.getDate(), 12, 0),
+    type: 'activity',
+    description: '招募志工參與海岸線環境保護行動，培養環保意識',
   },
 ];
 

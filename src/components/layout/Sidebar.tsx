@@ -109,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, open = true, onClose }) => 
           }}
         >
           <Assessment sx={{ fontSize: 28, color: 'common.white' }} />
-          個案管理系統
+          恩舉NGO管理系統
         </Typography>
       </Box>
 

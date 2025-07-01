@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -18,10 +18,18 @@ import {
   DialogActions,
   TextField,
   useTheme,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  InputAdornment,
 } from '@mui/material';
 import {
   CheckCircle,
   Cancel,
+  Search,
+  Clear,
+  FilterList,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles, getStatusStyle, getResponsiveSpacing } from '../../styles/commonStyles';
@@ -75,6 +83,12 @@ const RegistrationReview: React.FC<RegistrationReviewProps> = ({
   onReject 
 }) => {
   const theme = useTheme();
+
+  // 搜索和篩選狀態
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'volunteer' | 'participant'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   // 詳情彈窗狀態
   const [detailDialog, setDetailDialog] = useState<{
@@ -179,6 +193,68 @@ const RegistrationReview: React.FC<RegistrationReviewProps> = ({
       notes: '學習意願強烈，適合參與數位課程'
     }
   ]);
+
+  // 篩選和搜索邏輯
+  const filteredApplications = useMemo(() => {
+    let filtered = [...applications];
+
+    // 搜索篩選
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(app => 
+        app.applicantName.toLowerCase().includes(term) ||
+        app.eventName.toLowerCase().includes(term) ||
+        app.phone.includes(term) ||
+        app.email.toLowerCase().includes(term)
+      );
+    }
+
+    // 狀態篩選
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(app => app.status === statusFilter);
+    }
+
+    // 申請類型篩選
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(app => app.applicantType === typeFilter);
+    }
+
+    // 日期篩選
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      filtered = filtered.filter(app => {
+        const appDate = new Date(app.applicationDate);
+        const diffTime = now.getTime() - appDate.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        switch (dateFilter) {
+          case 'today':
+            return appDate >= today;
+          case 'week':
+            return diffDays <= 7;
+          case 'month':
+            return diffDays <= 30;
+          default:
+            return true;
+        }
+      });
+    }
+
+    return filtered;
+  }, [applications, searchTerm, statusFilter, typeFilter, dateFilter]);
+
+  // 清除所有篩選器
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setDateFilter('all');
+  };
+
+  // 檢查是否有活動的篩選器
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || dateFilter !== 'all';
 
   /**
    * 取得狀態標籤
@@ -289,13 +365,13 @@ const RegistrationReview: React.FC<RegistrationReviewProps> = ({
   };
 
   /**
-   * 取得狀態統計
+   * 取得狀態統計 - 基於篩選後的數據
    */
   const getStatusCounts = () => {
-    const pending = applications.filter(app => app.status === 'pending').length;
-    const approved = applications.filter(app => app.status === 'approved').length;
-    const rejected = applications.filter(app => app.status === 'rejected').length;
-    return { pending, approved, rejected, total: applications.length };
+    const pending = filteredApplications.filter(app => app.status === 'pending').length;
+    const approved = filteredApplications.filter(app => app.status === 'approved').length;
+    const rejected = filteredApplications.filter(app => app.status === 'rejected').length;
+    return { pending, approved, rejected, total: filteredApplications.length };
   };
 
   const statusCounts = getStatusCounts();
@@ -363,15 +439,253 @@ const RegistrationReview: React.FC<RegistrationReviewProps> = ({
         </Paper>
       </Box>
 
+      {/* 搜索和篩選區域 */}
+      <Paper elevation={1} sx={{ borderRadius: 2, mb: getResponsiveSpacing('lg') }}>
+        <Box sx={{ p: getResponsiveSpacing('lg') }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            mb: getResponsiveSpacing('md'),
+            flexWrap: 'wrap',
+            gap: 1
+          }}>
+            <Typography variant="h6" sx={{ 
+              ...theme.customTypography.cardTitle,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}>
+              <FilterList sx={{ fontSize: 20 }} />
+              搜索與篩選
+            </Typography>
+            {hasActiveFilters && (
+              <Button
+                size="small"
+                startIcon={<Clear sx={{ fontSize: 16 }} />}
+                onClick={clearAllFilters}
+                sx={{
+                  ...commonStyles.secondaryButton,
+                  fontSize: '0.75rem',
+                  py: 0.5,
+                  px: 1
+                }}
+              >
+                清除篩選
+              </Button>
+            )}
+          </Box>
+
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: 2,
+            flexWrap: 'wrap'
+          }}>
+            {/* 搜索框 */}
+            <Box sx={{ 
+              flex: { xs: '1 1 100%', md: '1 1 50%' },
+              minWidth: { xs: '100%', md: '300px' }
+            }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="搜索申請人姓名、活動名稱、手機或Email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search sx={{ color: THEME_COLORS.TEXT_MUTED, fontSize: 18 }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <Button
+                        size="small"
+                        onClick={() => setSearchTerm('')}
+                        sx={{ 
+                          minWidth: 'auto', 
+                          p: 0.5,
+                          color: THEME_COLORS.TEXT_MUTED,
+                          '&:hover': { color: THEME_COLORS.TEXT_PRIMARY }
+                        }}
+                      >
+                        <Clear sx={{ fontSize: 16 }} />
+                      </Button>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: THEME_COLORS.BACKGROUND_CARD,
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.PRIMARY_LIGHT,
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.PRIMARY,
+                    }
+                  }
+                }}
+              />
+            </Box>
+
+            {/* 狀態篩選 */}
+            <Box sx={{ 
+              flex: { xs: '1 1 100%', sm: '1 1 50%', md: '1 1 auto' },
+              minWidth: '150px'
+            }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>狀態</InputLabel>
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                  label="狀態"
+                  sx={{
+                    backgroundColor: THEME_COLORS.BACKGROUND_CARD,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.BORDER_DEFAULT,
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.PRIMARY_LIGHT,
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.PRIMARY,
+                    }
+                  }}
+                >
+                  <MenuItem value="all">全部狀態</MenuItem>
+                  <MenuItem value="pending">待審核</MenuItem>
+                  <MenuItem value="approved">已通過</MenuItem>
+                  <MenuItem value="rejected">已拒絕</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* 申請類型篩選 */}
+            <Box sx={{ 
+              flex: { xs: '1 1 100%', sm: '1 1 50%', md: '1 1 auto' },
+              minWidth: '150px'
+            }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>類型</InputLabel>
+                <Select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
+                  label="類型"
+                  sx={{
+                    backgroundColor: THEME_COLORS.BACKGROUND_CARD,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.BORDER_DEFAULT,
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.PRIMARY_LIGHT,
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.PRIMARY,
+                    }
+                  }}
+                >
+                  <MenuItem value="all">全部類型</MenuItem>
+                  <MenuItem value="volunteer">志工</MenuItem>
+                  <MenuItem value="participant">個案</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* 日期篩選 */}
+            <Box sx={{ 
+              flex: { xs: '1 1 100%', sm: '1 1 50%', md: '1 1 auto' },
+              minWidth: '150px'
+            }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>申請時間</InputLabel>
+                <Select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value as typeof dateFilter)}
+                  label="申請時間"
+                  sx={{
+                    backgroundColor: THEME_COLORS.BACKGROUND_CARD,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.BORDER_DEFAULT,
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.PRIMARY_LIGHT,
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: THEME_COLORS.PRIMARY,
+                    }
+                  }}
+                >
+                  <MenuItem value="all">全部時間</MenuItem>
+                  <MenuItem value="today">今天</MenuItem>
+                  <MenuItem value="week">近7天</MenuItem>
+                  <MenuItem value="month">近30天</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </Box>
+
+
+        </Box>
+      </Paper>
+
       {/* 申請列表 */}
       <Paper elevation={1} sx={{ borderRadius: 2 }}>
         <Box sx={{ 
           p: getResponsiveSpacing('lg'), 
           borderBottom: `1px solid ${THEME_COLORS.BORDER_LIGHT}` 
         }}>
-          <Typography variant="h6" sx={{ ...commonStyles.formHeader, ...theme.customTypography.cardTitle }}>
-            報名申請審核 ({applications.length} 筆申請)
-          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 2, md: 0 }
+          }}>
+            <Typography variant="h6" sx={{ ...commonStyles.formHeader, ...theme.customTypography.cardTitle }}>
+              報名申請審核 ({filteredApplications.length} 筆申請)
+            </Typography>
+            
+            {/* 搜索結果提示 */}
+            {hasActiveFilters && (
+              <Box sx={{ 
+                p: getResponsiveSpacing('sm'),
+                bgcolor: THEME_COLORS.PRIMARY_LIGHT_BG,
+                borderRadius: 1,
+                border: `1px solid ${THEME_COLORS.PRIMARY_LIGHT}`,
+                maxWidth: { xs: '100%', md: '60%' }
+              }}>
+                <Typography variant="body2" sx={{ 
+                  color: THEME_COLORS.PRIMARY,
+                  fontSize: '0.75rem',
+                  lineHeight: 1.4
+                }}>
+                  <strong>篩選結果：</strong>共 {applications.length} 筆申請中的 {filteredApplications.length} 筆
+                  {searchTerm && (
+                    <>
+                      <br />• 搜索關鍵字："{searchTerm}"
+                    </>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <>
+                      <br />• 狀態：{statusFilter === 'pending' ? '待審核' : statusFilter === 'approved' ? '已通過' : '已拒絕'}
+                    </>
+                  )}
+                  {typeFilter !== 'all' && (
+                    <>
+                      <br />• 類型：{typeFilter === 'volunteer' ? '志工' : '個案'}
+                    </>
+                  )}
+                  {dateFilter !== 'all' && (
+                    <>
+                      <br />• 時間：{dateFilter === 'today' ? '今天' : dateFilter === 'week' ? '近7天' : '近30天'}
+                    </>
+                  )}
+                </Typography>
+              </Box>
+            )}
+          </Box>
         </Box>
         <TableContainer sx={{ 
           maxWidth: '100%',
@@ -394,16 +708,17 @@ const RegistrationReview: React.FC<RegistrationReviewProps> = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {applications.map((application) => (
-                <TableRow 
-                  key={application.id} 
-                  hover
-                  sx={{
-                    '&:hover': {
-                      bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
-                    }
-                  }}
-                >
+              {filteredApplications.length > 0 ? (
+                filteredApplications.map((application) => (
+                  <TableRow 
+                    key={application.id} 
+                    hover
+                    sx={{
+                      '&:hover': {
+                        bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                      }
+                    }}
+                  >
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       {renderApplicantAvatar(application)}
@@ -547,7 +862,37 @@ const RegistrationReview: React.FC<RegistrationReviewProps> = ({
                     </Box>
                   </TableCell>
                 </TableRow>
-              ))}
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center',
+                      gap: 2,
+                      color: THEME_COLORS.TEXT_MUTED
+                    }}>
+                      <Search sx={{ fontSize: 48, opacity: 0.5 }} />
+                      <Typography variant="h6" sx={{ 
+                        color: THEME_COLORS.TEXT_MUTED,
+                        ...theme.customTypography.cardLabel
+                      }}>
+                        {hasActiveFilters ? '沒有符合條件的申請' : '目前沒有報名申請'}
+                      </Typography>
+                      {hasActiveFilters && (
+                        <Button
+                          variant="outlined"
+                          onClick={clearAllFilters}
+                          sx={{ ...commonStyles.secondaryButton }}
+                        >
+                          清除篩選條件
+                        </Button>
+                      )}
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
