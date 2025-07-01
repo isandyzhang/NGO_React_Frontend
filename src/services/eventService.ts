@@ -1,4 +1,5 @@
 import { api } from './api';
+import { Dayjs } from 'dayjs';
 
 // 活動相關的 API 接口
 export interface EventFormData {
@@ -8,8 +9,12 @@ export interface EventFormData {
   participantCount: number;
   shortDescription: string;
   detailDescription: string;
-  date: string;
-  time: string;
+  startDateTime: Dayjs | null;
+  endDateTime: Dayjs | null;
+  registrationDeadline: Dayjs | null;
+  image: File | null;
+  imagePreview: string | null;
+  eventType: 'general' | 'case'; // 活動類別：一般民眾或個案
 }
 
 export interface EventRecord {

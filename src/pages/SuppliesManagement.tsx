@@ -3,36 +3,58 @@ import {
   Box, 
   Tabs, 
   Tab,
-  useTheme
+  useTheme,
+  Typography,
+  Switch,
+  FormGroup,
+  FormControlLabel,
+  Paper,
+  Divider
 } from '@mui/material';
 import { 
   Add, 
-  Visibility,
-  Inventory
+  Inventory,
+  Warning,
+  Home,
+  Assignment,
+  Storage,
+  AutoFixHigh,
+  CalendarMonth
 } from '@mui/icons-material';
+import { THEME_COLORS } from '../styles/theme';
+import { commonStyles, getResponsiveSpacing } from '../styles/commonStyles';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
 import AddSupplyRequestTab from '../components/SuppliesManagementPage/AddSupplyRequestTab';
-import SupplyOverviewTab from '../components/SuppliesManagementPage/SupplyOverviewTab';
+import InventoryTab from '../components/SuppliesManagementPage/InventoryTab';
+import RequestTab from '../components/SuppliesManagementPage/RequestTab';
+import DistributionTab from '../components/SuppliesManagementPage/DistributionTab';
 
 /**
  * 物資管理頁面組件
  * 
  * 主要功能：
- * 1. 新增物資需求 - 建立新的物資申請，包含基本資訊、數量、緊急程度等
- * 2. 物資總覽 - 查看物資庫存狀況、申請記錄和統計資料
+ * 1. 物資類型切換 - 使用Switch按鈕切換常駐物資和緊急物資
+ * 2. 新增物資需求 - 建立新的物資申請，包含基本資訊、數量、緊急程度等
+ * 3. 物資總覽 - 查看物資庫存狀況、申請記錄和統計資料
  * 
  * 設計特色：
- * - 採用分頁式設計，提供清晰的功能導航
+ * - 採用Switch按鈕切換物資類型，提供清晰的分類管理
+ * - 分頁式設計，提供清晰的功能導航
  * - 統一的視覺風格和用戶體驗
  * - 響應式設計，支援各種螢幕尺寸
  */
 const SuppliesManagement: React.FC = () => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
+  const [isEmergencySupply, setIsEmergencySupply] = useState(false);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
+  };
+
+  const handleSupplyTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setIsEmergencySupply(event.target.checked);
   };
 
   // 分頁配置
@@ -40,12 +62,22 @@ const SuppliesManagement: React.FC = () => {
     {
       label: '新增物資需求',
       icon: <Add sx={{ fontSize: 20 }} />,
-      component: <AddSupplyRequestTab />
+      component: <AddSupplyRequestTab isEmergencySupply={isEmergencySupply} />
     },
     {
-      label: '物資總覽',
-      icon: <Visibility sx={{ fontSize: 20 }} />,
-      component: <SupplyOverviewTab />
+      label: '物資庫存',
+      icon: <Storage sx={{ fontSize: 20 }} />,
+      component: <InventoryTab isEmergencySupply={isEmergencySupply} />
+    },
+    {
+      label: '物資申請及紀錄',
+      icon: <Assignment sx={{ fontSize: 20 }} />,
+      component: <RequestTab isEmergencySupply={isEmergencySupply} />
+    },
+    {
+      label: isEmergencySupply ? '物資自動媒合' : '每月物資發放',
+      icon: isEmergencySupply ? <AutoFixHigh sx={{ fontSize: 20 }} /> : <CalendarMonth sx={{ fontSize: 20 }} />,
+      component: <DistributionTab isEmergencySupply={isEmergencySupply} />
     }
   ];
 
@@ -60,6 +92,117 @@ const SuppliesManagement: React.FC = () => {
         searchPlaceholder="搜尋物資、申請記錄..."
       />
 
+      {/* 物資類型切換區域 */}
+      <Paper elevation={1} sx={{ 
+        p: getResponsiveSpacing('md'),
+        mt: 2,
+        mb: 3,
+        bgcolor: isEmergencySupply ? THEME_COLORS.ERROR_LIGHT : THEME_COLORS.BACKGROUND_CARD,
+        border: isEmergencySupply ? `1px solid ${THEME_COLORS.ERROR}` : `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
+        borderRadius: 2
+      }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
+          {/* 左側：物資類型資訊 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              p: 1,
+              borderRadius: 1,
+              bgcolor: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY,
+              color: 'white'
+            }}>
+              {isEmergencySupply ? (
+                <Warning sx={{ fontSize: 20 }} />
+              ) : (
+                <Home sx={{ fontSize: 20 }} />
+              )}
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 600,
+                color: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY
+              }}>
+                {isEmergencySupply ? '緊急物資管理' : '常駐物資管理'}
+              </Typography>
+              <Typography variant="body2" sx={{ 
+                color: THEME_COLORS.TEXT_MUTED,
+                fontSize: '0.875rem'
+              }}>
+                {isEmergencySupply 
+                  ? '管理緊急情況下所需的物資和設備'
+                  : '管理日常運營所需的常規物資和設備'
+                }
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* 右側：切換開關 */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 2,
+            flexDirection: { xs: 'row', sm: 'row' }
+          }}>
+            <Typography variant="body2" sx={{ 
+              color: THEME_COLORS.TEXT_SECONDARY,
+              fontWeight: 500,
+              display: { xs: 'none', sm: 'block' }
+            }}>
+              切換物資類型
+            </Typography>
+            <FormGroup>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <Typography variant="body1" sx={{ 
+                  color: !isEmergencySupply ? THEME_COLORS.PRIMARY : THEME_COLORS.TEXT_MUTED,
+                  fontWeight: !isEmergencySupply ? 600 : 400,
+                  fontSize: '1.1rem'
+                }}>
+                  常駐
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={isEmergencySupply}
+                      onChange={handleSupplyTypeChange}
+                      sx={{
+                        transform: 'scale(1.5)',
+                        mx: 1,
+                        '& .MuiSwitch-switchBase.Mui-checked': {
+                          color: THEME_COLORS.ERROR,
+                        },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: THEME_COLORS.ERROR,
+                        },
+                        '& .MuiSwitch-track': {
+                          backgroundColor: THEME_COLORS.PRIMARY,
+                        },
+                      }}
+                    />
+                  }
+                  label=""
+                  sx={{ margin: 0 }}
+                />
+                <Typography variant="body1" sx={{ 
+                  color: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.TEXT_MUTED,
+                  fontWeight: isEmergencySupply ? 600 : 400,
+                  fontSize: '1.1rem'
+                }}>
+                  緊急
+                </Typography>
+              </Box>
+            </FormGroup>
+          </Box>
+        </Box>
+      </Paper>
+
       {/* 分頁導航 */}
       <Box sx={{ mt: 2 }}>
         <Tabs
@@ -72,28 +215,32 @@ const SuppliesManagement: React.FC = () => {
               fontWeight: 500,
               minHeight: 48,
               minWidth: 120,
-              color: '#6b7280',
+              color: THEME_COLORS.TEXT_MUTED,
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
               gap: 1,
               '&:hover': {
-                color: '#4caf50',
-                bgcolor: 'rgba(76, 175, 80, 0.08)',
+                color: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY,
+                bgcolor: isEmergencySupply 
+                  ? `${THEME_COLORS.ERROR}14` 
+                  : `${THEME_COLORS.PRIMARY}14`,
               },
             },
             '& .MuiTabs-indicator': {
-              backgroundColor: '#4caf50',
+              backgroundColor: isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY,
               height: 3,
               borderRadius: '3px 3px 0 0',
             },
             '& .Mui-selected': {
-              color: '#4caf50 !important',
+              color: `${isEmergencySupply ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY} !important`,
               fontWeight: 600,
-              bgcolor: 'rgba(76, 175, 80, 0.08)',
+              bgcolor: isEmergencySupply 
+                ? `${THEME_COLORS.ERROR}14` 
+                : `${THEME_COLORS.PRIMARY}14`,
             },
             borderBottom: 1,
-            borderColor: '#e5e7eb',
+            borderColor: THEME_COLORS.BORDER_LIGHT,
             mb: 3,
           }}
         >

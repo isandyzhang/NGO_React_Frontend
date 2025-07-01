@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -7,16 +7,10 @@ import {
   Button,
   IconButton,
   useTheme,
-  Select,
-  MenuItem,
-  Grid,
-  FormControl,
-  InputLabel,
-  Chip,
-  Avatar,
-  Alert,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
-import { Cancel, PhotoCamera, Event, Group, LocationOn, AccessTime, Description, Person } from '@mui/icons-material';
+import { Cancel, PhotoCamera, Event, Group, LocationOn, AccessTime, Description, Person, People } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -43,6 +37,7 @@ interface EventFormData {
   registrationDeadline: Dayjs | null;
   image: File | null;
   imagePreview: string | null;
+  eventType: 'general' | 'case'; // 新增活動類別欄位
 }
 
 /**
@@ -54,6 +49,33 @@ interface NewEventFormProps {
 }
 
 /**
+ * 取得動態主題顏色
+ */
+const getDynamicThemeColors = (eventType: 'general' | 'case') => {
+  if (eventType === 'case') {
+    // 個案活動使用綠色系
+    return {
+      primary: THEME_COLORS.PRIMARY,
+      primaryLight: THEME_COLORS.PRIMARY_LIGHT,
+      primaryDark: THEME_COLORS.PRIMARY_DARK,
+      primaryHover: THEME_COLORS.PRIMARY_HOVER,
+      primaryLightBg: THEME_COLORS.PRIMARY_LIGHT_BG,
+      primaryTransparent: THEME_COLORS.PRIMARY_TRANSPARENT,
+    };
+  } else {
+    // 志工活動使用淡藍色系
+    return {
+      primary: THEME_COLORS.INFO,
+      primaryLight: '#64b5f6',
+      primaryDark: '#1976d2',
+      primaryHover: '#1565c0',
+      primaryLightBg: '#e3f2fd',
+      primaryTransparent: 'rgba(33, 150, 243, 0.1)',
+    };
+  }
+};
+
+/**
  * 新增活動表單組件 (NewEventForm)
  * 
  * 主要功能：
@@ -62,12 +84,13 @@ interface NewEventFormProps {
  * 3. 活動圖片上傳和預覽
  * 4. 活動描述輸入（簡述和詳細說明）
  * 5. 表單驗證和提交
+ * 6. 動態主題顏色切換（志工綠色系，個案橙色系）
  * 
  * 特色功能：
  * - 響應式設計，支援桌面和手機
  * - 圖片上傳和即時預覽
  * - 檔案大小和類型驗證
- * - 綠色主題與 NGO 品牌一致
+ * - 動態主題與活動類型一致
  * - 完整的錯誤處理
  */
 const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
@@ -86,7 +109,41 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
     registrationDeadline: dayjs().subtract(1, 'day'), // 預設報名截止日為活動前一天
     image: null,
     imagePreview: null,
+    eventType: 'case', // 預設為個案活動
   });
+
+  // 動態主題顏色
+  const dynamicColors = useMemo(() => getDynamicThemeColors(formData.eventType), [formData.eventType]);
+
+  // 動態輸入框樣式
+  const dynamicInputStyles = useMemo(() => ({
+    ...commonStyles.formInput,
+    '& .MuiOutlinedInput-root': {
+      '&.Mui-focused fieldset': {
+        borderColor: dynamicColors.primary,
+      },
+    },
+    '& .MuiInputLabel-root': {
+      '&.Mui-focused': {
+        color: dynamicColors.primary,
+      },
+    },
+  }), [dynamicColors]);
+
+  // 動態日期選擇器樣式
+  const dynamicDatePickerStyles = useMemo(() => ({
+    ...commonStyles.formDatePicker,
+    '& .MuiOutlinedInput-root': {
+      '&.Mui-focused fieldset': {
+        borderColor: dynamicColors.primary,
+      },
+    },
+    '& .MuiInputLabel-root': {
+      '&.Mui-focused': {
+        color: dynamicColors.primary,
+      },
+    },
+  }), [dynamicColors]);
 
   /**
    * 處理表單欄位變更
@@ -96,6 +153,21 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
       ...prev,
       [field]: value,
     }));
+  };
+
+  /**
+   * 處理活動類別變更
+   */
+  const handleEventTypeChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newEventType: 'general' | 'case' | null,
+  ) => {
+    if (newEventType !== null) {
+      setFormData(prev => ({
+        ...prev,
+        eventType: newEventType,
+      }));
+    }
   };
 
   /**
@@ -247,22 +319,93 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-tw">
-      <Paper sx={{ ...commonStyles.formSection, width: '100%', p: getResponsiveSpacing('lg') }}>
-        <Typography variant="h5" sx={{ 
-          ...commonStyles.formHeader,
-          ...commonStyles.spacing.section,
-          ...theme.customTypography?.cardTitle
+      <Paper sx={{ 
+        ...commonStyles.formSection, 
+        width: '100%', 
+        p: getResponsiveSpacing('lg'), 
+        position: 'relative',
+        borderLeft: `4px solid ${dynamicColors.primary}`,
+        backgroundColor: `${dynamicColors.primaryTransparent}`,
+        transition: 'all 0.3s ease',
+      }}>
+        {/* 表單標題區域 */}
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'stretch', sm: 'flex-start' },
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 },
+          mb: 3
         }}>
-          新增活動
-        </Typography>
-        
-        <Typography variant="body2" sx={{ 
-          ...commonStyles.spacing.section,
-          color: THEME_COLORS.TEXT_MUTED,
-          ...theme.customTypography?.legendLabel
-        }}>
-          請輸入各欄位及參加人數
-        </Typography>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h5" sx={{ 
+              ...commonStyles.formHeader,
+              ...theme.customTypography?.cardTitle,
+              mb: 1,
+              color: dynamicColors.primaryDark
+            }}>
+              新增活動 - {formData.eventType === 'case' ? '個案活動' : '志工活動'}
+            </Typography>
+            
+            <Typography variant="body2" sx={{ 
+              color: THEME_COLORS.TEXT_MUTED,
+              ...theme.customTypography?.legendLabel
+            }}>
+              請輸入各欄位及參加人數，系統預設為{formData.eventType === 'case' ? '個案活動模式' : '志工活動模式'}
+            </Typography>
+          </Box>
+
+          {/* 右上角：活動類別 Toggle Button */}
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: { xs: 'flex-start', sm: 'flex-end' },
+            minWidth: 'max-content'
+          }}>
+            <Typography variant="body2" sx={{ 
+              ...commonStyles.formLabel,
+              mb: 1,
+              fontSize: '0.875rem',
+              color: THEME_COLORS.TEXT_SECONDARY
+            }}>
+              活動類別 *
+            </Typography>
+            <ToggleButtonGroup
+              value={formData.eventType}
+              exclusive
+              onChange={handleEventTypeChange}
+              size="small"
+              sx={{
+                '& .MuiToggleButton-root': {
+                  px: { xs: 1.5, sm: 2 },
+                  py: 1,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  borderColor: THEME_COLORS.BORDER_LIGHT,
+                  color: THEME_COLORS.TEXT_SECONDARY,
+                  '&.Mui-selected': {
+                    backgroundColor: dynamicColors.primary,
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: dynamicColors.primaryHover,
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: dynamicColors.primaryLightBg,
+                  },
+                },
+              }}
+            >
+              <ToggleButton value="general" aria-label="志工活動">
+                <People sx={{ mr: 0.5, fontSize: { xs: 16, sm: 18 } }} />
+                志工
+              </ToggleButton>
+              <ToggleButton value="case" aria-label="個案活動">
+                <Person sx={{ mr: 0.5, fontSize: { xs: 16, sm: 18 } }} />
+                個案
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        </Box>
 
         <Box sx={{ 
           display: 'flex', 
@@ -277,7 +420,7 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
             fullWidth
             placeholder="雜貨旅遊 x 台積電二手作甜點體驗營"
             required
-            sx={{ ...commonStyles.formInput }}
+            sx={dynamicInputStyles}
           />
 
           {/* 第二行：活動開始和結束時間 */}
@@ -296,7 +439,7 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
                   fullWidth: true,
                   required: true,
                   sx: { 
-                    ...commonStyles.formDatePicker,
+                    ...dynamicDatePickerStyles,
                     flex: 1 
                   }
                 }
@@ -312,7 +455,7 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
                   fullWidth: true,
                   required: true,
                   sx: { 
-                    ...commonStyles.formDatePicker,
+                    ...dynamicDatePickerStyles,
                     flex: 1 
                   }
                 }
@@ -330,9 +473,7 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
               textField: {
                 fullWidth: true,
                 required: true,
-                sx: { 
-                  ...commonStyles.formDatePicker
-                },
+                sx: dynamicDatePickerStyles,
                 placeholder: "設定報名截止的日期和時間"
               }
             }}
@@ -346,7 +487,7 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
             fullWidth
             placeholder="請輸入活動地點，例如：NGO基地 (台北市南港區忠孝東路六段488號)"
             required
-            sx={{ ...commonStyles.formInput }}
+            sx={dynamicInputStyles}
           />
 
           {/* 第五行：人數需求 */}
@@ -356,34 +497,21 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
             flexDirection: { xs: 'column', sm: 'row' } 
           }}>
             <TextField
-              label="需求志工人數"
+              label="需求活動人數"
               type="number"
               value={formData.volunteerCount}
               onChange={(e) => handleInputChange('volunteerCount', parseInt(e.target.value) || 0)}
               sx={{ 
-                ...commonStyles.formInput,
+                ...dynamicInputStyles,
                 flex: 1 
               }}
-              placeholder="請輸入需求志工人數"
+              placeholder="請輸入需求人數"
               InputProps={{
                 inputProps: { min: 0, max: 100 }
               }}
             />
 
-            <TextField
-              label="需求個案人數"
-              type="number"
-              value={formData.participantCount}
-              onChange={(e) => handleInputChange('participantCount', parseInt(e.target.value) || 0)}
-              sx={{ 
-                ...commonStyles.formInput,
-                flex: 1 
-              }}
-              placeholder="請輸入需求個案人數"
-              InputProps={{
-                inputProps: { min: 0, max: 100 }
-              }}
-            />
+            
           </Box>
 
           {/* 第六行：活動圖片上傳 */}
@@ -445,11 +573,11 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
                       variant="outlined"
                       component="span"
                       sx={{
-                        borderColor: THEME_COLORS.PRIMARY,
-                        color: THEME_COLORS.PRIMARY,
+                        borderColor: dynamicColors.primary,
+                        color: dynamicColors.primary,
                         '&:hover': {
-                          borderColor: THEME_COLORS.PRIMARY_DARK,
-                          bgcolor: THEME_COLORS.PRIMARY_LIGHT_BG,
+                          borderColor: dynamicColors.primaryHover,
+                          bgcolor: dynamicColors.primaryLightBg,
                         }
                       }}
                     >
@@ -477,7 +605,7 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
             rows={3}
             placeholder="請簡單描述活動內容..."
             required
-            sx={{ ...commonStyles.formInput }}
+            sx={dynamicInputStyles}
           />
         </Box>
 
@@ -506,6 +634,10 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
               ...commonStyles.primaryButton,
               px: 4,
               py: 1.5,
+              backgroundColor: dynamicColors.primary,
+              '&:hover': {
+                backgroundColor: dynamicColors.primaryHover,
+              },
             }}
           >
             儲存活動
