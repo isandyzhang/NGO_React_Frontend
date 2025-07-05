@@ -20,6 +20,10 @@ import {
   Card,
   CardContent,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { 
   Search,
@@ -49,6 +53,7 @@ interface EmergencySupplyRequest {
   estimatedCost: number;
   caseName: string;
   caseId: string;
+  matched: boolean;
 }
 
 const EmergencyRequestTab: React.FC = () => {
@@ -64,6 +69,10 @@ const EmergencyRequestTab: React.FC = () => {
     stockLocation: '',
     notes: ''
   });
+  const [openMatchingDialog, setOpenMatchingDialog] = useState(false);
+  const [matchingRequestId, setMatchingRequestId] = useState<number | null>(null);
+  const [matchingItemId, setMatchingItemId] = useState('');
+  const [matchingQuantity, setMatchingQuantity] = useState(1);
 
   // 緊急物資申請資料
   const [requestData] = useState<EmergencySupplyRequest[]>([
@@ -79,7 +88,8 @@ const EmergencyRequestTab: React.FC = () => {
       status: 'pending',
       estimatedCost: 450,
       caseName: '張小明',
-      caseId: 'CASE001'
+      caseId: 'CASE001',
+      matched: false
     },
     {
       id: 2,
@@ -93,7 +103,8 @@ const EmergencyRequestTab: React.FC = () => {
       status: 'approved',
       estimatedCost: 800,
       caseName: '李小花',
-      caseId: 'CASE002'
+      caseId: 'CASE002',
+      matched: false
     },
     {
       id: 3,
@@ -107,7 +118,8 @@ const EmergencyRequestTab: React.FC = () => {
       status: 'pending',
       estimatedCost: 900,
       caseName: '王小華',
-      caseId: 'CASE003'
+      caseId: 'CASE003',
+      matched: false
     }
   ]);
 
@@ -156,6 +168,21 @@ const EmergencyRequestTab: React.FC = () => {
       ...prev,
       [requestId]: prev[requestId]?.filter(item => item.id !== itemId) || []
     }));
+  };
+
+  // 自動媒合功能
+  const handleAutoMatch = (requestId: number) => {
+    const request = requestData.find(r => r.id === requestId);
+    if (!request) return;
+
+    console.log('執行自動媒合:', request);
+    
+    // TODO: 實作自動媒合邏輯
+    // 1. 根據物品名稱、分類、數量自動搜尋庫存
+    // 2. 找到最適合的庫存物品
+    // 3. 自動建立媒合記錄
+    
+    alert(`正在為 ${request.caseName} 的 ${request.itemName} 執行自動媒合...`);
   };
 
   const getUrgencyColor = (urgency: string) => {
@@ -322,51 +349,53 @@ const EmergencyRequestTab: React.FC = () => {
                   <TableCell>{request.requestDate}</TableCell>
                   <TableCell>
                     <Chip
-                      label={getStatusLabel(request.status)}
+                      label={request.matched ? '已媒合' : '尚未媒合'}
                       size="small"
-                      sx={getStatusStyle(request.status)}
+                      sx={{
+                        bgcolor: request.matched ? THEME_COLORS.SUCCESS : THEME_COLORS.WARNING,
+                        color: 'white',
+                        fontWeight: 500,
+                      }}
                     />
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                      {request.status === 'pending' && (
-                        <>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                              color: THEME_COLORS.SUCCESS,
-                              borderColor: THEME_COLORS.SUCCESS,
-                              '&:hover': {
-                                bgcolor: `${THEME_COLORS.SUCCESS}14`,
-                                borderColor: THEME_COLORS.SUCCESS,
-                              }
-                            }}
-                          >
-                            批准
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                              color: THEME_COLORS.ERROR,
-                              borderColor: THEME_COLORS.ERROR,
-                              '&:hover': {
-                                bgcolor: `${THEME_COLORS.ERROR}14`,
-                                borderColor: THEME_COLORS.ERROR,
-                              }
-                            }}
-                          >
-                            不批准
-                          </Button>
-                        </>
-                      )}
-                      <IconButton
+                    <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Button
+                        variant="contained"
                         size="small"
-                        onClick={() => toggleRowExpansion(request.id)}
+                        sx={{
+                          bgcolor: THEME_COLORS.SUCCESS,
+                          color: 'white',
+                          fontSize: '0.75rem',
+                          px: 2,
+                          '&:hover': { bgcolor: THEME_COLORS.PRIMARY_DARK }
+                        }}
+                        onClick={() => handleAutoMatch(request.id)}
                       >
-                        {expandedRows.includes(request.id) ? <ExpandLess /> : <ExpandMore />}
-                      </IconButton>
+                        自動媒合
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        sx={{
+                          borderColor: THEME_COLORS.PRIMARY,
+                          color: THEME_COLORS.PRIMARY,
+                          fontSize: '0.75rem',
+                          px: 2,
+                          '&:hover': { 
+                            borderColor: THEME_COLORS.PRIMARY_DARK,
+                            bgcolor: `${THEME_COLORS.PRIMARY}14`
+                          }
+                        }}
+                        onClick={() => {
+                          setMatchingRequestId(request.id);
+                          setOpenMatchingDialog(true);
+                          setMatchingItemId('');
+                          setMatchingQuantity(1);
+                        }}
+                      >
+                        手動媒合
+                      </Button>
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -577,6 +606,46 @@ const EmergencyRequestTab: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Dialog for manual matching */}
+      <Dialog open={openMatchingDialog} onClose={() => setOpenMatchingDialog(false)}>
+        <DialogTitle>手動媒合</DialogTitle>
+        <DialogContent sx={{ minWidth: 320 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="物品ID"
+              value={matchingItemId}
+              onChange={e => setMatchingItemId(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="數量"
+              type="number"
+              value={matchingQuantity}
+              onChange={e => setMatchingQuantity(Number(e.target.value))}
+              fullWidth
+              inputProps={{ min: 1 }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenMatchingDialog(false)}>取消</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              console.log('手動媒合', {
+                requestId: matchingRequestId,
+                itemId: matchingItemId,
+                quantity: matchingQuantity
+              });
+              setOpenMatchingDialog(false);
+            }}
+            disabled={!matchingItemId || matchingQuantity < 1}
+          >
+            確認媒合
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -137,12 +137,7 @@ const RegularInventoryTab: React.FC = () => {
     );
   };
 
-  // 獲取庫存狀態
-  const getStockStatus = (stock: number) => {
-    if (stock <= 5) return { text: '庫存不足', color: THEME_COLORS.ERROR };
-    if (stock <= 20) return { text: '庫存偏低', color: THEME_COLORS.WARNING };
-    return { text: '庫存正常', color: THEME_COLORS.SUCCESS };
-  };
+
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -246,78 +241,64 @@ const RegularInventoryTab: React.FC = () => {
               <TableCell sx={{ fontWeight: 600 }}>物品名稱</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>分類</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>庫存量</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>狀態</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>存放位置</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {inventoryData.map((item) => {
-              const stockStatus = getStockStatus(item.currentStock);
-              return (
-                <React.Fragment key={item.id}>
-                  <TableRow hover>
-                    <TableCell>{item.name}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {item.currentStock} {item.unit}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          color: stockStatus.color, 
-                          fontWeight: 600 
-                        }}
-                      >
-                        {stockStatus.text}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{item.location}</TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        onClick={() => toggleRowExpansion(item.id)}
-                      >
-                        {expandedRows.includes(item.id) ? <ExpandLess /> : <ExpandMore />}
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell colSpan={6} sx={{ p: 0 }}>
-                      <Collapse in={expandedRows.includes(item.id)}>
-                        <Box sx={{ p: 2, bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            <strong>詳細資訊：</strong>
+            {inventoryData.map((item) => (
+              <React.Fragment key={item.id}>
+                <TableRow hover>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>{item.category}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {item.currentStock} {item.unit}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      size="small"
+                      onClick={() => toggleRowExpansion(item.id)}
+                    >
+                      {expandedRows.includes(item.id) ? <ExpandLess /> : <ExpandMore />}
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ p: 0 }}>
+                    <Collapse in={expandedRows.includes(item.id)}>
+                      <Box sx={{ p: 2, bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>詳細資訊：</strong>
+                        </Typography>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                          <Typography variant="body2">
+                            供應者：{item.supplier}
                           </Typography>
-                          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                          <Typography variant="body2">
+                            單價：NT$ {item.cost.toLocaleString()}
+                          </Typography>
+                          <Typography variant="body2">
+                            總價值：NT$ {(item.cost * item.currentStock).toLocaleString()}
+                          </Typography>
+                          <Typography variant="body2">
+                            新增日期：{item.addedDate}
+                          </Typography>
+                          <Typography variant="body2">
+                            存放位置：{item.location}
+                          </Typography>
+                          {item.expiryDate && (
                             <Typography variant="body2">
-                              供應者：{item.supplier}
+                              保存期限：{item.expiryDate}
                             </Typography>
-                            <Typography variant="body2">
-                              單價：NT$ {item.cost.toLocaleString()}
-                            </Typography>
-                            <Typography variant="body2">
-                              總價值：NT$ {(item.cost * item.currentStock).toLocaleString()}
-                            </Typography>
-                            <Typography variant="body2">
-                              新增日期：{item.addedDate}
-                            </Typography>
-                            {item.expiryDate && (
-                              <Typography variant="body2">
-                                保存期限：{item.expiryDate}
-                              </Typography>
-                            )}
-                          </Box>
+                          )}
                         </Box>
-                      </Collapse>
-                    </TableCell>
-                  </TableRow>
-                </React.Fragment>
-              );
-            })}
+                      </Box>
+                    </Collapse>
+                  </TableCell>
+                </TableRow>
+              </React.Fragment>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>

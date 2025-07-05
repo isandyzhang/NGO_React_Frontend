@@ -43,6 +43,7 @@ interface RegularSupplyRequest {
   caseName?: string;
   caseId?: string;
   deliveryMethod?: '自取' | '宅配';
+  matched: boolean;
 }
 
 const RegularRequestTab: React.FC = () => {
@@ -64,7 +65,8 @@ const RegularRequestTab: React.FC = () => {
       estimatedCost: 800,
       caseName: '張小明',
       caseId: 'CASE001',
-      deliveryMethod: '自取'
+      deliveryMethod: '自取',
+      matched: false
     },
     {
       id: 2,
@@ -78,7 +80,8 @@ const RegularRequestTab: React.FC = () => {
       estimatedCost: 250,
       caseName: '李小花',
       caseId: 'CASE002',
-      deliveryMethod: '宅配'
+      deliveryMethod: '宅配',
+      matched: false
     },
     {
       id: 3,
@@ -92,7 +95,8 @@ const RegularRequestTab: React.FC = () => {
       estimatedCost: 300,
       caseName: '陳小美',
       caseId: 'CASE004',
-      deliveryMethod: '自取'
+      deliveryMethod: '自取',
+      matched: false
     }
   ]);
 
@@ -116,6 +120,21 @@ const RegularRequestTab: React.FC = () => {
       case 'completed': return '已完成';
       default: return '未知';
     }
+  };
+
+  // 自動媒合功能
+  const handleAutoMatch = (requestId: number) => {
+    const request = requestData.find(r => r.id === requestId);
+    if (!request) return;
+
+    console.log('執行自動媒合:', request);
+    
+    // TODO: 實作自動媒合邏輯
+    // 1. 根據物品名稱、分類、數量自動搜尋庫存
+    // 2. 找到最適合的庫存物品
+    // 3. 自動建立媒合記錄
+    
+    alert(`正在為 ${request.caseName} 的 ${request.itemName} 執行自動媒合...`);
   };
 
   return (
@@ -239,7 +258,21 @@ const RegularRequestTab: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        sx={{
+                          bgcolor: THEME_COLORS.SUCCESS,
+                          color: 'white',
+                          fontSize: '0.75rem',
+                          px: 1.5,
+                          '&:hover': { bgcolor: THEME_COLORS.PRIMARY_DARK }
+                        }}
+                        onClick={() => handleAutoMatch(request.id)}
+                      >
+                        自動媒合
+                      </Button>
                       {request.status === 'pending' && (
                         <>
                           <Button
@@ -248,11 +281,14 @@ const RegularRequestTab: React.FC = () => {
                             sx={{
                               color: THEME_COLORS.SUCCESS,
                               borderColor: THEME_COLORS.SUCCESS,
+                              fontSize: '0.75rem',
+                              px: 1.5,
                               '&:hover': {
                                 bgcolor: `${THEME_COLORS.SUCCESS}14`,
                                 borderColor: THEME_COLORS.SUCCESS,
                               }
                             }}
+                            onClick={() => {/* TODO: 批准邏輯 */}}
                           >
                             批准
                           </Button>
@@ -262,22 +298,19 @@ const RegularRequestTab: React.FC = () => {
                             sx={{
                               color: THEME_COLORS.ERROR,
                               borderColor: THEME_COLORS.ERROR,
+                              fontSize: '0.75rem',
+                              px: 1.5,
                               '&:hover': {
                                 bgcolor: `${THEME_COLORS.ERROR}14`,
                                 borderColor: THEME_COLORS.ERROR,
                               }
                             }}
+                            onClick={() => {/* TODO: 不批准邏輯 */}}
                           >
                             不批准
                           </Button>
                         </>
                       )}
-                      <IconButton
-                        size="small"
-                        onClick={() => toggleRowExpansion(request.id)}
-                      >
-                        {expandedRows.includes(request.id) ? <ExpandLess /> : <ExpandMore />}
-                      </IconButton>
                     </Box>
                   </TableCell>
                 </TableRow>

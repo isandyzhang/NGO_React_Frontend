@@ -18,20 +18,19 @@ import {
   Home,
   Assignment,
   Storage,
-  AutoFixHigh,
   CalendarMonth
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../styles/commonStyles';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
-import RegularSupplyAddTab from '../components/SuppliesManagementPage/RegularSupplyAddTab';
 import EmergencySupplyAddTab from '../components/SuppliesManagementPage/EmergencySupplyAddTab';
 import RegularInventoryTab from '../components/SuppliesManagementPage/RegularInventoryTab';
 import EmergencyInventoryTab from '../components/SuppliesManagementPage/EmergencyInventoryTab';
 import RegularRequestTab from '../components/SuppliesManagementPage/RegularRequestTab';
 import EmergencyRequestTab from '../components/SuppliesManagementPage/EmergencyRequestTab';
 import DistributionTab from '../components/SuppliesManagementPage/DistributionTab';
+import PendingCaseNeedsList from '../components/SuppliesManagementPage/PendingCaseNeedsList';
 
 /**
  * 物資管理頁面組件
@@ -51,6 +50,7 @@ const SuppliesManagement: React.FC = () => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
   const [isEmergencySupply, setIsEmergencySupply] = useState(false);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | undefined>(undefined);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -58,29 +58,51 @@ const SuppliesManagement: React.FC = () => {
 
   const handleSupplyTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setIsEmergencySupply(event.target.checked);
+    // 當切換物資類型時，重置到第一個標籤頁
+    setActiveTab(0);
+    // 清除選中的 CASE ID
+    setSelectedCaseId(undefined);
+  };
+
+  // 處理選中個案需求
+  const handleSelectCase = (caseId: string) => {
+    setSelectedCaseId(caseId);
+    // 自動切換到新增物資需求分頁
+    setActiveTab(0);
   };
 
   // 分頁配置
-  const tabs = [
+  const tabs = isEmergencySupply ? [
     {
       label: '新增物資需求',
       icon: <Add sx={{ fontSize: 20 }} />,
-      component: isEmergencySupply ? <EmergencySupplyAddTab /> : <RegularSupplyAddTab />
+      component: <EmergencySupplyAddTab prefilledCaseId={selectedCaseId} />
     },
     {
       label: '物資庫存',
       icon: <Storage sx={{ fontSize: 20 }} />,
-      component: isEmergencySupply ? <EmergencyInventoryTab /> : <RegularInventoryTab />
+      component: <EmergencyInventoryTab />
     },
     {
       label: '物資申請及紀錄',
       icon: <Assignment sx={{ fontSize: 20 }} />,
-      component: isEmergencySupply ? <EmergencyRequestTab /> : <RegularRequestTab />
+      component: <EmergencyRequestTab />
+    }
+  ] : [
+    {
+      label: '物資庫存',
+      icon: <Storage sx={{ fontSize: 20 }} />,
+      component: <RegularInventoryTab />
     },
     {
-      label: isEmergencySupply ? '物資自動媒合' : '每月物資發放',
-      icon: isEmergencySupply ? <AutoFixHigh sx={{ fontSize: 20 }} /> : <CalendarMonth sx={{ fontSize: 20 }} />,
-      component: <DistributionTab isEmergencySupply={isEmergencySupply} />
+      label: '物資申請及紀錄',
+      icon: <Assignment sx={{ fontSize: 20 }} />,
+      component: <RegularRequestTab />
+    },
+    {
+      label: '每月物資發放',
+      icon: <CalendarMonth sx={{ fontSize: 20 }} />,
+      component: <DistributionTab isEmergencySupply={false} />
     }
   ];
 
@@ -257,9 +279,30 @@ const SuppliesManagement: React.FC = () => {
           ))}
         </Tabs>
 
-        {/* 分頁內容 */}
-        <Box>
-          {tabs[activeTab].component}
+        {/* 分頁內容 - 緊急物資時顯示左右布局 */}
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 3,
+          flexDirection: { xs: 'column', lg: 'row' },
+          alignItems: 'flex-start'
+        }}>
+          {/* 左側：主要內容 */}
+          <Box sx={{ 
+            flex: 1,
+            minWidth: 0, // 防止 flex 子元素溢出
+          }}>
+            {tabs[activeTab].component}
+          </Box>
+          
+          {/* 右側：待填寫個案需求列表 - 只在緊急物資的新增物資需求分頁顯示 */}
+          {isEmergencySupply && activeTab === 0 && (
+            <Box sx={{ 
+              width: { xs: '100%', lg: '350px' },
+              flexShrink: 0,
+            }}>
+              <PendingCaseNeedsList onSelectCase={handleSelectCase} />
+            </Box>
+          )}
         </Box>
       </Box>
     </PageContainer>

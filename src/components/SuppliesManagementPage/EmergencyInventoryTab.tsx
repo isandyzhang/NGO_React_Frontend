@@ -13,17 +13,12 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
-  Collapse,
+
   Typography,
-  Chip,
 } from '@mui/material';
 import { 
   Search,
-  ExpandMore,
-  ExpandLess,
   Warning,
-  AccessTime,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { 
@@ -49,7 +44,7 @@ interface EmergencySupplyItem {
 const EmergencyInventoryTab: React.FC = () => {
   const [searchType, setSearchType] = useState('物品名稱');
   const [searchContent, setSearchContent] = useState('');
-  const [expandedRows, setExpandedRows] = useState<number[]>([]);
+
   
   // 緊急物資庫存資料
   const [inventoryData] = useState<EmergencySupplyItem[]>([
@@ -145,36 +140,7 @@ const EmergencyInventoryTab: React.FC = () => {
     // TODO: 實作搜尋邏輯
   };
 
-  const toggleRowExpansion = (id: number) => {
-    setExpandedRows(prev => 
-      prev.includes(id) 
-        ? prev.filter(rowId => rowId !== id)
-        : [...prev, id]
-    );
-  };
-
-  // 獲取庫存狀態 (緊急物資閾值更嚴格)
-  const getStockStatus = (stock: number) => {
-    if (stock <= 2) return { text: '緊急缺貨', color: THEME_COLORS.ERROR };
-    if (stock <= 10) return { text: '庫存不足', color: THEME_COLORS.WARNING };
-    return { text: '庫存充足', color: THEME_COLORS.SUCCESS };
-  };
-
-  // 獲取緊急程度樣式
-  const getUrgencyLevel = (level: string) => {
-    switch (level) {
-      case 'high':
-        return { text: '高', color: THEME_COLORS.ERROR, bgcolor: `${THEME_COLORS.ERROR}20` };
-      case 'medium':
-        return { text: '中', color: THEME_COLORS.WARNING, bgcolor: `${THEME_COLORS.WARNING}20` };
-      case 'low':
-        return { text: '低', color: THEME_COLORS.SUCCESS, bgcolor: `${THEME_COLORS.SUCCESS}20` };
-      default:
-        return { text: '未知', color: THEME_COLORS.TEXT_MUTED, bgcolor: `${THEME_COLORS.TEXT_MUTED}20` };
-    }
-  };
-
-  // 檢查是否即將過期 (3個月內)
+  // 檢查是否即將過期 (3個月內) - 僅用於統計
   const isExpiringSoon = (expiryDate?: string) => {
     if (!expiryDate) return false;
     const expiry = new Date(expiryDate);
@@ -182,6 +148,12 @@ const EmergencyInventoryTab: React.FC = () => {
     threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
     return expiry <= threeMonthsFromNow;
   };
+
+
+
+
+
+
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -210,7 +182,6 @@ const EmergencyInventoryTab: React.FC = () => {
             <MenuItem value="物品名稱">物品名稱</MenuItem>
             <MenuItem value="分類">分類</MenuItem>
             <MenuItem value="地點">地點</MenuItem>
-            <MenuItem value="緊急程度">緊急程度</MenuItem>
             <MenuItem value="供應商">供應商</MenuItem>
           </Select>
           
@@ -294,18 +265,10 @@ const EmergencyInventoryTab: React.FC = () => {
               <TableCell sx={{ fontWeight: 600 }}>物品名稱</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>分類</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>庫存量</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>狀態</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>緊急程度</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>過期狀況</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {inventoryData.map((item) => {
-              const stockStatus = getStockStatus(item.currentStock);
-              const urgencyLevel = getUrgencyLevel(item.urgencyLevel);
-              const expiringSoon = isExpiringSoon(item.expiryDate);
-              
               return (
                 <React.Fragment key={item.id}>
                   <TableRow hover>
@@ -323,100 +286,8 @@ const EmergencyInventoryTab: React.FC = () => {
                         {item.currentStock} {item.unit}
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          color: stockStatus.color, 
-                          fontWeight: 600 
-                        }}
-                      >
-                        {stockStatus.text}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={urgencyLevel.text}
-                        size="small"
-                        sx={{
-                          color: urgencyLevel.color,
-                          bgcolor: urgencyLevel.bgcolor,
-                          fontWeight: 600
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {item.expiryDate ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {expiringSoon && (
-                            <AccessTime sx={{ fontSize: 16, color: THEME_COLORS.WARNING }} />
-                          )}
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              color: expiringSoon ? THEME_COLORS.WARNING : THEME_COLORS.SUCCESS,
-                              fontWeight: expiringSoon ? 600 : 400
-                            }}
-                          >
-                            {expiringSoon ? '即將過期' : '正常'}
-                          </Typography>
-                        </Box>
-                      ) : (
-                        <Typography variant="body2" color="textSecondary">
-                          無期限
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        onClick={() => toggleRowExpansion(item.id)}
-                      >
-                        {expandedRows.includes(item.id) ? <ExpandLess /> : <ExpandMore />}
-                      </IconButton>
-                    </TableCell>
                   </TableRow>
-                  <TableRow>
-                    <TableCell colSpan={7} sx={{ p: 0 }}>
-                      <Collapse in={expandedRows.includes(item.id)}>
-                        <Box sx={{ p: 2, bgcolor: THEME_COLORS.ERROR_LIGHT }}>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            <strong>詳細資訊：</strong>
-                          </Typography>
-                          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
-                            <Typography variant="body2">
-                              供應者：{item.supplier}
-                            </Typography>
-                            <Typography variant="body2">
-                              單價：NT$ {item.cost.toLocaleString()}
-                            </Typography>
-                            <Typography variant="body2">
-                              總價值：NT$ {(item.cost * item.currentStock).toLocaleString()}
-                            </Typography>
-                            <Typography variant="body2">
-                              存放位置：{item.location}
-                            </Typography>
-                            <Typography variant="body2">
-                              新增日期：{item.addedDate}
-                            </Typography>
-                            {item.expiryDate && (
-                              <Typography variant="body2" sx={{ 
-                                color: expiringSoon ? THEME_COLORS.WARNING : 'inherit',
-                                fontWeight: expiringSoon ? 600 : 400
-                              }}>
-                                保存期限：{item.expiryDate} {expiringSoon && '⚠️'}
-                              </Typography>
-                            )}
-                            {item.lastUsed && (
-                              <Typography variant="body2">
-                                最後使用：{item.lastUsed}
-                              </Typography>
-                            )}
-                          </Box>
-                        </Box>
-                      </Collapse>
-                    </TableCell>
-                  </TableRow>
+
                 </React.Fragment>
               );
             })}

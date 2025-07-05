@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -19,6 +19,7 @@ import {
   Warning,
   Person,
   Badge,
+  CheckCircle,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { 
@@ -46,7 +47,13 @@ interface CaseRecord {
   lastUpdate: string;
 }
 
-const EmergencySupplyAddTab: React.FC = () => {
+interface EmergencySupplyAddTabProps {
+  prefilledCaseId?: string;
+}
+
+const EmergencySupplyAddTab: React.FC<EmergencySupplyAddTabProps> = ({ 
+  prefilledCaseId 
+}) => {
   const theme = useTheme();
   
   const [formData, setFormData] = useState<EmergencySupplyRequestData>({
@@ -112,6 +119,21 @@ const EmergencySupplyAddTab: React.FC = () => {
       lastUpdate: '2024-01-12'
     }
   ]);
+
+  // 處理預填的 CASE ID
+  useEffect(() => {
+    if (prefilledCaseId) {
+      const foundCase = caseDatabase.find(c => c.id === prefilledCaseId);
+      if (foundCase) {
+        setSelectedCase(foundCase);
+        setFormData(prev => ({
+          ...prev,
+          caseName: foundCase.name,
+          caseId: foundCase.id,
+        }));
+      }
+    }
+  }, [prefilledCaseId, caseDatabase]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -263,6 +285,27 @@ const EmergencySupplyAddTab: React.FC = () => {
         gap: 4,
         maxWidth: 600
       }}>
+        
+        {/* 預填提示 */}
+        {prefilledCaseId && selectedCase && (
+          <Box sx={{ 
+            p: 2, 
+            bgcolor: THEME_COLORS.SUCCESS_LIGHT,
+            border: `1px solid ${THEME_COLORS.SUCCESS}`,
+            borderRadius: 1 
+          }}>
+            <Typography variant="body2" sx={{ 
+              color: THEME_COLORS.SUCCESS,
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}>
+              <CheckCircle sx={{ fontSize: 16 }} />
+              已自動選擇個案：{selectedCase.name} ({selectedCase.id})
+            </Typography>
+          </Box>
+        )}
         
         {/* 個案綁定 */}
         <Box>
