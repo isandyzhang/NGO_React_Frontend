@@ -4,6 +4,9 @@ import { config } from '../config/env';
 // API 基礎配置
 const API_BASE_URL = config.apiBaseUrl;
 
+// 加入 console.log 來檢查 API_BASE_URL 的值
+console.log('API_BASE_URL:', API_BASE_URL);
+
 /**
  * 創建 Axios 實例
  * 配置統一的 API 請求設定，包括基礎 URL、超時時間和預設標頭

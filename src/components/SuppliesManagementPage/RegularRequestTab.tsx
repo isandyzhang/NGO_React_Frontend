@@ -122,20 +122,8 @@ const RegularRequestTab: React.FC = () => {
     }
   };
 
-  // 自動媒合功能
-  const handleAutoMatch = (requestId: number) => {
-    const request = requestData.find(r => r.id === requestId);
-    if (!request) return;
-
-    console.log('執行自動媒合:', request);
-    
-    // TODO: 實作自動媒合邏輯
-    // 1. 根據物品名稱、分類、數量自動搜尋庫存
-    // 2. 找到最適合的庫存物品
-    // 3. 自動建立媒合記錄
-    
-    alert(`正在為 ${request.caseName} 的 ${request.itemName} 執行自動媒合...`);
-  };
+  // 常駐物資申請不需要自動媒合功能
+  // 移除自動媒合相關邏輯
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -259,20 +247,6 @@ const RegularRequestTab: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' } }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        sx={{
-                          bgcolor: THEME_COLORS.SUCCESS,
-                          color: 'white',
-                          fontSize: '0.75rem',
-                          px: 1.5,
-                          '&:hover': { bgcolor: THEME_COLORS.PRIMARY_DARK }
-                        }}
-                        onClick={() => handleAutoMatch(request.id)}
-                      >
-                        自動媒合
-                      </Button>
                       {request.status === 'pending' && (
                         <>
                           <Button

@@ -22,16 +22,11 @@ export const useAuth = () => {
  * 包括登入、登出、用戶資訊管理等
  */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 身份驗證狀態：預設為已登入（開發測試用）
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  // 身份驗證狀態：預設為未登入，需要先登入
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // 用戶資訊狀態：可以是 User 物件或 null
-  const [user, setUser] = useState<User | null>({
-    id: '1',
-    displayName: 'Test User',
-    email: 'test@example.com',
-    roles: ['user'],
-  });
+  const [user, setUser] = useState<User | null>(null);
   
   // 載入狀態：用於顯示載入指示器
   const [loading, setLoading] = useState(false);

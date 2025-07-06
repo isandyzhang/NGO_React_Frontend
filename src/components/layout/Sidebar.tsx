@@ -12,6 +12,7 @@ import {
   useMediaQuery,
   Divider,
 } from '@mui/material';
+import { useAuth } from '../../hooks/useAuth';
 import {
   Dashboard,
   People,
@@ -30,7 +31,6 @@ import { Link, useLocation } from 'react-router-dom';
 
 // 組件 Props 介面定義
 interface SidebarProps {
-  onLogout: () => void; // 登出處理函數
   open?: boolean; // 控制側邊欄開關 (mobile 模式使用)
   onClose?: () => void; // 關閉側邊欄回調函數
 }
@@ -54,16 +54,17 @@ const drawerWidth = 300;
  * - 圓角設計和過渡動畫，提升使用者體驗
  * - 支援桌面版和行動版不同的顯示模式
  */
-const Sidebar: React.FC<SidebarProps> = ({ onLogout, open = true, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
+  const { worker, logout } = useAuth();
 
   // 導航選單項目配置
   const menuItems = [
     { text: '首頁', icon: <Home />, path: '/dashboard' },
     { text: '個案資料管理', icon: <Folder />, path: '/case-management' },
-    { text: '活動管理', icon: <Add />, path: '/event-management' },
+    { text: '活動管理', icon: <Add />, path: '/activity-management' },
     { text: '行事曆管理', icon: <CalendarToday />, path: '/calendar-management' },
     { text: '物資管理', icon: <LocalShipping />, path: '/supplies-management' },
   ];
@@ -115,10 +116,53 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, open = true, onClose }) => 
 
       {/* 當前使用者資訊顯示區塊 */}
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <Avatar sx={{ width: 40, height: 40, bgcolor: theme.palette.primary.main }}>A</Avatar>
-        <Box>
-          <Typography variant="subtitle1" sx={{ color: 'common.white' }}>管理員</Typography>
-          <Typography variant="body2" sx={{ color: 'common.white' }}>admin@example.com</Typography>
+        <Avatar 
+          sx={{ 
+            width: 40, 
+            height: 40, 
+            bgcolor: theme.palette.primary.main,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {worker ? worker.name.charAt(0) : 'U'}
+        </Avatar>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography 
+            variant="subtitle1" 
+            sx={{ 
+              color: 'common.white',
+              fontWeight: 600,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {worker ? worker.name : '未登入'}
+          </Typography>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: '0.75rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {worker ? worker.email : '請先登入'}
+          </Typography>
+          {worker && (
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                color: theme.palette.primary.light,
+                fontSize: '0.7rem',
+                fontWeight: 500
+              }}
+            >
+            </Typography>
+          )}
         </Box>
       </Box>
 
@@ -164,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, open = true, onClose }) => 
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
         <List sx={{ p: 2 }}>
           <ListItemButton
-            onClick={onLogout}
+            onClick={logout}
             sx={{
               borderRadius: '12px',
               color: 'common.white',

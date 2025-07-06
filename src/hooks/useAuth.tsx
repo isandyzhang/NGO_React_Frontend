@@ -1,86 +1,76 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { authService, WorkerInfo } from '../services/authService';
 
 // 身份驗證上下文類型定義
 interface AuthContextType {
   isAuthenticated: boolean; // 是否已登入
-  user: any | null; // 當前用戶資訊
-  login: (username: string, password: string) => Promise<void>; // 登入功能
-  azureLogin: () => Promise<void>; // Azure SSO 登入功能
+  worker: WorkerInfo | null; // 當前工作人員資訊
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>; // 登入功能
   logout: () => void; // 登出功能
+  loading: boolean; // 載入狀態
 }
 
 // 創建身份驗證上下文
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /**
- * ⚠️ 注意：此檔案與 auth/AuthProvider.tsx 功能重複
- * 
- * 建議事項：
- * 1. 統一使用 auth/AuthProvider.tsx 中的實作
- * 2. 此檔案可以考慮移除或重構為純 hook
- * 3. 避免在同一專案中維護兩套身份驗證邏輯
- */
-
-/**
  * 身份驗證提供者組件
  * 
  * 主要功能：
- * 1. 管理登入狀態 - 追蹤用戶是否已登入
- * 2. 用戶資訊管理 - 儲存和管理當前用戶資料
- * 3. 登入功能 - 提供傳統帳密登入和 Azure SSO 登入
- * 4. 登出功能 - 清除用戶資訊和登入狀態
- * 
- * 目前狀態：
- * - 使用模擬資料進行測試
- * - 預設為已登入狀態（開發方便）
- * - 等待整合真實的身份驗證 API
+ * 1. 管理登入狀態 - 追蹤工作人員是否已登入
+ * 2. 工作人員資訊管理 - 儲存和管理當前工作人員資料
+ * 3. 登入功能 - 提供真實的API登入
+ * 4. 登出功能 - 清除工作人員資訊和登入狀態
  */
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  // 身份驗證狀態（預設為已登入，方便開發測試）
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  // 身份驗證狀態
+  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
   
-  // 當前用戶資訊（使用模擬資料）
-  const [user, setUser] = useState<any>({
-    id: '1',
-    displayName: 'Test User',
-    email: 'test@example.com',
-    roles: ['user'],
-  });
+  // 當前工作人員資訊
+  const [worker, setWorker] = useState<WorkerInfo | null>(authService.getCurrentWorker());
+  
+  // 載入狀態
+  const [loading, setLoading] = useState(false);
 
   /**
-   * 傳統帳號密碼登入功能
-   * @param username - 使用者帳號
-   * @param password - 使用者密碼
+   * 工作人員登入功能
+   * @param email - 工作人員電子郵件
+   * @param password - 工作人員密碼
    */
-  const login = async (username: string, password: string) => {
-    // 模擬 API 呼叫延遲
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setUser({ username });
-    setIsAuthenticated(true);
-  };
-
-  /**
-   * Azure Active Directory 單一登入功能
-   * 提供企業級的身份驗證服務
-   */
-  const azureLogin = async () => {
-    // 模擬 Azure SSO 登入流程
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setUser({ username: 'azure_user' });
-    setIsAuthenticated(true);
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const result = await authService.login(email, password);
+      
+      if (result.success && result.worker) {
+        setWorker(result.worker);
+        setIsAuthenticated(true);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('登入錯誤:', error);
+      return {
+        success: false,
+        message: '登入過程中發生錯誤'
+      };
+    } finally {
+      setLoading(false);
+    }
   };
 
   /**
    * 登出功能
-   * 清除用戶資訊和身份驗證狀態
+   * 清除工作人員資訊和身份驗證狀態
    */
   const logout = () => {
-    setUser(null);
+    authService.logout();
+    setWorker(null);
     setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, azureLogin, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, worker, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

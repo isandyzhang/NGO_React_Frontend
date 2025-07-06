@@ -1,14 +1,16 @@
 import React, { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
-import EventManagement from '../pages/EventManagement';
+import ActivityManagement from '../pages/ActivityManagement';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
+import { ProtectedRoute } from '../components/layout/ProtectedRoute';
 
 // Lazy loading 其他頁面，提升首次載入效能
 const Dashboard = lazy(() => import('../pages/Dashboard'));
 const CaseManagement = lazy(() => import('../pages/CaseManagement'));
 const SuppliesManagement = lazy(() => import('../pages/SuppliesManagement'));
 const CalendarManagement = lazy(() => import('../pages/CalendarManagement'));
+const TestActivity = lazy(() => import('../pages/TestActivity'));
 const Login = lazy(() => import('../pages/Login'));
 
 /**
@@ -21,7 +23,7 @@ const Login = lazy(() => import('../pages/Login'));
  *    - / - 首頁重導至 dashboard
  *    - /dashboard - 儀表板頁面
  *    - /case-management - 個案管理頁面
- *    - /event-management - 活動管理頁面
+ *    - /activity-management - 活動管理頁面
  *    - /supplies-management - 物資管理頁面
  *    - /calendar-management - 行事曆管理頁面
  *    - /login - 登入頁面
@@ -44,7 +46,7 @@ const PageWithSuspense = ({ children }: { children: React.ReactNode }) => (
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <MainLayout />,
+    element: <ProtectedRoute><MainLayout /></ProtectedRoute>,
     children: [
       {
         index: true,
@@ -59,8 +61,8 @@ const router = createBrowserRouter([
         element: <PageWithSuspense><CaseManagement /></PageWithSuspense>,
       },
       {
-        path: 'event-management',
-        element: <EventManagement />,
+        path: 'activity-management',
+        element: <ActivityManagement />,
       },
       {
         path: 'supplies-management',
@@ -69,6 +71,10 @@ const router = createBrowserRouter([
       {
         path: 'calendar-management',
         element: <PageWithSuspense><CalendarManagement /></PageWithSuspense>,
+      },
+      {
+        path: 'test-activity',
+        element: <PageWithSuspense><TestActivity /></PageWithSuspense>,
       },
     ],
   },

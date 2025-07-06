@@ -18,6 +18,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/zh-tw'; // 中文本地化
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../../styles/commonStyles';
+import activityService from '../../services/activityService';
 
 // 設置 dayjs 為中文
 dayjs.locale('zh-tw');
@@ -25,34 +26,33 @@ dayjs.locale('zh-tw');
 /**
  * 活動表單資料介面
  */
-interface EventFormData {
-  name: string;
+interface ActivityFormData {
+  activityName: string;
+  description: string;
+  imageUrl?: string;
   location: string;
-  volunteerCount: number;
-  participantCount: number;
-  shortDescription: string;
-  detailDescription: string;
-  startDateTime: Dayjs | null;
-  endDateTime: Dayjs | null;
-  registrationDeadline: Dayjs | null;
-  image: File | null;
-  imagePreview: string | null;
-  eventType: 'general' | 'case'; // 新增活動類別欄位
+  maxParticipants: number;
+  startDate: Dayjs | null;
+  endDate: Dayjs | null;
+  signupDeadline: Dayjs | null;
+  workerId: number;
+  targetAudience: string; // 'general' | 'case'
+  status: string;
 }
 
 /**
  * 新增活動表單組件 Props
  */
-interface NewEventFormProps {
-  onSubmit?: (data: EventFormData) => void;
+interface NewActivityFormProps {
+  onSubmit?: (data: ActivityFormData) => void;
   onCancel?: () => void;
 }
 
 /**
  * 取得動態主題顏色
  */
-const getDynamicThemeColors = (eventType: 'general' | 'case') => {
-  if (eventType === 'case') {
+const getDynamicThemeColors = (activityType: 'general' | 'case') => {
+  if (activityType === 'case') {
     // 個案活動使用綠色系
     return {
       primary: THEME_COLORS.PRIMARY,
@@ -76,7 +76,7 @@ const getDynamicThemeColors = (eventType: 'general' | 'case') => {
 };
 
 /**
- * 新增活動表單組件 (NewEventForm)
+ * 新增活動表單組件 (NewActivityForm)
  * 
  * 主要功能：
  * 1. 活動基本資訊輸入（名稱、日期、時間、地點）
@@ -93,27 +93,26 @@ const getDynamicThemeColors = (eventType: 'general' | 'case') => {
  * - 動態主題與活動類型一致
  * - 完整的錯誤處理
  */
-const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
+const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel }) => {
   const theme = useTheme();
 
   // 表單資料狀態
-  const [formData, setFormData] = useState<EventFormData>({
-    name: '',
+  const [formData, setFormData] = useState<ActivityFormData>({
+    activityName: '',
+    description: '',
+    imageUrl: '',
     location: '',
-    volunteerCount: 0,
-    participantCount: 0,
-    shortDescription: '',
-    detailDescription: '',
-    startDateTime: dayjs(),
-    endDateTime: dayjs().add(2, 'hour'), // 預設活動為2小時
-    registrationDeadline: dayjs().subtract(1, 'day'), // 預設報名截止日為活動前一天
-    image: null,
-    imagePreview: null,
-    eventType: 'case', // 預設為個案活動
+    maxParticipants: 0,
+    startDate: dayjs(),
+    endDate: dayjs().add(2, 'hour'),
+    signupDeadline: dayjs().subtract(1, 'day'),
+    workerId: 1, // 可根據實際登入者自動帶入
+    targetAudience: 'case',
+    status: 'Active',
   });
 
   // 動態主題顏色
-  const dynamicColors = useMemo(() => getDynamicThemeColors(formData.eventType), [formData.eventType]);
+  const dynamicColors = useMemo(() => getDynamicThemeColors(formData.targetAudience as 'general' | 'case'), [formData.targetAudience]);
 
   // 動態輸入框樣式
   const dynamicInputStyles = useMemo(() => ({
@@ -148,7 +147,7 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
   /**
    * 處理表單欄位變更
    */
-  const handleInputChange = (field: keyof EventFormData, value: any) => {
+  const handleInputChange = (field: keyof ActivityFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -158,14 +157,14 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
   /**
    * 處理活動類別變更
    */
-  const handleEventTypeChange = (
+  const handleTargetAudienceChange = (
     event: React.MouseEvent<HTMLElement>,
-    newEventType: 'general' | 'case' | null,
+    newTarget: string | null,
   ) => {
-    if (newEventType !== null) {
+    if (newTarget !== null) {
       setFormData(prev => ({
         ...prev,
-        eventType: newEventType,
+        targetAudience: newTarget,
       }));
     }
   };
@@ -173,34 +172,34 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
   /**
    * 處理開始時間變更
    */
-  const handleStartDateTimeChange = (newValue: Dayjs | null) => {
+  const handleStartDateChange = (newValue: Dayjs | null) => {
     setFormData(prev => ({
       ...prev,
-      startDateTime: newValue,
+      startDate: newValue,
       // 如果結束時間早於開始時間，自動調整結束時間為開始時間後2小時
-      endDateTime: newValue && prev.endDateTime && prev.endDateTime.isBefore(newValue) 
+      endDate: newValue && prev.endDate && prev.endDate.isBefore(newValue) 
         ? newValue.add(2, 'hour') 
-        : prev.endDateTime
+        : prev.endDate
     }));
   };
 
   /**
    * 處理結束時間變更
    */
-  const handleEndDateTimeChange = (newValue: Dayjs | null) => {
+  const handleEndDateChange = (newValue: Dayjs | null) => {
     setFormData(prev => ({
       ...prev,
-      endDateTime: newValue
+      endDate: newValue
     }));
   };
 
   /**
    * 處理報名截止日變更
    */
-  const handleRegistrationDeadlineChange = (newValue: Dayjs | null) => {
+  const handleSignupDeadlineChange = (newValue: Dayjs | null) => {
     setFormData(prev => ({
       ...prev,
-      registrationDeadline: newValue
+      signupDeadline: newValue
     }));
   };
 
@@ -210,26 +209,26 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // 檢查檔案大小 (限制 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('圖片檔案大小不能超過 5MB');
-        return;
-      }
-
-      // 檢查檔案類型
+      // 驗證檔案類型
       if (!file.type.startsWith('image/')) {
         alert('請選擇圖片檔案');
         return;
       }
 
-      // 創建預覽 URL
-      const previewUrl = URL.createObjectURL(file);
-      
-      setFormData(prev => ({
-        ...prev,
-        image: file,
-        imagePreview: previewUrl
-      }));
+      // 驗證檔案大小 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('圖片檔案大小不能超過 5MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFormData(prev => ({
+          ...prev,
+          imageUrl: e.target?.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -237,84 +236,90 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
    * 移除圖片
    */
   const handleRemoveImage = () => {
-    if (formData.imagePreview) {
-      URL.revokeObjectURL(formData.imagePreview);
-    }
     setFormData(prev => ({
       ...prev,
-      image: null,
-      imagePreview: null
+      imageUrl: ''
     }));
   };
 
   /**
    * 處理表單提交
    */
-  const handleSubmit = () => {
-    // 基本驗證
-    if (!formData.name.trim()) {
-      alert('請輸入活動名稱');
-      return;
-    }
+  const handleSubmit = async () => {
+    try {
+      // 基本驗證
+      if (!formData.activityName.trim()) {
+        alert('請輸入活動名稱');
+        return;
+      }
 
-    if (!formData.startDateTime) {
-      alert('請選擇活動開始時間');
-      return;
-    }
+      if (!formData.location.trim()) {
+        alert('請輸入活動地點');
+        return;
+      }
 
-    if (!formData.endDateTime) {
-      alert('請選擇活動結束時間');
-      return;
-    }
+      if (!formData.startDate || !formData.endDate) {
+        alert('請選擇活動開始和結束時間');
+        return;
+      }
 
-    if (!formData.registrationDeadline) {
-      alert('請選擇報名截止日');
-      return;
-    }
+      if (formData.endDate.isBefore(formData.startDate)) {
+        alert('結束時間不能早於開始時間');
+        return;
+      }
 
-    // 驗證結束時間是否晚於開始時間
-    if (formData.endDateTime.isBefore(formData.startDateTime)) {
-      alert('活動結束時間必須晚於開始時間');
-      return;
-    }
+      if (formData.maxParticipants <= 0) {
+        alert('請輸入有效的人數需求');
+        return;
+      }
 
-    // 驗證報名截止日是否早於活動開始時間
-    if (formData.registrationDeadline.isAfter(formData.startDateTime)) {
-      alert('報名截止日必須早於活動開始時間');
-      return;
-    }
+      // 準備提交資料
+      const submitData = {
+        ...formData,
+        startDate: formData.startDate?.toISOString() || '',
+        endDate: formData.endDate?.toISOString() || '',
+        signupDeadline: formData.signupDeadline?.toISOString() || '',
+      };
 
-    // 驗證活動時間長度（不能超過24小時）
-    const durationHours = formData.endDateTime.diff(formData.startDateTime, 'hour');
-    if (durationHours > 24) {
-      alert('活動時間長度不能超過24小時');
-      return;
-    }
+      // 呼叫 API
+      await activityService.createActivity(submitData);
 
-    if (!formData.location.trim()) {
-      alert('請輸入活動地點');
-      return;
-    }
+      // 成功提示
+      alert('活動建立成功！');
 
-    if (!formData.shortDescription.trim()) {
-      alert('請輸入活動簡述');
-      return;
-    }
+      // 重置表單
+      setFormData({
+        activityName: '',
+        description: '',
+        imageUrl: '',
+        location: '',
+        maxParticipants: 0,
+        startDate: dayjs(),
+        endDate: dayjs().add(2, 'hour'),
+        signupDeadline: dayjs().subtract(1, 'day'),
+        workerId: 1,
+        targetAudience: 'case',
+        status: 'Active',
+      });
 
-    // 調用父組件的提交函數
-    onSubmit?.(formData);
+      // 呼叫回調函數
+      if (onSubmit) {
+        onSubmit(formData);
+      }
+
+    } catch (error) {
+      console.error('建立活動失敗:', error);
+      alert('建立活動失敗，請稍後再試');
+    }
   };
 
   /**
    * 處理取消
    */
   const handleCancel = () => {
-    // 清理圖片預覽 URL
-    if (formData.imagePreview) {
-      URL.revokeObjectURL(formData.imagePreview);
+    if (onCancel) {
+      onCancel();
     }
-    
-    onCancel?.();
   };
 
   return (
@@ -344,14 +349,14 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
               mb: 1,
               color: dynamicColors.primaryDark
             }}>
-              新增活動 - {formData.eventType === 'case' ? '個案活動' : '志工活動'}
+              新增活動 - {formData.targetAudience === 'case' ? '個案活動' : '志工活動'}
             </Typography>
             
             <Typography variant="body2" sx={{ 
               color: THEME_COLORS.TEXT_MUTED,
               ...theme.customTypography?.legendLabel
             }}>
-              請輸入各欄位及參加人數，系統預設為{formData.eventType === 'case' ? '個案活動模式' : '志工活動模式'}
+              請輸入各欄位及參加人數，系統預設為{formData.targetAudience === 'case' ? '個案活動模式' : '志工活動模式'}
             </Typography>
           </Box>
 
@@ -371,9 +376,9 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
               活動類別 *
             </Typography>
             <ToggleButtonGroup
-              value={formData.eventType}
+              value={formData.targetAudience}
               exclusive
-              onChange={handleEventTypeChange}
+              onChange={handleTargetAudienceChange}
               size="small"
               sx={{
                 '& .MuiToggleButton-root': {
@@ -415,8 +420,8 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
           {/* 第一行：活動名稱 */}
           <TextField
             label="活動名稱 *"
-            value={formData.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
+            value={formData.activityName}
+            onChange={(e) => handleInputChange('activityName', e.target.value)}
             fullWidth
             placeholder="雜貨旅遊 x 台積電二手作甜點體驗營"
             required
@@ -431,8 +436,8 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
           }}>
             <DateTimePicker
               label="活動開始時間 *"
-              value={formData.startDateTime}
-              onChange={handleStartDateTimeChange}
+              value={formData.startDate}
+              onChange={handleStartDateChange}
               format="YYYY/MM/DD HH:mm"
               slotProps={{
                 textField: {
@@ -447,8 +452,8 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
             />
             <DateTimePicker
               label="活動結束時間 *"
-              value={formData.endDateTime}
-              onChange={handleEndDateTimeChange}
+              value={formData.endDate}
+              onChange={handleEndDateChange}
               format="YYYY/MM/DD HH:mm"
               slotProps={{
                 textField: {
@@ -466,8 +471,8 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
           {/* 第三行：報名截止日 */}
           <DateTimePicker
             label="報名截止日 *"
-            value={formData.registrationDeadline}
-            onChange={handleRegistrationDeadlineChange}
+            value={formData.signupDeadline}
+            onChange={handleSignupDeadlineChange}
             format="YYYY/MM/DD HH:mm"
             slotProps={{
               textField: {
@@ -499,8 +504,8 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
             <TextField
               label="需求活動人數"
               type="number"
-              value={formData.volunteerCount}
-              onChange={(e) => handleInputChange('volunteerCount', parseInt(e.target.value) || 0)}
+              value={formData.maxParticipants}
+              onChange={(e) => handleInputChange('maxParticipants', parseInt(e.target.value) || 0)}
               sx={{ 
                 ...dynamicInputStyles,
                 flex: 1 
@@ -510,8 +515,6 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
                 inputProps: { min: 0, max: 100 }
               }}
             />
-
-            
           </Box>
 
           {/* 第六行：活動圖片上傳 */}
@@ -529,11 +532,11 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
               bgcolor: THEME_COLORS.BACKGROUND_UPLOAD,
               position: 'relative'
             }}>
-              {formData.imagePreview ? (
+              {formData.imageUrl ? (
                 <Box sx={{ position: 'relative' }}>
                   <Box 
                     component="img"
-                    src={formData.imagePreview}
+                    src={formData.imageUrl}
                     alt="活動圖片預覽"
                     sx={{
                       maxWidth: '100%',
@@ -595,15 +598,15 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
             </Box>
           </Box>
 
-          {/* 第七行：活動簡述 */}
+          {/* 第七行：活動描述 */}
           <TextField
-            label="活動簡述 *"
-            value={formData.shortDescription}
-            onChange={(e) => handleInputChange('shortDescription', e.target.value)}
+            label="活動描述 *"
+            value={formData.description}
+            onChange={(e) => handleInputChange('description', e.target.value)}
             fullWidth
             multiline
             rows={3}
-            placeholder="請簡單描述活動內容..."
+            placeholder="請詳細描述活動內容..."
             required
             sx={dynamicInputStyles}
           />
@@ -648,5 +651,4 @@ const NewEventForm: React.FC<NewEventFormProps> = ({ onSubmit, onCancel }) => {
   );
 };
 
-export default NewEventForm;
-export type { EventFormData }; 
+export default NewActivityForm; 

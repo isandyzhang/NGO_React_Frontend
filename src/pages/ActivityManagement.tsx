@@ -1,5 +1,5 @@
 /**
- * 活動管理頁面 (EventManagement)
+ * 活動管理頁面 (ActivityManagement)
  * 
  * 主要功能：
  * 1. 新增活動表單 - 建立新的志工活動和社區服務
@@ -7,8 +7,8 @@
  * 3. 報名審核 - 管理志工和個案的活動報名申請
  * 
  * 頁面結構：
- * - Tab 1: 新增活動（使用 NewEventForm 組件）
- * - Tab 2: 活動管理（使用 EventManagement 組件，包含查看、編輯、搜尋功能）
+ * - Tab 1: 新增活動（使用 NewActivityForm 組件）
+ * - Tab 2: 活動管理（使用 ActivityManagement 組件，包含查看、編輯、搜尋功能）
  * - Tab 3: 報名審核（使用 RegistrationReview 組件）
  * 
  * 特色功能：
@@ -33,14 +33,14 @@ import {
 import { THEME_COLORS } from '../styles/theme';
 import PageContainer from '../components/shared/PageContainer';
 import PageHeader from '../components/shared/PageHeader';
-import NewEventForm from '../components/EventManagementPage/NewEventForm';
-import EventManagement from '../components/EventManagementPage/EventManagement';
-import RegistrationReview from '../components/EventManagementPage/RegistrationReview';
+import NewActivityForm from '../components/ActivityManagementPage/NewActivityForm';
+import ActivityManagement from '../components/ActivityManagementPage/ActivityManagement';
+import RegistrationReviewMain from '../components/ActivityManagementPage/RegistrationReviewMain';
 
 /**
  * 活動管理頁面主組件
  */
-const EventManagementPage: React.FC = () => {
+const ActivityManagementPage: React.FC = () => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
 
@@ -53,17 +53,17 @@ const EventManagementPage: React.FC = () => {
     {
       label: '新增活動',
       icon: <EventNote sx={{ fontSize: 20 }} />,
-      component: <NewEventForm />
+      component: <NewActivityForm />
     },
     {
       label: '活動管理',
       icon: <Event sx={{ fontSize: 20 }} />,
-      component: <EventManagement />
+      component: <ActivityManagement />
     },
     {
       label: '報名審核',
       icon: <People sx={{ fontSize: 20 }} />,
-      component: <RegistrationReview />
+      component: <RegistrationReviewMain />
     }
   ];
 
@@ -72,7 +72,7 @@ const EventManagementPage: React.FC = () => {
       <PageHeader 
         showSearch 
         breadcrumbs={[
-          { label: '活動管理', href: '/event-management' }
+          { label: '活動管理', href: '/activity-management' }
         ]}
       />
 
@@ -132,4 +132,4 @@ const EventManagementPage: React.FC = () => {
   );
 };
 
-export default EventManagementPage; 
+export default ActivityManagementPage; 

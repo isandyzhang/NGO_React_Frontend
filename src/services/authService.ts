@@ -1,177 +1,100 @@
 import { api } from './api';
-import { User } from '../types/userTypes';
 
-// 認證相關的 API 接口
+// 登入請求介面
 export interface LoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
+// 工作人員資訊介面
+export interface WorkerInfo {
+  workerId: number;
+  email: string;
+  name: string;
+}
+
+// 登入回應介面
 export interface LoginResponse {
-  token: string;
-  refreshToken: string;
-  user: User;
-  expiresIn: number;
+  success: boolean;
+  message: string;
+  worker?: WorkerInfo;
 }
 
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-  fullName: string;
-  role?: 'manager' | 'staff';
-}
-
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
-}
-
-export interface ResetPasswordRequest {
-  email: string;
-}
-
-export interface UpdateProfileRequest {
-  fullName?: string;
-  email?: string;
-  avatar?: string;
-}
-
-// 認證服務
+/**
+ * 身份驗證服務
+ * 提供登入、登出等身份驗證相關的API呼叫
+ */
 export const authService = {
-  // 登入
-  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    const response = await api.post<LoginResponse>('/auth/login', credentials);
-    
-    // 儲存 token 到 localStorage
-    if (response.token) {
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.user));
-    }
-    
-    return response;
-  },
-
-  // 登出
-  logout: async (): Promise<void> => {
+  /**
+   * 工作人員登入
+   * @param email 電子郵件
+   * @param password 密碼
+   * @returns 登入結果
+   */
+  async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      await api.post('/auth/logout');
-    } catch (error) {
-      console.error('Logout API call failed:', error);
-    } finally {
-      // 清除本地儲存的認證資料
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      const response = await api.post<LoginResponse>('/auth/login', {
+        email,
+        password
+      });
+      
+      // 如果登入成功，儲存工作人員資訊到本地儲存
+      if (response.success && response.worker) {
+        localStorage.setItem('workerInfo', JSON.stringify(response.worker));
+        localStorage.setItem('isAuthenticated', 'true');
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('登入失敗:', error);
+      
+      // 回傳錯誤訊息
+      return {
+        success: false,
+        message: error.response?.data?.message || '登入失敗，請稍後再試'
+      };
     }
   },
 
-  // 註冊新用戶
-  register: (userData: RegisterRequest): Promise<User> => {
-    return api.post<User>('/auth/register', userData);
+  /**
+   * 登出
+   */
+  logout(): void {
+    // 清除本地儲存的認證資訊
+    localStorage.removeItem('workerInfo');
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('authToken');
   },
 
-  // 刷新 token
-  refreshToken: async (): Promise<LoginResponse> => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
+  /**
+   * 取得當前登入的工作人員資訊
+   * @returns 工作人員資訊或null
+   */
+  getCurrentWorker(): WorkerInfo | null {
+    const workerInfo = localStorage.getItem('workerInfo');
+    return workerInfo ? JSON.parse(workerInfo) : null;
+  },
+
+  /**
+   * 檢查是否已登入
+   * @returns 是否已登入
+   */
+  isAuthenticated(): boolean {
+    return localStorage.getItem('isAuthenticated') === 'true';
+  },
+
+  /**
+   * 取得所有工作人員列表（測試用）
+   * @returns 工作人員列表
+   */
+  async getWorkers(): Promise<WorkerInfo[]> {
+    try {
+      return await api.get<WorkerInfo[]>('/auth/workers');
+    } catch (error: any) {
+      console.error('取得工作人員列表失敗:', error);
+      throw error;
     }
-
-    const response = await api.post<LoginResponse>('/auth/refresh', {
-      refreshToken
-    });
-
-    // 更新儲存的 token
-    if (response.token) {
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.user));
-    }
-
-    return response;
-  },
-
-  // 獲取當前用戶資料
-  getCurrentUser: (): Promise<User> => {
-    return api.get<User>('/auth/me');
-  },
-
-  // 更新用戶資料
-  updateProfile: (profileData: UpdateProfileRequest): Promise<User> => {
-    return api.put<User>('/auth/profile', profileData);
-  },
-
-  // 變更密碼
-  changePassword: (passwordData: ChangePasswordRequest): Promise<void> => {
-    return api.post<void>('/auth/change-password', passwordData);
-  },
-
-  // 重設密碼
-  resetPassword: (resetData: ResetPasswordRequest): Promise<void> => {
-    return api.post<void>('/auth/reset-password', resetData);
-  },
-
-  // 驗證 token 是否有效
-  validateToken: (): Promise<boolean> => {
-    return api.get<boolean>('/auth/validate');
-  },
-
-  // 獲取用戶列表（管理員功能）
-  getUsers: (params?: {
-    page?: number;
-    pageSize?: number;
-    role?: string;
-    search?: string;
-  }): Promise<{
-    data: User[];
-    total: number;
-    page: number;
-    pageSize: number;
-  }> => {
-    return api.get('/auth/users', params);
-  },
-
-  // 更新用戶角色（管理員功能）
-  updateUserRole: (userId: number, role: User['role']): Promise<User> => {
-    return api.patch<User>(`/auth/users/${userId}/role`, { role });
-  },
-
-  // 禁用/啟用用戶（管理員功能）
-  toggleUserStatus: (userId: number, isActive: boolean): Promise<User> => {
-    return api.patch<User>(`/auth/users/${userId}/status`, { isActive });
-  },
-
-  // 刪除用戶（管理員功能）
-  deleteUser: (userId: number): Promise<void> => {
-    return api.delete<void>(`/auth/users/${userId}`);
-  },
-
-  // 上傳用戶頭像
-  uploadAvatar: (imageFile: File): Promise<{ avatarUrl: string }> => {
-    const formData = new FormData();
-    formData.append('avatar', imageFile);
-    
-    return api.post<{ avatarUrl: string }>('/auth/avatar', formData);
-  },
-
-  // 檢查用戶是否已登入
-  isAuthenticated: (): boolean => {
-    const token = localStorage.getItem('authToken');
-    return !!token;
-  },
-
-  // 獲取儲存的用戶資料
-  getStoredUser: (): User | null => {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
-  },
-
-  // 獲取儲存的 token
-  getStoredToken: (): string | null => {
-    return localStorage.getItem('authToken');
-  },
+  }
 };
 
 export default authService; 

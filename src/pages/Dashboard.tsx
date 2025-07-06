@@ -4,14 +4,11 @@ import {
   CardContent, 
   Typography, 
   useTheme,
-  TextField,
-  InputAdornment,
   IconButton,
   Badge,
   Menu,
   MenuItem,
   Divider,
-  Paper,
   Chip
 } from '@mui/material';
 import { PieChart, BarChart } from '@mui/x-charts';
@@ -19,12 +16,10 @@ import { StyledCard } from '../components/shared/StyledCard';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
 import { CalendarEvent } from '../components/CalendarPage';
-import { calendarService } from '../services';
+import { calendarService, caseService, activityService, authService } from '../services';
 import { 
   People, 
   Assignment, 
-  Notifications,
-  Search,
   NotificationsNone,
   CalendarToday,
   Info,
@@ -100,33 +95,33 @@ const Dashboard: React.FC = () => {
   // 系統版本資訊
   const systemVersion = 'v1.2.3';
 
-  // 統計卡片資料 - 使用新的圖表顏色配置
-  const statsCards = [
+  // 統計卡片資料 - 使用真實資料
+  const [statsCards, setStatsCards] = useState([
     {
       title: '個案人數',
-      value: '156',
+      value: '0',
       icon: <Assignment />,
       color: THEME_COLORS.CHART_PRIMARY
     },
     {
       title: '志工人數',
-      value: '45',
+      value: '0',
       icon: <People />,
       color: THEME_COLORS.CHART_SECONDARY
     },
     {
       title: '活動總數',
-      value: '28',
+      value: '0',
       icon: <CalendarToday />,
       color: THEME_COLORS.CHART_ACCENT_1
     },
     {
       title: '本月完成活動',
-      value: '12',
+      value: '0',
       icon: <TrendingUp />,
       color: THEME_COLORS.CHART_ACCENT_2
     }
-  ];
+  ]);
 
   // 性別分布統計資料（圓餅圖用）
   const genderData = [
@@ -186,9 +181,54 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // 組件載入時載入近期活動
+  // 載入統計資料
+  const loadStatistics = async () => {
+    try {
+      // 載入個案統計
+      const cases = await caseService.getAllCases();
+      
+      // 載入志工統計
+      const workers = await authService.getWorkers();
+      
+      // 載入活動統計
+      const activityStats = await activityService.getActivityStatistics();
+      
+      // 更新統計卡片
+      setStatsCards([
+        {
+          title: '個案人數',
+          value: cases.length.toString(),
+          icon: <Assignment />,
+          color: THEME_COLORS.CHART_PRIMARY
+        },
+        {
+          title: '志工人數',
+          value: workers.length.toString(),
+          icon: <People />,
+          color: THEME_COLORS.CHART_SECONDARY
+        },
+        {
+          title: '活動總數',
+          value: activityStats.totalActivities.toString(),
+          icon: <CalendarToday />,
+          color: THEME_COLORS.CHART_ACCENT_1
+        },
+        {
+          title: '本月完成活動',
+          value: activityStats.completedActivities.toString(),
+          icon: <TrendingUp />,
+          color: THEME_COLORS.CHART_ACCENT_2
+        }
+      ]);
+    } catch (error) {
+      console.error('載入統計資料失敗:', error);
+    }
+  };
+
+  // 組件載入時載入資料
   useEffect(() => {
     loadRecentEvents();
+    loadStatistics();
   }, []);
 
   /**

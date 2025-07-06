@@ -31,8 +31,6 @@ import { useAuth } from '../../hooks/useAuth';
  * - 使用 React Router 的 Outlet 渲染子頁面
  */
 const MainLayout: React.FC = () => {
-  // 從身份驗證 hook 獲取登出功能
-  const { logout } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
@@ -108,7 +106,6 @@ const MainLayout: React.FC = () => {
       
       {/* 左側導航側邊欄 */}
       <Sidebar 
-        onLogout={logout} 
         open={sidebarOpen}
         onClose={handleSidebarClose}
       />

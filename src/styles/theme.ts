@@ -108,6 +108,12 @@ export const THEME_COLORS = {
   CHART_DANGER:    '#388e3c', // 深綠色 - 強調色
   CHART_INFO:      '#c8e6c9', // 極淺綠色 - 信息色
   CHART_NEUTRAL:   '#e8f5e8', // 背景綠色 - 中性色
+  
+  // ===================================
+  // 👤 性別頭像顏色 (Avatar Colors by Gender)
+  // ===================================
+  MALE_AVATAR: '#90caf9',    // 男生淡藍色
+  FEMALE_AVATAR: '#f8bbd0',  // 女生淡紅色
 } as const;
 
 // 輔助函數：獲取主題顏色

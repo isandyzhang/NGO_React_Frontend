@@ -39,6 +39,42 @@ export interface CaseFormData {
   profileImage?: string;
 }
 
+// 後端 API 對應的介面
+export interface CreateCaseRequest {
+  name: string;
+  phone: string;
+  identityNumber: string;
+  birthday?: string;
+  address: string;
+  description: string;
+  email: string;
+  gender: string;
+  profileImage?: string;
+  city: string;
+  district: string;
+  detailAddress: string;
+}
+
+export interface CaseResponse {
+  caseId: number;
+  name: string;
+  phone: string;
+  identityNumber: string;
+  birthday?: string;
+  address: string;
+  workerId: number;
+  description: string;
+  createdAt: string;
+  status: string;
+  email: string;
+  gender: string;
+  profileImage?: string;
+  city: string;
+  district: string;
+  detailAddress: string;
+  workerName?: string;
+}
+
 export interface CaseRecord {
   id: number;
   name: string;
@@ -71,9 +107,10 @@ export interface CaseListResponse {
 // 個案管理 API 服務
 export const caseService = {
   // 獲取所有個案
-  getAllCases: async (): Promise<CaseRecord[]> => {
+  getAllCases: async (): Promise<CaseResponse[]> => {
     try {
-      return await api.get<CaseRecord[]>('/cases');
+      const response = await api.get<CaseResponse[]>('/Case');
+      return response;
     } catch (error) {
       console.error('獲取案例列表失敗:', error);
       throw error;
@@ -81,9 +118,10 @@ export const caseService = {
   },
 
   // 根據 ID 獲取個案詳情
-  getCaseById: async (id: number): Promise<CaseRecord> => {
+  getCaseById: async (id: number): Promise<CaseResponse> => {
     try {
-      return await api.get<CaseRecord>(`/cases/${id}`);
+      const response = await api.get<CaseResponse>(`/Case/${id}`);
+      return response;
     } catch (error) {
       console.error(`獲取案例 ${id} 失敗:`, error);
       throw error;
@@ -91,9 +129,10 @@ export const caseService = {
   },
 
   // 搜尋個案
-  searchCases: async (params: CaseSearchParams): Promise<CaseRecord[]> => {
+  searchCases: async (params: CaseSearchParams): Promise<{ data: CaseResponse[]; total: number; page: number; pageSize: number; totalPages: number }> => {
     try {
-      return await api.get<CaseRecord[]>('/cases/search', params);
+      const response = await api.get<{ data: CaseResponse[]; total: number; page: number; pageSize: number; totalPages: number }>('/Case/search', params);
+      return response;
     } catch (error) {
       console.error('搜尋案例失敗:', error);
       throw error;
@@ -101,9 +140,10 @@ export const caseService = {
   },
 
   // 創建新個案
-  createCase: async (caseData: Omit<CaseRecord, 'id' | 'createdAt'>): Promise<CaseRecord> => {
+  createCase: async (caseData: CreateCaseRequest): Promise<CaseResponse> => {
     try {
-      return await api.post<CaseRecord>('/cases', caseData);
+      const response = await api.post<CaseResponse>('/Case', caseData);
+      return response;
     } catch (error) {
       console.error('創建案例失敗:', error);
       throw error;
@@ -111,9 +151,9 @@ export const caseService = {
   },
 
   // 更新個案資料
-  updateCase: async (id: number, caseData: Partial<CaseRecord>): Promise<void> => {
+  updateCase: async (id: number, caseData: Partial<CreateCaseRequest>): Promise<void> => {
     try {
-      await api.put<void>(`/cases/${id}`, { ...caseData, id });
+      await api.put<void>(`/Case/${id}`, caseData);
     } catch (error) {
       console.error(`更新案例 ${id} 失敗:`, error);
       throw error;
@@ -123,9 +163,20 @@ export const caseService = {
   // 刪除個案
   deleteCase: async (id: number): Promise<void> => {
     try {
-      await api.delete<void>(`/cases/${id}`);
+      await api.delete<void>(`/Case/${id}`);
     } catch (error) {
       console.error(`刪除案例 ${id} 失敗:`, error);
+      throw error;
+    }
+  },
+
+  // 測試資料庫連接
+  testConnection: async (): Promise<any> => {
+    try {
+      const response = await api.get('/Case/test');
+      return response;
+    } catch (error) {
+      console.error('測試資料庫連接失敗:', error);
       throw error;
     }
   },
