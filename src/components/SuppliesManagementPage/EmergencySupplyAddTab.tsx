@@ -203,7 +203,6 @@ const EmergencySupplyAddTab: React.FC<EmergencySupplyAddTabProps> = ({
       return;
     }
 
-    console.log('緊急物資需求提交:', formData);
     // TODO: 實作物資需求提交邏輯
     alert(`緊急物資需求已成功提交！\n綁定個案：${selectedCase?.name} (${selectedCase?.id})`);
     

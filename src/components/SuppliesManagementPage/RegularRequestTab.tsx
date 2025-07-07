@@ -101,7 +101,7 @@ const RegularRequestTab: React.FC = () => {
   ]);
 
   const handleSearch = () => {
-    console.log('搜尋條件:', { searchType, searchContent });
+    // TODO: 實作搜尋邏輯
   };
 
   const toggleRowExpansion = (id: number) => {

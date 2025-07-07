@@ -1,15 +1,15 @@
-// components/shared/LoadingOverlay.tsx
+// components/shared/LoadingSpinner.tsx
 import { Box } from '@mui/material';
 import { motion } from 'framer-motion';
 import { styled } from '@mui/material/styles';
 import CircularProgress from '@mui/material/CircularProgress';
-import { useTheme } from '@mui/material/styles';
+import { THEME_COLORS } from '../../styles/theme';
 
 /**
  * 載入容器組件
  * 使用 Framer Motion 提供平滑的動畫效果
  */
-const LoadingContainer = styled(motion.div)(({ theme }) => ({
+const LoadingContainer = styled(motion.div)({
   position: 'fixed',
   top: 0,
   left: 0,
@@ -18,9 +18,9 @@ const LoadingContainer = styled(motion.div)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-  backgroundColor: theme.palette.background.paper,
+  backgroundColor: THEME_COLORS.BACKGROUND_CARD,
   zIndex: 9999, // 確保載入畫面在最上層
-}));
+});
 
 /**
  * 載入動畫包裝器
@@ -32,7 +32,7 @@ const LoadingWrapper = styled(Box)({
 });
 
 /**
- * 載入覆蓋層組件 (LoadingOverlay)
+ * 載入旋轉器組件 (LoadingSpinner)
  * 
  * 主要功能：
  * 1. 全屏載入遮罩 - 覆蓋整個螢幕，防止用戶操作
@@ -54,12 +54,10 @@ const LoadingWrapper = styled(Box)({
  * 
  * 使用範例：
  * ```jsx
- * {isLoading && <LoadingOverlay />}
+ * {isLoading && <LoadingSpinner />}
  * ```
  */
-const LoadingOverlay = () => {
-  const theme = useTheme();
-  
+const LoadingSpinner = () => {
   return (
     <LoadingContainer 
       initial={{ opacity: 0 }} 
@@ -70,7 +68,7 @@ const LoadingOverlay = () => {
         <CircularProgress 
           size={80} 
           sx={{ 
-            color: theme.palette.primary.main,
+            color: THEME_COLORS.PRIMARY,
             // 可選：添加脈衝動畫效果
             animation: 'pulse 2s infinite',
             '@keyframes pulse': {
@@ -85,4 +83,4 @@ const LoadingOverlay = () => {
   );
 };
 
-export default LoadingOverlay;
+export default LoadingSpinner;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
+  Card,
   CardContent, 
   Typography, 
   useTheme,
@@ -12,7 +13,6 @@ import {
   Chip
 } from '@mui/material';
 import { PieChart, BarChart } from '@mui/x-charts';
-import { StyledCard } from '../components/shared/StyledCard';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
 import { CalendarEvent } from '../components/CalendarPage';
@@ -27,6 +27,7 @@ import {
   TrendingUp
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../styles/theme';
+import { commonStyles } from '../styles/commonStyles';
 
 /**
  * 儀表板頁面組件
@@ -386,7 +387,7 @@ const Dashboard: React.FC = () => {
           pb: 1,
           borderRadius: '8px 8px 0 0'
         }}>
-          <Typography variant="h6" sx={theme.customTypography.cardTitle}>
+          <Typography variant="h6" sx={commonStyles.cardTitle}>
             通知
           </Typography>
         </Box>
@@ -470,21 +471,25 @@ const Dashboard: React.FC = () => {
               flex: '1 1 auto'
             }}
           >
-            <StyledCard cardType="stat">
+            <Card sx={{ ...commonStyles.statsCard }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Box>
                     <Typography 
-                      color="textSecondary" 
                       gutterBottom
-                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                      sx={{ 
+                        ...commonStyles.cardLabel,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                      }}
                     >
                       {card.title}
                     </Typography>
                     <Typography 
-                      variant="h4" 
                       component="div"
-                      sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
+                      sx={{ 
+                        ...commonStyles.cardValue,
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                      }}
                     >
                       {card.value}
                     </Typography>
@@ -501,7 +506,7 @@ const Dashboard: React.FC = () => {
                   </Box>
                 </Box>
               </CardContent>
-            </StyledCard>
+            </Card>
           </Box>
         ))}
       </Box>
@@ -525,12 +530,12 @@ const Dashboard: React.FC = () => {
             order: { xs: 1, lg: 1 }
           }}
         >
-          <StyledCard>
+          <Card>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Typography 
                 gutterBottom 
                 sx={{
-                  ...theme.customTypography.cardTitle,
+                  ...commonStyles.cardTitle,
                   fontSize: { xs: '1rem', sm: '1.125rem' }
                 }}
               >
@@ -564,7 +569,7 @@ const Dashboard: React.FC = () => {
                 />
               </Box>
             </CardContent>
-          </StyledCard>
+          </Card>
         </Box>
 
 
@@ -581,12 +586,12 @@ const Dashboard: React.FC = () => {
             order: { xs: 2, lg: 2 }
           }}
         >
-          <StyledCard>
+          <Card>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Typography 
                 gutterBottom 
                 sx={{
-                  ...theme.customTypography.cardTitle,
+                  ...commonStyles.cardTitle,
                   fontSize: { xs: '1rem', sm: '1.125rem' }
                 }}
               >
@@ -684,7 +689,7 @@ const Dashboard: React.FC = () => {
                 )}
               </Box>
             </CardContent>
-          </StyledCard>
+          </Card>
         </Box>
 
         {/* 居住地區分布 - 長條圖 */}
@@ -698,12 +703,12 @@ const Dashboard: React.FC = () => {
             order: { xs: 3, lg: 3 }
           }}
         >
-          <StyledCard>
+          <Card>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Typography 
                 gutterBottom 
                 sx={{
-                  ...theme.customTypography.cardTitle,
+                  ...commonStyles.cardTitle,
                   fontSize: { xs: '1rem', sm: '1.125rem' }
                 }}
               >
@@ -757,7 +762,7 @@ const Dashboard: React.FC = () => {
                 />
               </Box>
             </CardContent>
-          </StyledCard>
+          </Card>
         </Box>
       </Box>
 
@@ -776,12 +781,12 @@ const Dashboard: React.FC = () => {
             display: 'flex'
           }}
         >
-          <StyledCard sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Card sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
             <CardContent sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
               <Typography 
                 gutterBottom 
                 sx={{
-                  ...theme.customTypography.cardTitle,
+                  ...commonStyles.cardTitle,
                   fontSize: { xs: '1rem', sm: '1.125rem' }
                 }}
               >
@@ -906,7 +911,7 @@ const Dashboard: React.FC = () => {
                 </Box>
               </Box>
             </CardContent>
-          </StyledCard>
+          </Card>
         </Box>
       </Box>
 

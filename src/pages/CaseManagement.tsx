@@ -10,6 +10,7 @@ import {
   Search,
   Folder,
 } from '@mui/icons-material';
+import { THEME_COLORS } from '../styles/theme';
 import PageContainer from '../components/shared/PageContainer';
 import PageHeader from '../components/shared/PageHeader';
 import AddCaseTab from '../components/CaseManagementPage/AddCaseTab';
@@ -66,28 +67,28 @@ const CaseManagementPage: React.FC = () => {
               fontWeight: 500,
               minHeight: 48,
               minWidth: 120,
-              color: '#6b7280',
+              color: THEME_COLORS.TEXT_MUTED,
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
               gap: 1,
               '&:hover': {
-                color: '#4caf50',
-                bgcolor: 'rgba(76, 175, 80, 0.08)',
+                color: THEME_COLORS.PRIMARY,
+                bgcolor: THEME_COLORS.PRIMARY_TRANSPARENT,
               },
             },
             '& .MuiTabs-indicator': {
-              backgroundColor: '#4caf50',
+              backgroundColor: THEME_COLORS.PRIMARY,
               height: 3,
               borderRadius: '3px 3px 0 0',
             },
             '& .Mui-selected': {
-              color: '#4caf50 !important',
+              color: `${THEME_COLORS.PRIMARY} !important`,
               fontWeight: 600,
-              bgcolor: 'rgba(76, 175, 80, 0.08)',
+              bgcolor: THEME_COLORS.PRIMARY_TRANSPARENT,
             },
             borderBottom: 1,
-            borderColor: '#e5e7eb',
+            borderColor: THEME_COLORS.BORDER_LIGHT,
             mb: 3,
           }}
         >

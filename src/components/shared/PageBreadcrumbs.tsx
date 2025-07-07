@@ -7,6 +7,7 @@ import {
   useTheme 
 } from '@mui/material';
 import { Home } from '@mui/icons-material';
+import { THEME_COLORS } from '../../styles/theme';
 
 interface BreadcrumbItem {
   label: string;
@@ -39,9 +40,9 @@ const PageBreadcrumbs: React.FC<PageBreadcrumbsProps> = ({ items, className }) =
             alignItems: 'center',
             ...theme.customTypography?.legendLabel,
             fontSize: { xs: '0.875rem', sm: '1rem' },
-            color: '#6b7280',
+            color: THEME_COLORS.TEXT_MUTED,
             '&:hover': {
-              color: '#374151',
+              color: THEME_COLORS.TEXT_SECONDARY,
             }
           }}
         >
@@ -64,7 +65,7 @@ const PageBreadcrumbs: React.FC<PageBreadcrumbsProps> = ({ items, className }) =
                   alignItems: 'center',
                   ...theme.customTypography?.legendLabel,
                   fontSize: { xs: '0.875rem', sm: '1rem' },
-                  color: '#374151',
+                  color: THEME_COLORS.TEXT_PRIMARY,
                   fontWeight: 500,
                 }}
               >
@@ -89,9 +90,9 @@ const PageBreadcrumbs: React.FC<PageBreadcrumbsProps> = ({ items, className }) =
                   alignItems: 'center',
                   ...theme.customTypography?.legendLabel,
                   fontSize: { xs: '0.875rem', sm: '1rem' },
-                  color: '#6b7280',
+                  color: THEME_COLORS.TEXT_MUTED,
                   '&:hover': {
-                    color: '#374151',
+                    color: THEME_COLORS.TEXT_SECONDARY,
                   }
                 }}
               >

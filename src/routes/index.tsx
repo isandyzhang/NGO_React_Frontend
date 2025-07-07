@@ -10,7 +10,6 @@ const Dashboard = lazy(() => import('../pages/Dashboard'));
 const CaseManagement = lazy(() => import('../pages/CaseManagement'));
 const SuppliesManagement = lazy(() => import('../pages/SuppliesManagement'));
 const CalendarManagement = lazy(() => import('../pages/CalendarManagement'));
-const TestActivity = lazy(() => import('../pages/TestActivity'));
 const Login = lazy(() => import('../pages/Login'));
 
 /**
@@ -62,7 +61,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'activity-management',
-        element: <ActivityManagement />,
+        element: <PageWithSuspense><ActivityManagement /></PageWithSuspense>,
       },
       {
         path: 'supplies-management',
@@ -71,10 +70,6 @@ const router = createBrowserRouter([
       {
         path: 'calendar-management',
         element: <PageWithSuspense><CalendarManagement /></PageWithSuspense>,
-      },
-      {
-        path: 'test-activity',
-        element: <PageWithSuspense><TestActivity /></PageWithSuspense>,
       },
     ],
   },

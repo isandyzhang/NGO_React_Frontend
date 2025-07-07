@@ -166,7 +166,6 @@ const PendingCaseNeedsList: React.FC<PendingCaseNeedsListProps> = ({
     if (onSelectCase) {
       onSelectCase(record.caseId);
     }
-    console.log('選中個案進行需求填寫:', record);
   };
 
   // 獲取逾期狀態顏色

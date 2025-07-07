@@ -1,5 +1,6 @@
 // 統一的服務入口文件
 export { api } from './api';
+export { authService } from './authService';
 export { caseService } from './caseService';
 export { default as activityService } from './activityService';
 export { default as registrationService } from './registrationService';

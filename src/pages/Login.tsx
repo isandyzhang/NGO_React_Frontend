@@ -13,7 +13,8 @@ import { Visibility, VisibilityOff, AccountCircle, Lock } from '@mui/icons-mater
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { theme } from '../styles/theme';
+import { theme, THEME_COLORS } from '../styles/theme';
+import { commonStyles } from '../styles/commonStyles';
 import { useAuth } from '../hooks/useAuth';
 
 /**
@@ -99,7 +100,7 @@ const Login: React.FC = () => {
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              backgroundColor: theme.palette.background.default,
+              backgroundColor: THEME_COLORS.BACKGROUND_PRIMARY,
               zIndex: 9999,
             }}
           >
@@ -127,7 +128,7 @@ const Login: React.FC = () => {
           backgroundImage: 'url(/images/loginbackground.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundColor: theme.palette.background.default,
+          backgroundColor: THEME_COLORS.BACKGROUND_PRIMARY,
         }}
       >
         {/* 登入卡片容器 */}
@@ -139,7 +140,7 @@ const Login: React.FC = () => {
           sx={{
             display: 'flex',
             flexDirection: 'row',
-            backgroundColor: theme.palette.background.paper,
+            backgroundColor: THEME_COLORS.BACKGROUND_CARD,
             borderRadius: 2,
             boxShadow: 4,
             overflow: 'hidden',
@@ -189,7 +190,7 @@ const Login: React.FC = () => {
               variant="h4" 
               gutterBottom
               sx={{ 
-                color: theme.palette.primary.main,
+                color: THEME_COLORS.PRIMARY,
                 fontWeight: 'bold',
                 textAlign: 'center'
               }}
@@ -220,24 +221,24 @@ const Login: React.FC = () => {
                 
                 sx={{
                   '& .MuiInputLabel-root': {
-                    color: theme.palette.text.secondary,
+                    color: THEME_COLORS.TEXT_SECONDARY,
                   },
                   '& .MuiInputLabel-root.Mui-focused': {
-                    color: theme.palette.primary.main,
+                    color: THEME_COLORS.PRIMARY,
                   },
                   '& .MuiOutlinedInput-root': {
                     '& fieldset': {
-                      borderColor: theme.palette.primary.light,
+                      borderColor: THEME_COLORS.BORDER_LIGHT,
                     },
                     '&:hover fieldset': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: THEME_COLORS.PRIMARY,
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: THEME_COLORS.PRIMARY,
                     },
                   },
                   '& .MuiFormHelperText-root': {
-                    color: theme.palette.text.secondary,
+                    color: THEME_COLORS.TEXT_SECONDARY,
                     fontSize: '0.75rem',
                   },
                 }}
@@ -261,20 +262,20 @@ const Login: React.FC = () => {
                 required
                 sx={{
                   '& .MuiInputLabel-root': {
-                    color: theme.palette.text.secondary,
+                    color: THEME_COLORS.TEXT_SECONDARY,
                   },
                   '& .MuiInputLabel-root.Mui-focused': {
-                    color: theme.palette.primary.main,
+                    color: THEME_COLORS.PRIMARY,
                   },
                   '& .MuiOutlinedInput-root': {
                     '& fieldset': {
-                      borderColor: theme.palette.primary.light,
+                      borderColor: THEME_COLORS.BORDER_LIGHT,
                     },
                     '&:hover fieldset': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: THEME_COLORS.PRIMARY,
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
+                      borderColor: THEME_COLORS.PRIMARY,
                     },
                   },
                 }}
@@ -289,8 +290,7 @@ const Login: React.FC = () => {
                       <IconButton
                         onClick={() => setShowPassword(!showPassword)}
                         edge="end"
-                        sx={{ color: theme.palette.primary.main  
-                         }}
+                        sx={{ color: THEME_COLORS.PRIMARY }}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
@@ -306,16 +306,7 @@ const Login: React.FC = () => {
                 disabled={loading}
                 sx={{ 
                   mt: 3,
-                  backgroundColor: theme.palette.primary.main,
-                  color: '#ffffff',
-                  fontWeight: 'bold',
-                  '&:hover': {
-                    backgroundColor: theme.palette.primary.dark,
-                  },
-                  '&:disabled': {
-                    backgroundColor: theme.palette.text.disabled,
-                    color: theme.palette.text.disabled,
-                  }
+                  ...commonStyles.primaryButton,
                 }}
               >
                 {loading ? '登入中...' : '登入'}
@@ -326,24 +317,26 @@ const Login: React.FC = () => {
               variant="outlined"
               color="primary"
               fullWidth
+              onClick={async () => {
+                setError('');
+                try {
+                  const result = await login('test@example.com', 'test123');
+                  if (result.success) {
+                    navigate('/dashboard');
+                  } else {
+                    setError(result.message);
+                  }
+                } catch (error) {
+                  setError('登入失敗，請稍後再試');
+                }
+              }}
               sx={{ 
                 mt: 2,
-                borderColor: theme.palette.primary.main,
-                color: theme.palette.primary.main,
-                fontWeight: 'bold',
-                '&:hover': {
-                  borderColor: theme.palette.primary.dark,
-                  backgroundColor: theme.palette.primary.light + '10',
-                  color: theme.palette.primary.dark,
-                },
-                '&:disabled': {
-                  borderColor: theme.palette.text.disabled,
-                  color: theme.palette.text.disabled,
-                }
+                ...commonStyles.secondaryButton,
               }}
               disabled={loading}
             >
-              {loading ? '登入中...' : '登入系統'}
+              {loading ? '登入中...' : '測試登入'}
             </Button>
           </Box>
         </Box>

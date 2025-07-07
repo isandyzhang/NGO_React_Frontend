@@ -26,32 +26,39 @@ export interface LoginResponse {
  */
 export const authService = {
   /**
-   * 工作人員登入
+   * 工作人員登入 (測試模式 - 不需要真實後端)
    * @param email 電子郵件
    * @param password 密碼
    * @returns 登入結果
    */
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      const response = await api.post<LoginResponse>('/auth/login', {
-        email,
-        password
-      });
+      // 模擬 API 延遲
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 如果登入成功，儲存工作人員資訊到本地儲存
-      if (response.success && response.worker) {
-        localStorage.setItem('workerInfo', JSON.stringify(response.worker));
-        localStorage.setItem('isAuthenticated', 'true');
-      }
+      // 模擬登入成功，創建測試工作人員資訊
+      const mockWorker: WorkerInfo = {
+        workerId: 1,
+        email: email || 'test@example.com',
+        name: '測試工作人員'
+      };
       
-      return response;
+      // 儲存工作人員資訊到本地儲存
+      localStorage.setItem('workerInfo', JSON.stringify(mockWorker));
+      localStorage.setItem('isAuthenticated', 'true');
+      
+      return {
+        success: true,
+        message: '登入成功',
+        worker: mockWorker
+      };
     } catch (error: any) {
       console.error('登入失敗:', error);
       
       // 回傳錯誤訊息
       return {
         success: false,
-        message: error.response?.data?.message || '登入失敗，請稍後再試'
+        message: '登入失敗，請稍後再試'
       };
     }
   },

@@ -136,7 +136,6 @@ const EmergencyInventoryTab: React.FC = () => {
   ]);
 
   const handleSearch = () => {
-    console.log('搜尋緊急物資:', { searchType, searchContent });
     // TODO: 實作搜尋邏輯
   };
 

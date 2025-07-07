@@ -26,14 +26,10 @@ const RegistrationReviewMain: React.FC = () => {
       setDebugInfo('測試中...');
       
       // 測試個案報名 API
-      console.log('=== 測試個案報名 API ===');
       const caseData = await registrationService.getCaseRegistrations();
-      console.log('個案報名資料:', caseData);
       
       // 測試民眾報名 API
-      console.log('=== 測試民眾報名 API ===');
       const publicData = await registrationService.getPublicRegistrations();
-      console.log('民眾報名資料:', publicData);
       
       setDebugInfo(`個案報名: ${Array.isArray(caseData) ? caseData.length : '非陣列'} 筆，民眾報名: ${Array.isArray(publicData) ? publicData.length : '非陣列'} 筆`);
     } catch (error) {

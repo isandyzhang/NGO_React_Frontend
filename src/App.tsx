@@ -1,4 +1,3 @@
-import React from 'react';
 import { ThemeProvider } from '@mui/material';
 import { theme } from './styles/theme';
 import { AuthProvider } from './hooks/useAuth';

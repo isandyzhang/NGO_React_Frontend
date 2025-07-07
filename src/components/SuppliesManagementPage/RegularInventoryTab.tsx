@@ -125,7 +125,6 @@ const RegularInventoryTab: React.FC = () => {
   ]);
 
   const handleSearch = () => {
-    console.log('搜尋常駐物資:', { searchType, searchContent });
     // TODO: 實作搜尋邏輯
   };
 
