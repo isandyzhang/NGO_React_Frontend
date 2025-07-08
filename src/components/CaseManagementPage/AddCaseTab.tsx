@@ -11,11 +11,9 @@ import {
   Avatar,
   Paper,
   Alert,
-  IconButton,
 } from '@mui/material';
 import {
   PhotoCamera,
-  Delete,
   Save,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';

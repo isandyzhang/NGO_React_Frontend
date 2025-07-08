@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
-  useTheme,
   Alert,
   Snackbar
 } from '@mui/material';
@@ -31,8 +30,6 @@ import { calendarService } from '../services';
  * - 中文本地化顯示
  */
 const CalendarManagement: React.FC = () => {
-  const theme = useTheme();
-
   // 事件資料狀態
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   

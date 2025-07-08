@@ -23,7 +23,6 @@ import {
   Box,
   Tabs,
   Tab,
-  useTheme,
 } from '@mui/material';
 import { 
   EventNote,
@@ -41,7 +40,6 @@ import RegistrationReviewMain from '../components/ActivityManagementPage/Registr
  * 活動管理頁面主組件
  */
 const ActivityManagementPage: React.FC = () => {
-  const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {

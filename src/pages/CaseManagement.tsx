@@ -3,12 +3,10 @@ import {
   Box,
   Tabs,
   Tab,
-  useTheme,
 } from '@mui/material';
 import { 
   PersonAdd,
   Search,
-  Folder,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../styles/theme';
 import PageContainer from '../components/shared/PageContainer';
@@ -25,7 +23,6 @@ import SearchEditCaseTab from '../components/CaseManagementPage/SearchEditCaseTa
  */
 
 const CaseManagementPage: React.FC = () => {
-  const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
