@@ -1,13 +1,13 @@
 // 環境變數配置
 export const config = {
   // API 設定
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5264/api',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://ngobackend-fagef3gxbsfadtct.eastasia-01.azurewebsites.net/api',
   requestTimeout: parseInt(import.meta.env.VITE_REQUEST_TIMEOUT || '10000'),
   
   // 應用程式資訊
   appName: import.meta.env.VITE_APP_NAME || 'NGO個案管理系統',
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
-  appEnv: import.meta.env.VITE_APP_ENV || 'development',
+  appEnv: import.meta.env.VITE_APP_ENV || 'production',
   
   // 檔案上傳設定
   maxFileSize: parseInt(import.meta.env.VITE_MAX_FILE_SIZE || '5242880'), // 5MB
