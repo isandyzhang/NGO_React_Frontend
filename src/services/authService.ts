@@ -45,7 +45,7 @@ export const authService = {
       
       // 儲存工作人員資訊到本地儲存
       localStorage.setItem('workerInfo', JSON.stringify(mockWorker));
-      localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('isAuthenticated', 'true');
       
       return {
         success: true,

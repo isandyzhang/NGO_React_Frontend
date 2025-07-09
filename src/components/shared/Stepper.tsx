@@ -1,0 +1,224 @@
+import React from 'react';
+import {
+  Box,
+  Stepper as MuiStepper,
+  Step,
+  StepLabel,
+  StepContent,
+  Button,
+  Paper,
+  Typography,
+} from '@mui/material';
+import {
+  Check,
+  NavigateNext,
+  NavigateBefore,
+} from '@mui/icons-material';
+import { THEME_COLORS } from '../../styles/theme';
+
+interface Step {
+  label: string;
+  description?: string;
+  content: React.ReactNode;
+}
+
+interface StepperProps {
+  steps: Step[];
+  activeStep: number;
+  onStepChange: (step: number) => void;
+  onNext?: () => void;
+  onBack?: () => void;
+  onFinish?: () => void;
+  showActions?: boolean;
+  canProceed?: boolean;
+}
+
+const Stepper: React.FC<StepperProps> = ({
+  steps,
+  activeStep,
+  onStepChange,
+  onNext,
+  onBack,
+  onFinish,
+  showActions = true,
+  canProceed = true,
+}) => {
+  const handleNext = () => {
+    if (onNext) {
+      onNext();
+    } else {
+      onStepChange(activeStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      onStepChange(activeStep - 1);
+    }
+  };
+
+  const handleFinish = () => {
+    if (onFinish) {
+      onFinish();
+    }
+  };
+
+  return (
+    <Box sx={{ width: '100%' }}>
+      {/* 横向步骤指示器 */}
+      <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'transparent' }}>
+        <MuiStepper 
+          activeStep={activeStep} 
+          alternativeLabel
+          sx={{
+            '& .MuiStepLabel-root .Mui-completed': {
+              color: THEME_COLORS.SUCCESS,
+            },
+            '& .MuiStepLabel-root .Mui-active': {
+              color: THEME_COLORS.PRIMARY,
+            },
+            '& .MuiStepLabel-root .Mui-disabled': {
+              color: THEME_COLORS.TEXT_MUTED,
+            },
+            '& .MuiStepConnector-line': {
+              borderColor: THEME_COLORS.BORDER_LIGHT,
+            },
+            '& .MuiStepConnector-root.Mui-active .MuiStepConnector-line': {
+              borderColor: THEME_COLORS.PRIMARY,
+            },
+            '& .MuiStepConnector-root.Mui-completed .MuiStepConnector-line': {
+              borderColor: THEME_COLORS.SUCCESS,
+            },
+          }}
+        >
+          {steps.map((step, index) => (
+            <Step key={step.label}>
+              <StepLabel
+                StepIconComponent={({ active, completed }) => {
+                  if (completed) {
+                    return (
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          bgcolor: THEME_COLORS.SUCCESS,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                        }}
+                      >
+                        <Check sx={{ fontSize: 20 }} />
+                      </Box>
+                    );
+                  }
+                  return (
+                    <Box
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        bgcolor: active ? THEME_COLORS.PRIMARY : THEME_COLORS.BACKGROUND_SECONDARY,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: active ? 'white' : THEME_COLORS.TEXT_MUTED,
+                        border: active ? 'none' : `2px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                      }}
+                    >
+                      {index + 1}
+                    </Box>
+                  );
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: activeStep === index ? 600 : 400,
+                    color: activeStep === index ? THEME_COLORS.PRIMARY : THEME_COLORS.TEXT_MUTED,
+                  }}
+                >
+                  {step.label}
+                </Typography>
+                {step.description && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: THEME_COLORS.TEXT_MUTED,
+                      display: 'block',
+                      mt: 0.5,
+                    }}
+                  >
+                    {step.description}
+                  </Typography>
+                )}
+              </StepLabel>
+            </Step>
+          ))}
+        </MuiStepper>
+      </Paper>
+
+      {/* 步骤内容 */}
+      <Box sx={{ mt: 3 }}>
+        {steps[activeStep]?.content}
+      </Box>
+
+      {/* 操作按钮 */}
+      {showActions && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+          <Button
+            disabled={activeStep === 0}
+            onClick={handleBack}
+            startIcon={<NavigateBefore />}
+            sx={{
+              color: THEME_COLORS.TEXT_MUTED,
+              '&:hover': {
+                color: THEME_COLORS.PRIMARY,
+              },
+            }}
+          >
+            上一步
+          </Button>
+          
+          <Box>
+            {activeStep === steps.length - 1 ? (
+              <Button
+                variant="contained"
+                onClick={handleFinish}
+                disabled={!canProceed}
+                sx={{
+                  bgcolor: THEME_COLORS.SUCCESS,
+                  '&:hover': {
+                    bgcolor: THEME_COLORS.PRIMARY_DARK,
+                  },
+                }}
+              >
+                完成
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={handleNext}
+                disabled={!canProceed}
+                endIcon={<NavigateNext />}
+                sx={{
+                  bgcolor: THEME_COLORS.PRIMARY,
+                  '&:hover': {
+                    bgcolor: THEME_COLORS.PRIMARY_DARK,
+                  },
+                }}
+              >
+                下一步
+              </Button>
+            )}
+          </Box>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+export default Stepper; 
