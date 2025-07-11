@@ -46,7 +46,6 @@ const CaseManagementPage: React.FC = () => {
   return (
     <PageContainer>
       <PageHeader 
-        showSearch 
         breadcrumbs={[
           { label: '個案資料管理', href: '/case-management' }
         ]}

@@ -39,6 +39,16 @@ export interface ActivityListResponse {
 }
 
 /**
+ * 活動列表分頁回應介面
+ */
+export interface ActivityListPagedResponse {
+  data: Activity[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
  * 活動服務類別
  */
 class ActivityService {
@@ -181,6 +191,44 @@ class ActivityService {
       return response.data;
     } catch (error) {
       console.error('更新活動狀態失敗:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 取得分頁活動
+   */
+  async getActivitiesPaged(
+    page = 1, 
+    pageSize = 10, 
+    searchParams?: {
+      content?: string;
+      status?: string;
+      audience?: string;
+    }
+  ): Promise<ActivityListPagedResponse> {
+    try {
+      const queryParams: any = { page, pageSize };
+      
+      // 添加搜尋參數
+      if (searchParams?.content) {
+        queryParams.content = searchParams.content;
+      }
+      if (searchParams?.status && searchParams.status !== 'all') {
+        queryParams.status = searchParams.status;
+      }
+      if (searchParams?.audience && searchParams.audience !== 'all') {
+        queryParams.audience = searchParams.audience;
+      }
+      
+      console.log('發送查詢參數:', queryParams);
+      
+      const response = await api.get<ActivityListPagedResponse>('/Activity/paged', {
+        params: queryParams
+      });
+      return response;
+    } catch (error) {
+      console.error('取得分頁活動失敗:', error);
       throw error;
     }
   }

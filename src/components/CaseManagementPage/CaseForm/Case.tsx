@@ -19,11 +19,11 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/zh-tw';
-import { commonStyles, getValidationStyle, getSelectValidationStyle, getDatePickerValidationStyle, getResponsiveSpacing } from '../../styles/commonStyles';
-import { THEME_COLORS } from '../../styles/theme';
-import { caseService } from '../../services/caseService';
-import Stepper from '../shared/Stepper';
-import CaseDetailForm from './CaseDetailForm';
+import { commonStyles, getValidationStyle, getSelectValidationStyle, getDatePickerValidationStyle, getResponsiveSpacing } from '../../../styles/commonStyles';
+import { THEME_COLORS } from '../../../styles/theme';
+import { caseService } from '../../../services/caseService';
+import Stepper from '../../shared/Stepper';
+import CaseDetailForm from './CaseDetail';
 
 // 設置 dayjs 為中文
 dayjs.locale('zh-tw');

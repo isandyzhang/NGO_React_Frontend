@@ -112,8 +112,6 @@ const SuppliesManagement: React.FC = () => {
         breadcrumbs={[
           { label: '物資管理', icon: <Inventory sx={{ fontSize: 16 }} /> }
         ]}
-        showSearch={true}
-        searchPlaceholder="搜尋物資、申請記錄..."
       />
 
       {/* 物資類型切換區域 */}

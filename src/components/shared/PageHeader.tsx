@@ -61,7 +61,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   title,
   breadcrumbs,
   showTitle = false,
-  showSearch = true,
+  showSearch = false,
   searchPlaceholder = "Search",
   onSearchChange,
   searchValue = "",
@@ -76,7 +76,6 @@ const PageHeader: React.FC<PageHeaderProps> = ({
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: { xs: 'flex-start', sm: 'center' }, 
-        mb: { xs: 2, sm: 3 },
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 1, sm: 2 }
       }}>

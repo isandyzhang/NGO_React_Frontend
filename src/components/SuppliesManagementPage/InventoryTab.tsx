@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   TextField,
@@ -16,6 +16,8 @@ import {
   IconButton,
   Collapse,
   Typography,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import { 
   Search,
@@ -26,6 +28,7 @@ import { THEME_COLORS } from '../../styles/theme';
 import { 
   getResponsiveSpacing
 } from '../../styles/commonStyles';
+import { supplyService, Supply } from '../../services';
 
 interface SupplyItem {
   id: number;
@@ -52,86 +55,43 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
   const [searchContent, setSearchContent] = useState('');
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
   
-  // 模擬庫存資料
-  const [inventoryData] = useState<SupplyItem[]>([
-    // 常駐物資
-    {
-      id: 1,
-      name: 'A4 白紙',
-      category: '辦公用品',
-      currentStock: 50,
-      unit: '包',
-      location: '倉庫A-01',
-      supplier: '辦公用品商店',
-      cost: 80,
-      supplyType: 'regular',
-      addedDate: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: '清潔用酒精',
-      category: '清潔用品',
-      currentStock: 5,
-      unit: '瓶',
-      location: '倉庫B-03',
-      supplier: '醫療用品公司',
-      cost: 150,
-      supplyType: 'regular',
-      addedDate: '2024-01-14',
-      expiryDate: '2025-01-14'
-    },
-    {
-      id: 4,
-      name: '原子筆',
-      category: '辦公用品',
-      currentStock: 80,
-      unit: '支',
-      location: '倉庫A-02',
-      supplier: '文具批發商',
-      cost: 25,
-      supplyType: 'regular',
-      addedDate: '2024-01-16'
-    },
-    // 緊急物資
-    {
-      id: 3,
-      name: '口罩',
-      category: '緊急醫療用品',
-      currentStock: 2,
-      unit: '盒',
-      location: '倉庫C-01',
-      supplier: '防疫用品商',
-      cost: 300,
-      supplyType: 'emergency',
-      addedDate: '2024-01-13',
-      expiryDate: '2027-01-13'
-    },
-    {
-      id: 5,
-      name: '應急照明燈',
-      category: '照明設備',
-      currentStock: 15,
-      unit: '個',
-      location: '倉庫D-01',
-      supplier: '緊急設備商',
-      cost: 450,
-      supplyType: 'emergency',
-      addedDate: '2024-01-17'
-    },
-    {
-      id: 6,
-      name: '急救包',
-      category: '緊急醫療用品',
-      currentStock: 3,
-      unit: '套',
-      location: '倉庫C-02',
-      supplier: '醫療用品公司',
-      cost: 800,
-      supplyType: 'emergency',
-      addedDate: '2024-01-12',
-      expiryDate: '2026-01-12'
+  // 真實資料狀態
+  const [inventoryData, setInventoryData] = useState<SupplyItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 載入資料
+  useEffect(() => {
+    loadInventoryData();
+  }, [isEmergencySupply]);
+
+  const loadInventoryData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const supplies = await supplyService.getSupplies();
+      const transformedData: SupplyItem[] = supplies.map(supply => ({
+        id: supply.supplyId,
+        name: supply.name,
+        category: supply.categoryName || '未分類',
+        currentStock: supply.currentStock,
+        unit: supply.unit,
+        location: supply.location,
+        supplier: supply.supplier,
+        cost: supply.cost,
+        supplyType: supply.supplyType,
+        addedDate: supply.addedDate,
+        expiryDate: supply.expiryDate,
+      }));
+      setInventoryData(transformedData);
+    } catch (err) {
+      console.error('載入庫存資料失敗:', err);
+      setError('載入資料失敗，請稍後再試');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   // 根據物資類型過濾資料
   const filteredInventoryData = inventoryData.filter(item => 
@@ -216,20 +176,52 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
         </Box>
       </Paper>
 
+      {/* 載入狀態 */}
+      {loading && (
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          py: 4 
+        }}>
+          <CircularProgress />
+          <Typography sx={{ ml: 2 }}>
+            載入{isEmergencySupply ? '緊急' : '常駐'}物資庫存資料中...
+          </Typography>
+        </Box>
+      )}
+
+      {/* 錯誤狀態 */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* 庫存表格 */}
-      <TableContainer component={Paper} elevation={1}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
-              <TableCell sx={{ fontWeight: 600 }}>物品名稱</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>分類</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>庫存量</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>存放位置</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredInventoryData.map((item) => (
+      {!loading && (
+        <TableContainer component={Paper} elevation={1}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
+                <TableCell sx={{ fontWeight: 600 }}>物品名稱</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>分類</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>庫存量</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>存放位置</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredInventoryData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                      目前沒有{isEmergencySupply ? '緊急' : '常駐'}物資庫存
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredInventoryData.map((item) => (
               <React.Fragment key={item.id}>
                 <TableRow hover>
                   <TableCell>{item.name}</TableCell>
@@ -274,11 +266,12 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                     </Collapse>
                   </TableCell>
                 </TableRow>
-              </React.Fragment>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </Box>
   );
 };

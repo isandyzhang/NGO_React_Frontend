@@ -5,6 +5,9 @@ export { caseService } from './caseService';
 export { default as activityService } from './activityService';
 export { default as registrationService } from './registrationService';
 export * as calendarService from './calendarService';
+export { supplyService } from './supplyService';
+export { newsService } from './newsService';
+export { scheduleService } from './scheduleService';
 
 // 類型定義統一導出
 export type {
@@ -31,4 +34,27 @@ export type {
 export type {
   // 行事曆相關類型
   CalendarEvent,
-} from '../components/CalendarPage'; 
+} from '../components/CalendarPage';
+
+export type {
+  // 物資管理相關類型
+  Supply,
+  SupplyCategory,
+  RegularSuppliesNeed,
+  EmergencySupplyNeed,
+  RegularSupplyMatch,
+  EmergencySupplyMatch,
+  CaseOrder,
+  UserOrder,
+  UserOrderDetail,
+} from './supplyService';
+
+export type {
+  // 新聞管理相關類型
+  News,
+} from './newsService';
+
+export type {
+  // 排程管理相關類型
+  Schedule,
+} from './scheduleService'; 

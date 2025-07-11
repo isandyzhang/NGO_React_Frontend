@@ -68,7 +68,6 @@ const ActivityManagementPage: React.FC = () => {
   return (
     <PageContainer>
       <PageHeader 
-        showSearch 
         breadcrumbs={[
           { label: '活動管理', href: '/activity-management' }
         ]}

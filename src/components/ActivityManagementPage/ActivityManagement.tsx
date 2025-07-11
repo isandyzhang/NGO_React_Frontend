@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Paper,
-  Typography,
   TextField,
   Button,
   Table,
@@ -11,32 +10,30 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Chip,
   IconButton,
+  Typography,
   Collapse,
-  CircularProgress,
-  Alert,
-  InputAdornment,
   Avatar,
-  MenuItem,
-  Select,
+  Alert,
+  CircularProgress,
+  Chip,
+  InputAdornment,
   FormControl,
   InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Search,
   Edit,
-  Save,
-  Cancel,
   ExpandMore,
   ExpandLess,
-  LocationOn,
-  Group,
-  AccessTime,
-  Add,
+  Save,
+  Cancel,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
-import activityService, { Activity } from '../../services/activityService';
+import activityService from '../../services/activityService';
+import { Activity } from '../../services/activityService';
 
 interface ActivityRecord extends Activity {
   workerName?: string;
@@ -44,6 +41,8 @@ interface ActivityRecord extends Activity {
 
 const ActivityManagement: React.FC = () => {
   const [searchContent, setSearchContent] = useState('');
+  const [searchStatus, setSearchStatus] = useState<string>('all'); // 搜尋狀態：all, open, close
+  const [searchAudience, setSearchAudience] = useState<string>('all'); // 搜尋對象：all, user, case
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<ActivityRecord | null>(null);
@@ -51,21 +50,17 @@ const ActivityManagement: React.FC = () => {
   const [activityRecords, setActivityRecords] = useState<ActivityRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  
   // 載入活動資料
   const loadActivities = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('開始載入活動資料...');
       const response = await activityService.getActivities();
-      console.log('Service 回應:', response);
-      console.log('活動數量:', response.activities.length);
-      
-      setActivityRecords(response.activities);
+      console.log('API 回應:', response);
+      setActivityRecords(response.activities || []);
     } catch (err) {
-      console.error('載入活動資料錯誤:', err);
+      console.error('載入活動失敗:', err);
       setError(err instanceof Error ? err.message : '載入資料時發生錯誤');
     } finally {
       setLoading(false);
@@ -77,29 +72,36 @@ const ActivityManagement: React.FC = () => {
     loadActivities();
   }, []);
 
-  const handleSearch = async () => {
-    if (!searchContent.trim()) {
-      loadActivities();
-      return;
+  // 篩選活動資料
+  const filteredActivities = useMemo(() => {
+    let filtered = activityRecords;
+
+    // 文字搜尋
+    if (searchContent.trim()) {
+      const searchTerm = searchContent.toLowerCase();
+      filtered = filtered.filter(activity => 
+        activity.activityName.toLowerCase().includes(searchTerm) ||
+        activity.location.toLowerCase().includes(searchTerm) ||
+        activity.description?.toLowerCase().includes(searchTerm)
+      );
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await activityService.getActivities();
-      const filtered = response.activities.filter(activity =>
-        activity.activityName.toLowerCase().includes(searchContent.toLowerCase()) ||
-        activity.location.toLowerCase().includes(searchContent.toLowerCase()) ||
-        activity.description.toLowerCase().includes(searchContent.toLowerCase())
-      );
-      setActivityRecords(filtered);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '搜尋時發生錯誤');
-      console.error('搜尋錯誤:', err);
-    } finally {
-      setLoading(false);
+    // 狀態篩選
+    if (searchStatus !== 'all') {
+      filtered = filtered.filter(activity => activity.status === searchStatus);
     }
+
+    // 對象篩選
+    if (searchAudience !== 'all') {
+      filtered = filtered.filter(activity => activity.targetAudience === searchAudience);
+    }
+
+    return filtered;
+  }, [activityRecords, searchContent, searchStatus, searchAudience]);
+
+  const handleSearch = () => {
+    // 搜尋邏輯已經在 filteredActivities 中處理
+    console.log('執行搜尋，篩選後的結果:', filteredActivities.length);
   };
 
   const toggleRowExpansion = (id: number) => {
@@ -192,7 +194,8 @@ const ActivityManagement: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open': return THEME_COLORS.SUCCESS;
-      case 'close': return THEME_COLORS.ERROR;
+      case 'closed': return THEME_COLORS.ERROR;
+      case 'completed': return THEME_COLORS.INFO;
       default: return THEME_COLORS.TEXT_MUTED;
     }
   };
@@ -226,6 +229,36 @@ const ActivityManagement: React.FC = () => {
             }}
             sx={{ flex: 1, minWidth: 200 }}
           />
+          
+          {/* 狀態篩選 */}
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>狀態</InputLabel>
+            <Select
+              value={searchStatus}
+              onChange={(e) => setSearchStatus(e.target.value)}
+              label="狀態"
+            >
+              <MenuItem value="all">全部狀態</MenuItem>
+              <MenuItem value="open">open</MenuItem>
+              <MenuItem value="closed">closed</MenuItem>
+              <MenuItem value="completed">completed</MenuItem>
+            </Select>
+          </FormControl>
+          
+          {/* 對象篩選 */}
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>對象</InputLabel>
+            <Select
+              value={searchAudience}
+              onChange={(e) => setSearchAudience(e.target.value)}
+              label="對象"
+            >
+              <MenuItem value="all">全部對象</MenuItem>
+              <MenuItem value="public">public</MenuItem>
+              <MenuItem value="case">case</MenuItem>
+            </Select>
+          </FormControl>
+          
           <Button
             variant="contained"
             onClick={handleSearch}
@@ -237,6 +270,15 @@ const ActivityManagement: React.FC = () => {
           </Button>
         </Box>
       </Paper>
+
+      {/* 統計資訊 */}
+      {!loading && (
+        <Paper sx={{ p: 2, mb: 2, bgcolor: THEME_COLORS.BACKGROUND_CARD }}>
+          <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+            共 {activityRecords.length} 筆活動資料，篩選後顯示 {filteredActivities.length} 筆
+          </Typography>
+        </Paper>
+      )}
 
       {/* 資料表格 */}
       <TableContainer component={Paper} sx={{ bgcolor: THEME_COLORS.BACKGROUND_CARD }}>
@@ -253,23 +295,23 @@ const ActivityManagement: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading && activityRecords.length === 0 ? (
+            {loading ? (
               <TableRow>
                 <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
                   <CircularProgress />
                   <Typography sx={{ mt: 2 }}>載入中...</Typography>
                 </TableCell>
               </TableRow>
-            ) : activityRecords.length === 0 ? (
+            ) : (!filteredActivities || filteredActivities.length === 0) ? (
               <TableRow>
                 <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
                   <Typography color="textSecondary">
-                    {searchContent ? '查無符合條件的資料' : '暫無活動資料'}
+                    {searchContent || searchStatus !== 'all' || searchAudience !== 'all' ? '查無符合條件的資料' : '暫無活動資料'}
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              activityRecords.map((record) => (
+              filteredActivities.map((record: ActivityRecord) => (
                 <React.Fragment key={record.activityId}>
                   {/* 主要資料行 */}
                   <TableRow 
@@ -298,7 +340,7 @@ const ActivityManagement: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={record.status === 'open' ? '開放' : '關閉'}
+                        label={record.status}
                         size="small"
                         sx={{
                           backgroundColor: getStatusColor(record.status),
@@ -308,7 +350,7 @@ const ActivityManagement: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={record.targetAudience === 'user' ? '一般使用者' : '個案'}
+                        label={record.targetAudience}
                         size="small"
                         sx={{
                           backgroundColor: getAudienceColor(record.targetAudience),
@@ -346,168 +388,169 @@ const ActivityManagement: React.FC = () => {
                     </TableCell>
                   </TableRow>
 
-                  {/* 詳細資料展開行 */}
-                  <TableRow>
-                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
-                      <Collapse in={expandedRows.includes(record.activityId)} timeout="auto" unmountOnExit>
-                        <Box sx={{ 
-                          margin: 2, 
-                          p: 3, 
-                          bgcolor: THEME_COLORS.BACKGROUND_PRIMARY, 
-                          borderRadius: 2,
-                          border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
-                        }}>
-                          <Typography variant="h6" gutterBottom sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
-                            詳細資料
-                          </Typography>
-                          
-                          {editingRow === record.activityId && editFormData ? (
-                            // 編輯模式
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
-                              <TextField
-                                label="活動名稱"
-                                value={editFormData.activityName}
-                                onChange={(e) => handleEditInputChange('activityName', e.target.value)}
-                                error={fieldErrors.activityName}
-                                helperText={fieldErrors.activityName ? '請輸入活動名稱' : ''}
-                                fullWidth
-                              />
-                              <TextField
-                                label="描述"
-                                value={editFormData.description}
-                                onChange={(e) => handleEditInputChange('description', e.target.value)}
-                                error={fieldErrors.description}
-                                helperText={fieldErrors.description ? '請輸入描述' : ''}
-                                multiline
-                                rows={3}
-                                fullWidth
-                              />
-                              <TextField
-                                label="地點"
-                                value={editFormData.location}
-                                onChange={(e) => handleEditInputChange('location', e.target.value)}
-                                error={fieldErrors.location}
-                                helperText={fieldErrors.location ? '請輸入地點' : ''}
-                                fullWidth
-                              />
-                              <TextField
-                                label="圖片URL"
-                                value={editFormData.imageUrl || ''}
-                                onChange={(e) => handleEditInputChange('imageUrl', e.target.value)}
-                                fullWidth
-                              />
-                              <TextField
-                                label="最大人數"
-                                type="number"
-                                value={editFormData.maxParticipants}
-                                onChange={(e) => handleEditInputChange('maxParticipants', parseInt(e.target.value))}
-                                fullWidth
-                              />
-                              <TextField
-                                label="開始日期"
-                                type="date"
-                                value={formatDateForInput(editFormData.startDate)}
-                                onChange={(e) => handleEditInputChange('startDate', e.target.value)}
-                                error={fieldErrors.startDate}
-                                helperText={fieldErrors.startDate ? '請選擇開始日期' : ''}
-                                fullWidth
-                                InputLabelProps={{ shrink: true }}
-                              />
-                              <TextField
-                                label="結束日期"
-                                type="date"
-                                value={formatDateForInput(editFormData.endDate)}
-                                onChange={(e) => handleEditInputChange('endDate', e.target.value)}
-                                error={fieldErrors.endDate}
-                                helperText={fieldErrors.endDate ? '請選擇結束日期' : ''}
-                                fullWidth
-                                InputLabelProps={{ shrink: true }}
-                              />
-                              <TextField
-                                label="報名截止日"
-                                type="date"
-                                value={formatDateForInput(editFormData.signupDeadline)}
-                                onChange={(e) => handleEditInputChange('signupDeadline', e.target.value)}
-                                fullWidth
-                                InputLabelProps={{ shrink: true }}
-                              />
-                              <FormControl fullWidth>
-                                <InputLabel>對象</InputLabel>
-                                <Select
-                                  value={editFormData.targetAudience}
-                                  onChange={(e) => handleEditInputChange('targetAudience', e.target.value)}
-                                  label="對象"
-                                >
-                                  <MenuItem value="user">一般使用者</MenuItem>
-                                  <MenuItem value="case">個案</MenuItem>
-                                </Select>
-                              </FormControl>
-                              <FormControl fullWidth>
-                                <InputLabel>狀態</InputLabel>
-                                <Select
-                                  value={editFormData.status}
-                                  onChange={(e) => handleEditInputChange('status', e.target.value)}
-                                  label="狀態"
-                                >
-                                  <MenuItem value="open">開放</MenuItem>
-                                  <MenuItem value="close">關閉</MenuItem>
-                                </Select>
-                              </FormControl>
-                            </Box>
-                          ) : (
-                            // 檢視模式
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
-                              <Box>
-                                <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>描述</Typography>
-                                <Typography sx={{ mt: 1 }}>{record.description}</Typography>
+                    {/* 詳細資料展開行 */}
+                    <TableRow>
+                      <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                        <Collapse in={expandedRows.includes(record.activityId)} timeout="auto" unmountOnExit>
+                          <Box sx={{ 
+                            margin: 2, 
+                            p: 3, 
+                            bgcolor: THEME_COLORS.BACKGROUND_PRIMARY, 
+                            borderRadius: 2,
+                            border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                          }}>
+                            <Typography variant="h6" gutterBottom sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
+                              詳細資料
+                            </Typography>
+                            
+                            {editingRow === record.activityId && editFormData ? (
+                              // 編輯模式
+                              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
+                                <TextField
+                                  label="活動名稱"
+                                  value={editFormData.activityName}
+                                  onChange={(e) => handleEditInputChange('activityName', e.target.value)}
+                                  error={fieldErrors.activityName}
+                                  helperText={fieldErrors.activityName ? '請輸入活動名稱' : ''}
+                                  fullWidth
+                                />
+                                <TextField
+                                  label="描述"
+                                  value={editFormData.description}
+                                  onChange={(e) => handleEditInputChange('description', e.target.value)}
+                                  error={fieldErrors.description}
+                                  helperText={fieldErrors.description ? '請輸入描述' : ''}
+                                  multiline
+                                  rows={3}
+                                  fullWidth
+                                />
+                                <TextField
+                                  label="地點"
+                                  value={editFormData.location}
+                                  onChange={(e) => handleEditInputChange('location', e.target.value)}
+                                  error={fieldErrors.location}
+                                  helperText={fieldErrors.location ? '請輸入地點' : ''}
+                                  fullWidth
+                                />
+                                <TextField
+                                  label="圖片URL"
+                                  value={editFormData.imageUrl || ''}
+                                  onChange={(e) => handleEditInputChange('imageUrl', e.target.value)}
+                                  fullWidth
+                                />
+                                <TextField
+                                  label="最大人數"
+                                  type="number"
+                                  value={editFormData.maxParticipants}
+                                  onChange={(e) => handleEditInputChange('maxParticipants', parseInt(e.target.value))}
+                                  fullWidth
+                                />
+                                <TextField
+                                  label="開始日期"
+                                  type="date"
+                                  value={formatDateForInput(editFormData.startDate)}
+                                  onChange={(e) => handleEditInputChange('startDate', e.target.value)}
+                                  error={fieldErrors.startDate}
+                                  helperText={fieldErrors.startDate ? '請選擇開始日期' : ''}
+                                  fullWidth
+                                  InputLabelProps={{ shrink: true }}
+                                />
+                                <TextField
+                                  label="結束日期"
+                                  type="date"
+                                  value={formatDateForInput(editFormData.endDate)}
+                                  onChange={(e) => handleEditInputChange('endDate', e.target.value)}
+                                  error={fieldErrors.endDate}
+                                  helperText={fieldErrors.endDate ? '請選擇結束日期' : ''}
+                                  fullWidth
+                                  InputLabelProps={{ shrink: true }}
+                                />
+                                <TextField
+                                  label="報名截止日"
+                                  type="date"
+                                  value={formatDateForInput(editFormData.signupDeadline)}
+                                  onChange={(e) => handleEditInputChange('signupDeadline', e.target.value)}
+                                  fullWidth
+                                  InputLabelProps={{ shrink: true }}
+                                />
+                                <FormControl fullWidth>
+                                  <InputLabel>對象</InputLabel>
+                                  <Select
+                                    value={editFormData.targetAudience}
+                                    onChange={(e) => handleEditInputChange('targetAudience', e.target.value)}
+                                    label="對象"
+                                  >
+                                    <MenuItem value="public">public</MenuItem>
+                                    <MenuItem value="case">case</MenuItem>
+                                  </Select>
+                                </FormControl>
+                                <FormControl fullWidth>
+                                  <InputLabel>狀態</InputLabel>
+                                  <Select
+                                    value={editFormData.status}
+                                    onChange={(e) => handleEditInputChange('status', e.target.value)}
+                                    label="狀態"
+                                  >
+                                    <MenuItem value="open">open</MenuItem>
+                                    <MenuItem value="closed">closed</MenuItem>
+                                    <MenuItem value="completed">completed</MenuItem>
+                                  </Select>
+                                </FormControl>
                               </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>圖片URL</Typography>
-                                <Typography sx={{ mt: 1 }}>{record.imageUrl || '無'}</Typography>
+                            ) : (
+                              // 檢視模式
+                              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
+                                <Box>
+                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>描述</Typography>
+                                  <Typography sx={{ mt: 1 }}>{record.description}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>圖片URL</Typography>
+                                  <Typography sx={{ mt: 1 }}>{record.imageUrl || '無'}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>最大人數</Typography>
+                                  <Typography sx={{ mt: 1 }}>{record.maxParticipants}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>結束日期</Typography>
+                                  <Typography sx={{ mt: 1 }}>{formatDate(record.endDate)}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>報名截止日</Typography>
+                                  <Typography sx={{ mt: 1 }}>{record.signupDeadline ? formatDate(record.signupDeadline) : '無'}</Typography>
+                                </Box>
                               </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>最大人數</Typography>
-                                <Typography sx={{ mt: 1 }}>{record.maxParticipants}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>結束日期</Typography>
-                                <Typography sx={{ mt: 1 }}>{formatDate(record.endDate)}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>報名截止日</Typography>
-                                <Typography sx={{ mt: 1 }}>{record.signupDeadline ? formatDate(record.signupDeadline) : '無'}</Typography>
-                              </Box>
-                            </Box>
-                          )}
+                            )}
 
-                          {/* 操作按鈕 */}
-                          {editingRow === record.activityId && (
-                            <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'flex-end' }}>
-                              <Button
-                                variant="outlined"
-                                onClick={handleCancel}
-                                startIcon={<Cancel />}
-                              >
-                                取消
-                              </Button>
-                              <Button
-                                variant="contained"
-                                onClick={handleSave}
-                                disabled={loading}
-                                startIcon={loading ? <CircularProgress size={20} /> : <Save />}
-                                sx={{ bgcolor: THEME_COLORS.PRIMARY }}
-                              >
-                                {loading ? '儲存中...' : '儲存'}
-                              </Button>
-                            </Box>
-                          )}
-                        </Box>
-                      </Collapse>
-                    </TableCell>
-                  </TableRow>
-                </React.Fragment>
-              ))
-            )}
+                            {/* 操作按鈕 */}
+                            {editingRow === record.activityId && (
+                              <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'flex-end' }}>
+                                <Button
+                                  variant="outlined"
+                                  onClick={handleCancel}
+                                  startIcon={<Cancel />}
+                                >
+                                  取消
+                                </Button>
+                                <Button
+                                  variant="contained"
+                                  onClick={handleSave}
+                                  disabled={loading}
+                                  startIcon={loading ? <CircularProgress size={20} /> : <Save />}
+                                  sx={{ bgcolor: THEME_COLORS.PRIMARY }}
+                                >
+                                  {loading ? '儲存中...' : '儲存'}
+                                </Button>
+                              </Box>
+                            )}
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
+                ))
+              )}
           </TableBody>
         </Table>
       </TableContainer>

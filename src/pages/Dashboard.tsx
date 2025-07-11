@@ -287,8 +287,6 @@ const Dashboard: React.FC = () => {
         breadcrumbs={[
           { label: '儀表板', icon: <DashboardIcon sx={{ fontSize: 16 }} /> }
         ]}
-        showSearch={true}
-        searchPlaceholder="搜尋個案、志工..."
         rightContent={
           <Box sx={{ 
             display: 'flex', 

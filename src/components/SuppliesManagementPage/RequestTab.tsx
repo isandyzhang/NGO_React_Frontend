@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   TextField,
@@ -27,6 +27,7 @@ import {
   CardContent,
   Divider,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import { 
   Search,
@@ -42,6 +43,7 @@ import {
   getStatusStyle,
   getResponsiveSpacing
 } from '../../styles/commonStyles';
+import { supplyService, RegularSuppliesNeed, EmergencySupplyNeed } from '../../services';
 
 interface SupplyRequest {
   id: number;
@@ -90,184 +92,68 @@ const RequestTab: React.FC<RequestTabProps> = ({
     notes: ''
   });
 
-  // 模擬個案資料庫
-  const caseDatabase = {
-    'CASE001': {
-      name: '張小明',
-      address: '台北市大安區信義路四段123號',
-      phone: '0912-345-678'
-    },
-    'CASE002': {
-      name: '李小花',
-      address: '台北市中山區中山北路二段456號',
-      phone: '0923-456-789'
-    },
-    'CASE003': {
-      name: '王小華',
-      address: '台北市松山區南京東路三段789號',
-      phone: '0934-567-890'
-    },
-    'CASE004': {
-      name: '陳小美',
-      address: '台北市內湖區內湖路一段321號',
-      phone: '0945-678-901'
-    },
-    'CASE005': {
-      name: '王小強',
-      address: '台北市士林區中正路654號',
-      phone: '0956-789-012'
+  // 真實資料狀態
+  const [requestData, setRequestData] = useState<SupplyRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // 載入資料
+  useEffect(() => {
+    loadRequestData();
+  }, [isEmergencySupply]);
+
+  const loadRequestData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (isEmergencySupply) {
+        const emergencyNeeds = await supplyService.getEmergencySupplyNeeds();
+        const transformedData: SupplyRequest[] = emergencyNeeds.map(need => ({
+          id: need.emergencyNeedId,
+          itemName: need.itemName,
+          category: need.category,
+          quantity: need.quantity,
+          unit: need.unit,
+          urgency: need.urgency,
+          requestedBy: need.requestedBy,
+          department: '緊急需求',
+          requestDate: need.requestDate,
+          status: need.status,
+          estimatedCost: need.estimatedCost,
+          supplyType: 'emergency' as const,
+          caseName: need.caseName,
+          caseId: need.caseId,
+        }));
+        setRequestData(transformedData);
+      } else {
+        const regularNeeds = await supplyService.getRegularSuppliesNeeds();
+        const transformedData: SupplyRequest[] = regularNeeds.map(need => ({
+          id: need.needId,
+          itemName: need.itemName,
+          category: need.category,
+          quantity: need.quantity,
+          unit: need.unit,
+          urgency: 'medium' as const, // 常駐物資預設為中等緊急度
+          requestedBy: need.requestedBy,
+          department: '常駐需求',
+          requestDate: need.requestDate,
+          status: need.status,
+          estimatedCost: need.estimatedCost,
+          supplyType: 'regular' as const,
+          caseName: need.caseName,
+          caseId: need.caseId,
+          deliveryMethod: need.deliveryMethod,
+        }));
+        setRequestData(transformedData);
+      }
+    } catch (err) {
+      console.error('載入申請資料失敗:', err);
+      setError('載入資料失敗，請稍後再試');
+    } finally {
+      setLoading(false);
     }
   };
-  
-  // 模擬申請資料
-  const [requestData] = useState<SupplyRequest[]>([
-    // 常駐物資申請
-    {
-      id: 1,
-      itemName: '影印紙',
-      category: '辦公用品',
-      quantity: 10,
-      unit: '包',
-      urgency: 'medium',
-      requestedBy: '張小明',
-      department: '行政部',
-      requestDate: '2024-01-15',
-      status: 'pending',
-      estimatedCost: 800,
-      supplyType: 'regular',
-      caseName: '張小明',
-      caseId: 'CASE001',
-      deliveryMethod: '自取'
-    },
-    {
-      id: 2,
-      itemName: '洗手液',
-      category: '清潔用品',
-      quantity: 5,
-      unit: '瓶',
-      urgency: 'medium',
-      requestedBy: '李小花',
-      department: '社工部',
-      requestDate: '2024-01-14',
-      status: 'approved',
-      estimatedCost: 250,
-      supplyType: 'regular',
-      caseName: '李小花',
-      caseId: 'CASE002',
-      deliveryMethod: '宅配',
-      deliveryAddress: '台北市中山區中山北路二段456號',
-      deliveryPhone: '0923-456-789'
-    },
-    {
-      id: 7,
-      itemName: '文件夾',
-      category: '辦公用品',
-      quantity: 20,
-      unit: '個',
-      urgency: 'low',
-      requestedBy: '王小強',
-      department: '業務部',
-      requestDate: '2024-01-17',
-      status: 'completed',
-      estimatedCost: 400,
-      supplyType: 'regular',
-      caseName: '王小強',
-      caseId: 'CASE005',
-      deliveryMethod: '宅配',
-      deliveryAddress: '台北市士林區中正路654號',
-      deliveryPhone: '0956-789-012'
-    },
-    {
-      id: 8,
-      itemName: '筆記本',
-      category: '辦公用品',
-      quantity: 15,
-      unit: '本',
-      urgency: 'low',
-      requestedBy: '陳小美',
-      department: '財務部',
-      requestDate: '2024-01-19',
-      status: 'pending',
-      estimatedCost: 300,
-      supplyType: 'regular',
-      caseName: '陳小美',
-      caseId: 'CASE004',
-      deliveryMethod: '自取'
-    },
-    // 緊急物資申請
-    {
-      id: 3,
-      itemName: '體溫計',
-      category: '緊急醫療用品',
-      quantity: 2,
-      unit: '個',
-      urgency: 'high',
-      requestedBy: '王小華',
-      department: '醫務室',
-      requestDate: '2024-01-13',
-      status: 'completed',
-      estimatedCost: 600,
-      supplyType: 'emergency',
-      caseName: '張小明',
-      caseId: 'CASE001',
-      deliveryMethod: '宅配',
-      deliveryAddress: '台北市大安區信義路四段123號',
-      deliveryPhone: '0912-345-678'
-    },
-    {
-      id: 4,
-      itemName: '防護面罩',
-      category: '防護設備',
-      quantity: 20,
-      unit: '個',
-      urgency: 'high',
-      requestedBy: '陳小美',
-      department: '安全部',
-      requestDate: '2024-01-16',
-      status: 'approved',
-      estimatedCost: 1200,
-      supplyType: 'emergency',
-      caseName: '李小花',
-      caseId: 'CASE002',
-      deliveryMethod: '自取'
-    },
-    {
-      id: 5,
-      itemName: '應急藥品包',
-      category: '緊急醫療用品',
-      quantity: 3,
-      unit: '套',
-      urgency: 'high',
-      requestedBy: '林小娟',
-      department: '醫務室',
-      requestDate: '2024-01-18',
-      status: 'pending',
-      estimatedCost: 900,
-      supplyType: 'emergency',
-      caseName: '王小華',
-      caseId: 'CASE003',
-      deliveryMethod: '宅配',
-      deliveryAddress: '台北市松山區南京東路三段789號',
-      deliveryPhone: '0934-567-890'
-    },
-    {
-      id: 6,
-      itemName: '急救毯',
-      category: '救援工具',
-      quantity: 10,
-      unit: '條',
-      urgency: 'medium',
-      requestedBy: '黃小明',
-      department: '救援隊',
-      requestDate: '2024-01-19',
-      status: 'rejected',
-      estimatedCost: 500,
-      supplyType: 'emergency',
-      caseName: '陳小美',
-      caseId: 'CASE004',
-      deliveryMethod: '自取'
-    }
-  ]);
 
   // 根據物資類型過濾資料
   const filteredRequestData = requestData.filter(request => 
@@ -348,14 +234,12 @@ const RequestTab: React.FC<RequestTabProps> = ({
   const handleDeliveryMethodChange = (value: 'pickup' | 'delivery') => {
     setDeliveryMethod(value);
     
-    // 如果选择宅配且有caseID，自动填入地址和电话
-    if (value === 'delivery' && selectedRequest?.caseId) {
-      const caseData = caseDatabase[selectedRequest.caseId as keyof typeof caseDatabase];
-      if (caseData) {
-        setDeliveryAddress(caseData.address);
-        setDeliveryPhone(caseData.phone);
+          // 如果选择宅配且有caseID，自动填入地址和电话
+      if (value === 'delivery' && selectedRequest?.caseId) {
+        // 暫時清空地址和電話，等待真實API資料
+        setDeliveryAddress('');
+        setDeliveryPhone('');
       }
-    }
   };
 
   // 手動媒合相關處理函數
@@ -487,26 +371,58 @@ const RequestTab: React.FC<RequestTabProps> = ({
         </Box>
       </Paper>
 
+      {/* 載入狀態 */}
+      {loading && (
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          py: 4 
+        }}>
+          <CircularProgress />
+          <Typography sx={{ ml: 2 }}>
+            載入{isEmergencySupply ? '緊急' : '常駐'}物資申請資料中...
+          </Typography>
+        </Box>
+      )}
+
+      {/* 錯誤狀態 */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* 申請表格 */}
-      <TableContainer component={Paper} elevation={1}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
-              <TableCell sx={{ fontWeight: 600 }}>申請人</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>物品名稱</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>分類</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>數量</TableCell>
-              {/* 只有緊急物資才顯示緊急程度 */}
-              {isEmergencySupply && (
-                <TableCell sx={{ fontWeight: 600 }}>緊急程度</TableCell>
-              )}
-              <TableCell sx={{ fontWeight: 600 }}>申請時間</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>狀態</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredRequestData.map((request) => (
+      {!loading && (
+        <TableContainer component={Paper} elevation={1}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
+                <TableCell sx={{ fontWeight: 600 }}>申請人</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>物品名稱</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>分類</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>數量</TableCell>
+                {/* 只有緊急物資才顯示緊急程度 */}
+                {isEmergencySupply && (
+                  <TableCell sx={{ fontWeight: 600 }}>緊急程度</TableCell>
+                )}
+                <TableCell sx={{ fontWeight: 600 }}>申請時間</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>狀態</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredRequestData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={isEmergencySupply ? 8 : 7} sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                      目前沒有{isEmergencySupply ? '緊急' : '常駐'}物資申請
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredRequestData.map((request) => (
               <React.Fragment key={request.id}>
                 <TableRow hover>
                   <TableCell>
@@ -1045,11 +961,12 @@ const RequestTab: React.FC<RequestTabProps> = ({
                     </Collapse>
                   </TableCell>
                 </TableRow>
-              </React.Fragment>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {/* 批准申請Modal */}
       <Modal
@@ -1212,7 +1129,7 @@ const RequestTab: React.FC<RequestTabProps> = ({
                   placeholder="請輸入聯絡電話"
                 />
                 
-                {selectedRequest?.caseId && caseDatabase[selectedRequest.caseId as keyof typeof caseDatabase] && (
+                {selectedRequest?.caseId && (
                   <Typography variant="caption" sx={{ 
                     mt: 1, 
                     display: 'block',

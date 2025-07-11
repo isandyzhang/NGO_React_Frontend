@@ -137,8 +137,6 @@ const CalendarManagement: React.FC = () => {
         breadcrumbs={[
           { label: '行事曆管理', icon: <Event sx={{ fontSize: 16 }} /> }
         ]}
-        showSearch={true}
-        searchPlaceholder="搜尋行程、活動..."
       />
 
       {/* 主要內容區域 */}

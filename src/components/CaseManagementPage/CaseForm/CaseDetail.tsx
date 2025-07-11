@@ -13,8 +13,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/zh-tw';
-import { THEME_COLORS } from '../../styles/theme';
-import { getValidationStyle, getSelectValidationStyle, getDatePickerValidationStyle } from '../../styles/commonStyles';
+import { THEME_COLORS } from '../../../styles/theme';
+import { getValidationStyle, getSelectValidationStyle, getDatePickerValidationStyle } from '../../../styles/commonStyles';
 
 // 設置 dayjs 為中文
 dayjs.locale('zh-tw');
