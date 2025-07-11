@@ -27,6 +27,7 @@ import { Add, Event, Person, Business, School, PersonAdd, Home, Phone, LocationO
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../../styles/commonStyles';
+import { CalendarEvent } from '../../services/scheduleService';
 
 // 配置中文本地化
 const locales = {
@@ -40,26 +41,6 @@ const localizer = dateFnsLocalizer({
   getDay,
   locales,
 });
-
-// 事件類型定義
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  type: 'meeting' | 'activity' | 'case-visit' | 'training' | 'other';
-  description?: string;
-  participants?: string[];
-  // 個案訪問相關欄位
-  caseId?: string;
-  isNewCase?: boolean;
-  caseInfo?: {
-    name: string;
-    phone: string;
-    address: string;
-  };
-  supplyNeedsDeadline?: Date; // 物資需求填寫截止日期
-}
 
 // 事件類型配置 - 使用主題顏色
 const eventTypes = {

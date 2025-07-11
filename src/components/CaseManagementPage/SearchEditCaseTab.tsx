@@ -33,6 +33,7 @@ import {
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { caseService, CaseResponse } from '../../services/caseService';
+import { formatDate } from '../../utils/dateHelper';
 
 interface CaseRecord {
   caseId: number;
@@ -187,9 +188,7 @@ const SearchEditCaseTab: React.FC = () => {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('zh-TW');
-  };
+
 
   // 選項資料
   const genderOptions = ['男', '女'];

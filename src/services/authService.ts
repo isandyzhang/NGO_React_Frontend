@@ -39,7 +39,7 @@ export const authService = {
       // 模擬登入成功，創建測試工作人員資訊
       const mockWorker: WorkerInfo = {
         workerId: 1,
-        email: email || 'test@example.com',
+        email: email || 'worker@ngo.org',
         name: '測試工作人員'
       };
       

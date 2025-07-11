@@ -44,11 +44,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null); // 清除之前的錯誤
       
       // TODO: 實作真正的 Azure AD 登入邏輯
-      // 目前使用模擬用戶資料進行測試
+      // 目前使用預設工作者資料
       const mockUser: User = {
         id: '1',
-        displayName: 'Test User',
-        email: 'test@example.com',
+        displayName: '社工',
+        email: 'worker@ngo.org',
         roles: ['user'],
       };
       

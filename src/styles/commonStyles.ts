@@ -172,6 +172,40 @@ export const commonStyles = {
     },
   },
   
+  /** 同意按鈕 - 用於批准、同意等正面操作 */
+  approveButton: {
+    bgcolor: THEME_COLORS.SUCCESS,
+    color: 'white !important',
+    fontSize: '1rem',
+    fontWeight: 600,
+    minWidth: 80,
+    '&:hover': {
+      bgcolor: THEME_COLORS.SUCCESS,
+      color: 'white !important',
+    },
+    '&:disabled': {
+      bgcolor: THEME_COLORS.DISABLED_BG,
+      color: THEME_COLORS.DISABLED_TEXT,
+    },
+  },
+
+  /** 不同意按鈕 - 用於拒絕、不同意等否定操作 */
+  rejectButton: {
+    bgcolor: THEME_COLORS.ERROR,
+    color: 'white !important',
+    fontSize: '1rem',
+    fontWeight: 600,
+    minWidth: 80,
+    '&:hover': {
+      bgcolor: THEME_COLORS.ERROR,
+      color: 'white !important',
+    },
+    '&:disabled': {
+      bgcolor: THEME_COLORS.DISABLED_BG,
+      color: THEME_COLORS.DISABLED_TEXT,
+    },
+  },
+  
   /** 次要按鈕 - 用於取消、返回等次要操作 */
   secondaryButton: {
     bgcolor: 'transparent',

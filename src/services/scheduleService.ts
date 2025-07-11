@@ -1,60 +1,75 @@
 import { api } from './api';
 
 /**
- * 排程介面
+ * 排程介面 - 匹配後端 Schedule 模型
  */
 export interface Schedule {
   scheduleId: number;
-  title: string;
-  description?: string;
+  workerId: number;
+  caseId?: number;
+  description: string;
+  startTime: string; // ISO 8601 格式
+  endTime: string;   // ISO 8601 格式
+  priority: string;  // 優先順序：高、中、低
+  status: string;    // 狀態：進行中、已完成、已取消
+  
+  // 關聯查詢可選欄位
+  workerName?: string;
+  caseName?: string;
+  caseEmail?: string;
+}
+
+/**
+ * 建立排程請求模型
+ */
+export interface CreateScheduleRequest {
+  workerId: number;
+  caseId?: number;
+  description: string;
   startTime: string;
   endTime: string;
-  location?: string;
-  workerId: number;
+  priority?: string;
+  status?: string;
+}
+
+/**
+ * 更新排程請求模型
+ */
+export interface UpdateScheduleRequest {
+  caseId?: number;
+  description?: string;
+  startTime?: string;
+  endTime?: string;
+  priority?: string;
+  status?: string;
+}
+
+/**
+ * 排程詳細資訊 DTO
+ */
+export interface ScheduleDto {
+  scheduleId: number;
+  description?: string;
+  startTime?: string;
+  endTime?: string;
+  priority?: string;
+  status?: string;
   workerName?: string;
-  status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high';
-  category?: string;
-  attendees?: string[];
-  notes?: string;
+  caseEmail?: string;
 }
 
 /**
  * 排程服務類別
  */
 class ScheduleService {
-  /**
-   * 取得所有排程
-   */
-  async getSchedules(): Promise<Schedule[]> {
-    try {
-      const response = await api.get<Schedule[]>('/Schedule');
-      return response;
-    } catch (error) {
-      console.error('取得排程列表失敗:', error);
-      throw error;
-    }
-  }
 
-  /**
-   * 根據ID取得排程
-   */
-  async getScheduleById(id: number): Promise<Schedule> {
-    try {
-      const response = await api.get<Schedule>(`/Schedule/${id}`);
-      return response;
-    } catch (error) {
-      console.error(`取得排程 ${id} 失敗:`, error);
-      throw error;
-    }
-  }
 
   /**
    * 根據工作者ID取得排程
    */
   async getSchedulesByWorker(workerId: number): Promise<Schedule[]> {
     try {
-      const response = await api.get<Schedule[]>(`/Schedule/worker/${workerId}`);
+      const response = await api.get<Schedule[]>(`/schedule/worker/${workerId}`);
       return response;
     } catch (error) {
       console.error(`取得工作者 ${workerId} 排程失敗:`, error);
@@ -63,27 +78,18 @@ class ScheduleService {
   }
 
   /**
-   * 根據日期範圍取得排程
-   */
-  async getSchedulesByDateRange(startDate: string, endDate: string): Promise<Schedule[]> {
-    try {
-      const response = await api.get<Schedule[]>('/Schedule/range', {
-        startDate,
-        endDate
-      });
-      return response;
-    } catch (error) {
-      console.error('取得日期範圍排程失敗:', error);
-      throw error;
-    }
-  }
-
-  /**
    * 新增排程
    */
-  async createSchedule(scheduleData: Partial<Schedule>): Promise<Schedule> {
+  async createSchedule(scheduleData: CreateScheduleRequest): Promise<Schedule> {
     try {
-      const response = await api.post<Schedule>('/Schedule', scheduleData);
+      // 設定預設值
+      const defaultData = {
+        priority: '中',
+        status: '進行中',
+        ...scheduleData
+      };
+      
+      const response = await api.post<Schedule>('/schedule', defaultData);
       return response;
     } catch (error) {
       console.error('新增排程失敗:', error);
@@ -94,9 +100,9 @@ class ScheduleService {
   /**
    * 更新排程
    */
-  async updateSchedule(id: number, scheduleData: Partial<Schedule>): Promise<void> {
+  async updateSchedule(id: number, scheduleData: UpdateScheduleRequest): Promise<void> {
     try {
-      await api.put<void>(`/Schedule/${id}`, scheduleData);
+      await api.put<void>(`/schedule/${id}`, scheduleData);
     } catch (error) {
       console.error(`更新排程 ${id} 失敗:`, error);
       throw error;
@@ -108,7 +114,7 @@ class ScheduleService {
    */
   async deleteSchedule(id: number): Promise<void> {
     try {
-      await api.delete<void>(`/Schedule/${id}`);
+      await api.delete<void>(`/schedule/${id}`);
     } catch (error) {
       console.error(`刪除排程 ${id} 失敗:`, error);
       throw error;
@@ -116,16 +122,79 @@ class ScheduleService {
   }
 
   /**
-   * 更新排程狀態
+   * 將 Schedule 轉換為 CalendarEvent 格式
    */
-  async updateScheduleStatus(id: number, status: Schedule['status']): Promise<void> {
-    try {
-      await api.patch<void>(`/Schedule/${id}/status`, { status });
-    } catch (error) {
-      console.error(`更新排程狀態 ${id} 失敗:`, error);
-      throw error;
-    }
+  convertToCalendarEvent(schedule: Schedule): CalendarEvent {
+    return {
+      id: schedule.scheduleId.toString(),
+      title: schedule.description,
+      start: new Date(schedule.startTime),
+      end: new Date(schedule.endTime),
+      type: 'other', // 可以根據需要調整
+      description: schedule.description,
+      priority: schedule.priority,
+      status: schedule.status,
+      workerId: schedule.workerId,
+      caseId: schedule.caseId?.toString(), // 轉換為字符串類型
+      workerName: schedule.workerName,
+      caseName: schedule.caseName,
+    };
   }
+
+  /**
+   * 將 CalendarEvent 轉換為 CreateScheduleRequest 格式
+   */
+  convertToCreateRequest(event: CalendarEvent, workerId: number): CreateScheduleRequest {
+    return {
+      workerId,
+      caseId: event.caseId ? parseInt(event.caseId) : undefined, // 轉換為數字類型
+      description: event.title,
+      startTime: event.start.toISOString(),
+      endTime: event.end.toISOString(),
+      priority: event.priority || '中',
+      status: event.status || '進行中',
+    };
+  }
+
+  /**
+   * 將 CalendarEvent 轉換為 UpdateScheduleRequest 格式
+   */
+  convertToUpdateRequest(event: CalendarEvent): UpdateScheduleRequest {
+    return {
+      caseId: event.caseId ? parseInt(event.caseId) : undefined, // 轉換為數字類型
+      description: event.title,
+      startTime: event.start.toISOString(),
+      endTime: event.end.toISOString(),
+      priority: event.priority,
+      status: event.status,
+    };
+  }
+}
+
+// 行事曆事件介面（用於前端顯示）- 匹配 CalendarPage 組件的接口
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  type: 'meeting' | 'activity' | 'case-visit' | 'training' | 'other';
+  description?: string;
+  participants?: string[];
+  // 個案訪問相關欄位
+  caseId?: string; // 與 CalendarPage 保持一致，使用 string 類型
+  isNewCase?: boolean;
+  caseInfo?: {
+    name: string;
+    phone: string;
+    address: string;
+  };
+  supplyNeedsDeadline?: Date;
+  // 後端相關欄位
+  priority?: string;
+  status?: string;
+  workerId?: number;
+  workerName?: string;
+  caseName?: string;
 }
 
 export const scheduleService = new ScheduleService(); 

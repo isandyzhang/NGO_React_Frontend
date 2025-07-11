@@ -182,7 +182,7 @@ const PendingCaseNeedsList: React.FC<PendingCaseNeedsListProps> = ({
     return `還有 ${Math.abs(daysOverdue)} 天`;
   };
 
-  // 格式化日期
+  // 專用的簡短日期格式化函數
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('zh-TW', {
@@ -191,6 +191,8 @@ const PendingCaseNeedsList: React.FC<PendingCaseNeedsListProps> = ({
       weekday: 'short',
     });
   };
+
+
 
   return (
     <Paper sx={{ 

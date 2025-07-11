@@ -313,31 +313,7 @@ const Login: React.FC = () => {
               </Button>
             </form>
 
-            <Button
-              variant="outlined"
-              color="primary"
-              fullWidth
-              onClick={async () => {
-                setError('');
-                try {
-                  const result = await login('test@example.com', 'test123');
-                  if (result.success) {
-                    navigate('/dashboard');
-                  } else {
-                    setError(result.message);
-                  }
-                } catch (error) {
-                  setError('登入失敗，請稍後再試');
-                }
-              }}
-              sx={{ 
-                mt: 2,
-                ...commonStyles.secondaryButton,
-              }}
-              disabled={loading}
-            >
-              {loading ? '登入中...' : '測試登入'}
-            </Button>
+
           </Box>
         </Box>
       </Box>

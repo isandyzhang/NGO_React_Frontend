@@ -15,7 +15,7 @@ import {
 import { PieChart, BarChart } from '@mui/x-charts';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
-import { CalendarEvent } from '../components/CalendarPage';
+import { CalendarEvent } from '../services/scheduleService';
 import { calendarService, caseService, activityService, authService } from '../services';
 import { 
   People, 
@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../styles/theme';
 import { commonStyles } from '../styles/commonStyles';
+import { formatDate as formatDateHelper, isToday, isTomorrow } from '../utils/dateHelper';
 
 /**
  * 儀表板頁面組件
@@ -85,7 +86,7 @@ const Dashboard: React.FC = () => {
    * @returns 格式化後的中文日期字串
    */
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('zh-TW', {
+    return formatDateHelper(date, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -237,10 +238,9 @@ const Dashboard: React.FC = () => {
    */
   const formatEventDateTime = (date: Date) => {
     const eventDate = new Date(date);
-    const today = new Date();
     
     // 格式化日期
-    const dateStr = eventDate.toLocaleDateString('zh-TW', {
+    const dateStr = formatDateHelper(eventDate, {
       month: 'short',
       day: 'numeric',
     });
@@ -252,14 +252,11 @@ const Dashboard: React.FC = () => {
       hour12: false
     });
     
-    // 判斷是否為今天
-    const isToday = eventDate.toDateString() === today.toDateString();
-    const isTomorrow = eventDate.toDateString() === new Date(today.getTime() + 24 * 60 * 60 * 1000).toDateString();
-    
+    // 使用工具函數判斷相對日期
     let displayDate = dateStr;
-    if (isToday) {
+    if (isToday(eventDate)) {
       displayDate = '今天';
-    } else if (isTomorrow) {
+    } else if (isTomorrow(eventDate)) {
       displayDate = '明天';
     }
     

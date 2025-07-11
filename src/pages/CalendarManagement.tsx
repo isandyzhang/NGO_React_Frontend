@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Alert,
-  Snackbar
+  Snackbar,
+  Tabs,
+  Tab,
+  Typography
 } from '@mui/material';
 import { 
   Event
 } from '@mui/icons-material';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
-import CalendarComponent, { CalendarEvent } from '../components/CalendarPage';
-import { calendarService } from '../services';
+import CalendarComponent from '../components/CalendarPage';
+import { scheduleService, CalendarEvent } from '../services/scheduleService';
 
 /**
  * 行事曆管理頁面組件
@@ -30,6 +33,9 @@ import { calendarService } from '../services';
  * - 中文本地化顯示
  */
 const CalendarManagement: React.FC = () => {
+  // 標籤頁狀態
+  const [tabValue, setTabValue] = useState(0);
+  
   // 事件資料狀態
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   
@@ -49,8 +55,11 @@ const CalendarManagement: React.FC = () => {
    */
   const loadEventsFromDatabase = async () => {
     try {
-      const events = await calendarService.getAllEvents();
-      setEvents(events);
+      // 使用測試端點載入所有排程，或使用特定工作者ID
+      const workerId = 1; // 這裡可以從用戶狀態中獲取
+      const schedules = await scheduleService.getSchedulesByWorker(workerId);
+      const calendarEvents = schedules.map(schedule => scheduleService.convertToCalendarEvent(schedule));
+      setEvents(calendarEvents);
       showSnackbar('已載入行事曆資料', 'success');
     } catch (error) {
       console.error('載入事件失敗:', error);
@@ -74,7 +83,10 @@ const CalendarManagement: React.FC = () => {
    */
   const handleEventCreate = async (eventData: Omit<CalendarEvent, 'id'>) => {
     try {
-      const newEvent = await calendarService.createEvent(eventData);
+      const workerId = 1; // 這裡可以從用戶狀態中獲取
+      const createRequest = scheduleService.convertToCreateRequest(eventData as CalendarEvent, workerId);
+      const newSchedule = await scheduleService.createSchedule(createRequest);
+      const newEvent = scheduleService.convertToCalendarEvent(newSchedule);
       setEvents(prevEvents => [...prevEvents, newEvent]);
       showSnackbar(`成功新增事件：${newEvent.title}`, 'success');
     } catch (error) {
@@ -88,13 +100,14 @@ const CalendarManagement: React.FC = () => {
    */
   const handleEventUpdate = async (updatedEvent: CalendarEvent) => {
     try {
-      const result = await calendarService.updateEvent(updatedEvent);
+      const updateRequest = scheduleService.convertToUpdateRequest(updatedEvent);
+      await scheduleService.updateSchedule(parseInt(updatedEvent.id), updateRequest);
       setEvents(prevEvents =>
         prevEvents.map(event =>
-          event.id === result.id ? result : event
+          event.id === updatedEvent.id ? updatedEvent : event
         )
       );
-      showSnackbar(`成功更新事件：${result.title}`, 'success');
+      showSnackbar(`成功更新事件：${updatedEvent.title}`, 'success');
     } catch (error) {
       console.error('更新事件失敗:', error);
       showSnackbar('更新事件失敗，請稍後再試', 'error');
@@ -107,16 +120,12 @@ const CalendarManagement: React.FC = () => {
   const handleEventDelete = async (eventId: string) => {
     try {
       const eventToDelete = events.find(event => event.id === eventId);
-      const success = await calendarService.deleteEvent(eventId);
+      await scheduleService.deleteSchedule(parseInt(eventId));
       
-      if (success) {
-        setEvents(prevEvents =>
-          prevEvents.filter(event => event.id !== eventId)
-        );
-        showSnackbar(`成功刪除事件：${eventToDelete?.title || ''}`, 'success');
-      } else {
-        showSnackbar('刪除事件失敗', 'error');
-      }
+      setEvents(prevEvents =>
+        prevEvents.filter(event => event.id !== eventId)
+      );
+      showSnackbar(`成功刪除事件：${eventToDelete?.title || ''}`, 'success');
     } catch (error) {
       console.error('刪除事件失敗:', error);
       showSnackbar('刪除事件失敗，請稍後再試', 'error');
@@ -139,14 +148,33 @@ const CalendarManagement: React.FC = () => {
         ]}
       />
 
+      {/* 標籤頁導航 */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={(_, newValue) => setTabValue(newValue)}
+          aria-label="行事曆管理標籤頁"
+        >
+          <Tab 
+            icon={<Event />} 
+            label="行事曆" 
+            iconPosition="start"
+          />
+        </Tabs>
+      </Box>
+
       {/* 主要內容區域 */}
-      <Box sx={{ mt: 2, height: 'calc(100vh - 200px)', minHeight: 600 }}>
-        <CalendarComponent
-          events={events}
-          onEventCreate={handleEventCreate}
-          onEventUpdate={handleEventUpdate}
-          onEventDelete={handleEventDelete}
-        />
+      <Box sx={{ mt: 2, height: 'calc(100vh - 280px)', minHeight: 600 }}>
+        {tabValue === 0 && (
+          <CalendarComponent
+            events={events}
+            onEventCreate={handleEventCreate}
+            onEventUpdate={handleEventUpdate}
+            onEventDelete={handleEventDelete}
+          />
+        )}
+        
+
       </Box>
 
       {/* 操作結果提示訊息 */}

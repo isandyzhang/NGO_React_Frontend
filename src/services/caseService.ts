@@ -170,16 +170,7 @@ export const caseService = {
     }
   },
 
-  // 測試資料庫連接
-  testConnection: async (): Promise<any> => {
-    try {
-      const response = await api.get('/Case/test');
-      return response;
-    } catch (error) {
-      console.error('測試資料庫連接失敗:', error);
-      throw error;
-    }
-  },
+
 };
 
 export default caseService; 

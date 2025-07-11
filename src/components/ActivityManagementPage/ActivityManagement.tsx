@@ -34,6 +34,7 @@ import {
 import { THEME_COLORS } from '../../styles/theme';
 import activityService from '../../services/activityService';
 import { Activity } from '../../services/activityService';
+import { formatDate, formatDateForInput } from '../../utils/dateHelper';
 
 interface ActivityRecord extends Activity {
   workerName?: string;
@@ -179,16 +180,7 @@ const ActivityManagement: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('zh-TW');
-  };
 
-  // 格式化日期為 YYYY-MM-DD 格式（用於 input[type="date"]）
-  const formatDateForInput = (dateString: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
-  };
 
   // 狀態標籤顏色
   const getStatusColor = (status: string) => {

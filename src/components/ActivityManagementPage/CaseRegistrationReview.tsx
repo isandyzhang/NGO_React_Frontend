@@ -12,10 +12,14 @@ import {
   TableHead,
   TableRow,
   Chip,
-  IconButton,
   CircularProgress,
   Alert,
   InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
 } from '@mui/material';
 import {
   Search,
@@ -24,6 +28,7 @@ import {
   Refresh,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
+import { commonStyles } from '../../styles/commonStyles';
 import registrationService, { CaseRegistration } from '../../services/registrationService';
 
 const CaseRegistrationReview: React.FC = () => {
@@ -33,6 +38,19 @@ const CaseRegistrationReview: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
+  
+  // 確認對話框狀態
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    registrationId: number | null;
+    action: 'approve' | 'reject' | null;
+    registrationName: string;
+  }>({
+    open: false,
+    registrationId: null,
+    action: null,
+    registrationName: ''
+  });
 
   // 載入個案報名資料
   const loadRegistrations = async () => {
@@ -40,33 +58,71 @@ const CaseRegistrationReview: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('載入個案報名資料...');
+      console.log('🔄 開始載入個案報名資料...');
       const data = await registrationService.getCaseRegistrations();
-      console.log('個案報名資料:', data);
-      console.log('第一筆資料結構:', data[0]);
-      console.log('資料欄位:', data[0] ? Object.keys(data[0]) : '無資料');
+      console.log('📦 API回應原始資料:', data);
+      console.log('📦 資料類型:', typeof data);
+      console.log('📦 是否為陣列:', Array.isArray(data));
       
       if (Array.isArray(data)) {
-        // 驗證資料完整性
-        const validData = data.filter(item => {
-          const isValid = item && typeof item.Id !== 'undefined' && item.Id !== null;
-          if (!isValid) {
-            console.warn('發現無效的資料項目:', item);
-          }
-          return isValid;
-        });
+        console.log('📊 資料長度:', data.length);
         
-        console.log(`原始資料: ${data.length} 筆，有效資料: ${validData.length} 筆`);
+        if (data.length > 0) {
+          console.log('📋 第一筆資料:', data[0]);
+          console.log('🔍 第一筆資料欄位:', Object.keys(data[0]));
+          console.log('🔍 第一筆資料值:', Object.values(data[0]));
+        }
+        
+        // 資料驗證和轉換
+        const validData = data.map((item: any, index) => {
+          console.log(`🔍 處理第${index + 1}筆資料:`, item);
+          
+          // 檢查必需欄位 - 支援小寫和大寫兩種格式
+          const hasRequiredFields = item && (
+            (typeof item.Id !== 'undefined' && item.Id !== null) || 
+            (typeof item.id !== 'undefined' && item.id !== null)
+          ) && (
+            item.CaseName || item.caseName
+          ) && (
+            item.ActivityName || item.activityName
+          ) && (
+            item.Status || item.status
+          );
+          
+          if (!hasRequiredFields) {
+            console.warn(`⚠️ 資料項目${index + 1}缺少必要欄位:`, item);
+            return null;
+          }
+          
+          // 確保資料格式正確 - 統一轉換成大寫開頭格式
+          const normalizedItem = {
+            Id: Number(item.Id || item.id),
+            CaseName: String(item.CaseName || item.caseName || '未知個案'),
+            ActivityName: String(item.ActivityName || item.activityName || '未知活動'),
+            Status: String(item.Status || item.status || 'Pending')
+          };
+          
+          console.log(`✅ 標準化後的資料項目${index + 1}:`, normalizedItem);
+          return normalizedItem;
+        }).filter(item => item !== null) as CaseRegistration[];
+        
+        console.log('✅ 有效資料筆數:', validData.length);
+        console.log('✅ 最終資料:', validData);
         
         setRegistrations(validData);
         setFilteredRegistrations(validData);
+        
+        if (validData.length === 0) {
+          console.log('ℹ️ 沒有有效的個案報名資料');
+        }
       } else {
-        console.warn('個案報名資料格式不正確');
+        console.error('❌ API回應不是陣列格式:', data);
         setRegistrations([]);
         setFilteredRegistrations([]);
+        setError('API回應格式不正確');
       }
     } catch (err) {
-      console.error('載入個案報名資料錯誤:', err);
+      console.error('❌ 載入個案報名資料錯誤:', err);
       setError(err instanceof Error ? err.message : '載入資料時發生錯誤');
     } finally {
       setLoading(false);
@@ -92,33 +148,57 @@ const CaseRegistrationReview: React.FC = () => {
     setFilteredRegistrations(filtered);
   };
 
-  // 處理狀態更新
-  const handleStatusUpdate = async (id: number, status: string) => {
+  // 開啟確認對話框
+  const handleOpenConfirmDialog = (id: number, action: 'approve' | 'reject', registrationName: string) => {
+    setConfirmDialog({
+      open: true,
+      registrationId: id,
+      action,
+      registrationName
+    });
+  };
+
+  // 關閉確認對話框
+  const handleCloseConfirmDialog = () => {
+    setConfirmDialog({
+      open: false,
+      registrationId: null,
+      action: null,
+      registrationName: ''
+    });
+  };
+
+  // 確認並執行狀態更新
+  const handleConfirmStatusUpdate = async () => {
+    if (!confirmDialog.registrationId || !confirmDialog.action) return;
+
     try {
-      setProcessingIds(prev => new Set(prev).add(id));
+      setProcessingIds(prev => new Set(prev).add(confirmDialog.registrationId!));
       
-      await registrationService.updateCaseRegistrationStatus(id, status);
+      const status = confirmDialog.action === 'approve' ? 'Approved' : 'Cancelled';
+      await registrationService.updateCaseRegistrationStatus(confirmDialog.registrationId, status);
       
       // 更新本地狀態
       setRegistrations(prev => 
         prev.map(reg => 
-          reg.Id === id ? { ...reg, Status: status } : reg
+          reg.Id === confirmDialog.registrationId ? { ...reg, Status: status } : reg
         )
       );
       setFilteredRegistrations(prev => 
         prev.map(reg => 
-          reg.Id === id ? { ...reg, Status: status } : reg
+          reg.Id === confirmDialog.registrationId ? { ...reg, Status: status } : reg
         )
       );
       
-      alert(`個案報名已${status === 'Approved' ? '批准' : '拒絕'}`);
+      alert(`個案報名已${status === 'Approved' ? '同意' : '不同意'}`);
+      handleCloseConfirmDialog();
     } catch (err) {
       console.error('更新狀態失敗:', err);
       alert('更新狀態失敗，請稍後再試');
     } finally {
       setProcessingIds(prev => {
         const newSet = new Set(prev);
-        newSet.delete(id);
+        newSet.delete(confirmDialog.registrationId!);
         return newSet;
       });
     }
@@ -126,23 +206,62 @@ const CaseRegistrationReview: React.FC = () => {
 
   // 狀態標籤顏色
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Approved': return THEME_COLORS.SUCCESS;
-      case 'Cancelled': return THEME_COLORS.ERROR;
-      case 'Pending': return THEME_COLORS.WARNING;
-      default: return THEME_COLORS.TEXT_MUTED;
+    const normalizedStatus = status.toLowerCase();
+    switch (normalizedStatus) {
+      case 'approved': 
+      case '已同意':
+      case '已審核':
+        return THEME_COLORS.SUCCESS;
+      case 'cancelled': 
+      case 'rejected':
+      case '已不同意':
+      case '取消報名':
+      case '已取消':
+        return THEME_COLORS.ERROR;
+      case 'pending':
+      case '待審核':
+      case '已報名':
+      case 'registered':
+        return THEME_COLORS.WARNING;
+      default: 
+        return THEME_COLORS.TEXT_MUTED;
     }
   };
 
   // 狀態標籤文字
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'Approved': return '已批准';
-      case 'Cancelled': return '已拒絕';
-      case 'Pending': return '待審核';
-      default: return status;
+    const normalizedStatus = status.toLowerCase();
+    switch (normalizedStatus) {
+      case 'approved': 
+      case '已同意':
+      case '已審核':
+        return '已同意';
+      case 'cancelled': 
+      case 'rejected':
+      case '已不同意':
+      case '取消報名':
+      case '已取消':
+        return '已不同意';
+      case 'pending':
+      case '待審核':
+      case '已報名':
+      case 'registered':
+        return '待審核';
+      default: 
+        return status;
     }
   };
+
+  // 調試資訊顯示
+  const debugInfo = {
+    registrationsCount: registrations.length,
+    filteredCount: filteredRegistrations.length,
+    loading,
+    error,
+    hasData: filteredRegistrations.length > 0
+  };
+
+  console.log('🎯 渲染狀態:', debugInfo);
 
   return (
     <Box>
@@ -175,16 +294,26 @@ const CaseRegistrationReview: React.FC = () => {
             onClick={handleSearch}
             disabled={loading}
             startIcon={<Search />}
-            sx={{ minWidth: 100, bgcolor: THEME_COLORS.PRIMARY }}
+            sx={{ 
+              minWidth: 100, 
+              bgcolor: THEME_COLORS.SUCCESS,
+              color: 'white',
+              '&:hover': { bgcolor: THEME_COLORS.SUCCESS }
+            }}
           >
             查詢
           </Button>
           <Button
-            variant="outlined"
+            variant="contained"
             onClick={loadRegistrations}
             disabled={loading}
             startIcon={loading ? <CircularProgress size={20} /> : <Refresh />}
-            sx={{ minWidth: 100 }}
+            sx={{ 
+              minWidth: 100,
+              bgcolor: THEME_COLORS.SUCCESS,
+              color: 'white',
+              '&:hover': { bgcolor: THEME_COLORS.SUCCESS }
+            }}
           >
             重新載入
           </Button>
@@ -250,43 +379,54 @@ const CaseRegistrationReview: React.FC = () => {
                   </TableCell>
                   <TableCell sx={{ textAlign: 'center' }}>
                     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                      {registration.Status === 'Pending' && (
-                        <>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            onClick={() => handleStatusUpdate(registration.Id, 'Approved')}
-                            disabled={processingIds.has(registration.Id)}
-                            startIcon={processingIds.has(registration.Id) ? <CircularProgress size={16} /> : <Check />}
-                            sx={{ 
-                              bgcolor: THEME_COLORS.SUCCESS,
-                              '&:hover': { bgcolor: THEME_COLORS.SUCCESS },
-                              minWidth: 80
-                            }}
-                          >
-                            批准
-                          </Button>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            onClick={() => handleStatusUpdate(registration.Id, 'Cancelled')}
-                            disabled={processingIds.has(registration.Id)}
-                            startIcon={processingIds.has(registration.Id) ? <CircularProgress size={16} /> : <Close />}
-                            sx={{ 
-                              bgcolor: THEME_COLORS.ERROR,
-                              '&:hover': { bgcolor: THEME_COLORS.ERROR },
-                              minWidth: 80
-                            }}
-                          >
-                            拒絕
-                          </Button>
-                        </>
-                      )}
-                      {registration.Status !== 'Pending' && (
-                        <Typography variant="body2" color={THEME_COLORS.TEXT_SECONDARY}>
-                          已處理
-                        </Typography>
-                      )}
+                      {(() => {
+                        const normalizedStatus = registration.Status.toLowerCase();
+                        const isPending = normalizedStatus === 'pending' || 
+                                        normalizedStatus === '待審核' || 
+                                        normalizedStatus === '已報名' || 
+                                        normalizedStatus === 'registered';
+                        
+                        console.log('🎯 按鈕邏輯判斷:', { 
+                          原始狀態: registration.Status, 
+                          標準化狀態: normalizedStatus, 
+                          是否待審核: isPending 
+                        });
+                        
+                        return isPending ? (
+                          <>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() => handleOpenConfirmDialog(registration.Id, 'approve', `${registration.CaseName} - ${registration.ActivityName}`)}
+                              disabled={processingIds.has(registration.Id)}
+                              startIcon={processingIds.has(registration.Id) ? <CircularProgress size={16} /> : <Check />}
+                              sx={{ 
+                                ...commonStyles.approveButton,
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              同意
+                            </Button>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() => handleOpenConfirmDialog(registration.Id, 'reject', `${registration.CaseName} - ${registration.ActivityName}`)}
+                              disabled={processingIds.has(registration.Id)}
+                              startIcon={processingIds.has(registration.Id) ? <CircularProgress size={16} /> : <Close />}
+                              sx={{ 
+                                ...commonStyles.rejectButton,
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              不同意
+                            </Button>
+                          </>
+                        ) : (
+                          <Typography variant="body2" color={THEME_COLORS.TEXT_SECONDARY}>
+                            已處理
+                          </Typography>
+                        );
+                      })()}
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -295,6 +435,46 @@ const CaseRegistrationReview: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* 確認對話框 */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={handleCloseConfirmDialog}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">
+          確認操作
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-dialog-description">
+            您確定要{confirmDialog.action === 'approve' ? '同意' : '不同意'}以下報名嗎？
+            <br />
+            <strong>{confirmDialog.registrationName}</strong>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={handleCloseConfirmDialog}
+            variant="contained"
+            sx={{
+              ...commonStyles.secondaryButton
+            }}
+          >
+            取消
+          </Button>
+          <Button 
+            onClick={handleConfirmStatusUpdate} 
+            variant="contained"
+            autoFocus
+            sx={{
+              ...(confirmDialog.action === 'approve' ? commonStyles.approveButton : commonStyles.rejectButton)
+            }}
+          >
+            確定{confirmDialog.action === 'approve' ? '同意' : '不同意'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
