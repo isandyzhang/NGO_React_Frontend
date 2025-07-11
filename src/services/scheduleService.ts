@@ -17,6 +17,7 @@ export interface Schedule {
   workerName?: string;
   caseName?: string;
   caseEmail?: string;
+  eventType: string;
 }
 
 /**
@@ -130,7 +131,7 @@ class ScheduleService {
       title: schedule.description,
       start: new Date(schedule.startTime),
       end: new Date(schedule.endTime),
-      type: 'other', // 可以根據需要調整
+      type: schedule.eventType as CalendarEvent['type'],
       description: schedule.description,
       priority: schedule.priority,
       status: schedule.status,
