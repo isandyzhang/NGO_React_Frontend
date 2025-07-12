@@ -100,6 +100,7 @@ const CalendarManagement: React.FC = () => {
    */
   const handleEventUpdate = async (updatedEvent: CalendarEvent) => {
     try {
+      console.log('Updating event:', updatedEvent);
       const updateRequest = scheduleService.convertToUpdateRequest(updatedEvent);
       await scheduleService.updateSchedule(parseInt(updatedEvent.id), updateRequest);
       setEvents(prevEvents =>

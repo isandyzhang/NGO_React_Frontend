@@ -18,6 +18,7 @@ export interface Schedule {
   caseName?: string;
   caseEmail?: string;
   eventType: string;
+  eventName: string;
 }
 
 /**
@@ -31,6 +32,7 @@ export interface CreateScheduleRequest {
   endTime: string;
   priority?: string;
   status?: string;
+  eventName?: string;
 }
 
 /**
@@ -43,6 +45,8 @@ export interface UpdateScheduleRequest {
   endTime?: string;
   priority?: string;
   status?: string;
+  eventName?: string;
+  eventType?: string; // 活動類型
 }
 
 /**
@@ -57,6 +61,7 @@ export interface ScheduleDto {
   status?: string;
   workerName?: string;
   caseEmail?: string;
+  eventName?: string;
 }
 
 /**
@@ -70,7 +75,7 @@ class ScheduleService {
    */
   async getSchedulesByWorker(workerId: number): Promise<Schedule[]> {
     try {
-      const response = await api.get<Schedule[]>(`/schedule/worker/${workerId}`);
+      const response = await api.get<Schedule[]>(`/schedule/select/${workerId}`);
       return response;
     } catch (error) {
       console.error(`取得工作者 ${workerId} 排程失敗:`, error);
@@ -126,21 +131,21 @@ class ScheduleService {
    * 將 Schedule 轉換為 CalendarEvent 格式
    */
   convertToCalendarEvent(schedule: Schedule): CalendarEvent {
-    return {
-      id: schedule.scheduleId.toString(),
-      title: schedule.description,
-      start: new Date(schedule.startTime),
-      end: new Date(schedule.endTime),
-      type: schedule.eventType as CalendarEvent['type'],
-      description: schedule.description,
-      priority: schedule.priority,
-      status: schedule.status,
-      workerId: schedule.workerId,
-      caseId: schedule.caseId?.toString(), // 轉換為字符串類型
-      workerName: schedule.workerName,
-      caseName: schedule.caseName,
-    };
-  }
+  return {
+    id: schedule.scheduleId.toString(),
+    title: schedule.eventName,
+    start: new Date(schedule.startTime),
+    end: new Date(schedule.endTime),
+    type: schedule.eventType as CalendarEvent['type'],
+    description: schedule.description,
+    priority: schedule.priority,
+    status: schedule.status,
+    workerId: schedule.workerId,
+    caseId: schedule.caseId?.toString(), // 轉換為字符串類型
+    workerName: schedule.workerName,
+    caseName: schedule.caseName,
+  };
+}
 
   /**
    * 將 CalendarEvent 轉換為 CreateScheduleRequest 格式
@@ -160,16 +165,18 @@ class ScheduleService {
   /**
    * 將 CalendarEvent 轉換為 UpdateScheduleRequest 格式
    */
-  convertToUpdateRequest(event: CalendarEvent): UpdateScheduleRequest {
-    return {
-      caseId: event.caseId ? parseInt(event.caseId) : undefined, // 轉換為數字類型
-      description: event.title,
-      startTime: event.start.toISOString(),
-      endTime: event.end.toISOString(),
-      priority: event.priority,
-      status: event.status,
-    };
-  }
+convertToUpdateRequest(event: CalendarEvent): UpdateScheduleRequest {
+  return {
+    caseId: event.caseId ? parseInt(event.caseId) : undefined,
+    description: event.description, 
+    eventType: event.type,          
+    eventName: event.title,     
+    startTime: event.start.toISOString(),
+    endTime: event.end.toISOString(),
+    priority: event.priority,
+    status: event.status,
+  };
+}
 }
 
 // 行事曆事件介面（用於前端顯示）- 匹配 CalendarPage 組件的接口
@@ -196,6 +203,8 @@ export interface CalendarEvent {
   workerId?: number;
   workerName?: string;
   caseName?: string;
+  eventType?: string; // 活動類型
+  eventName?: string; // 活動名稱
 }
 
 export const scheduleService = new ScheduleService(); 
