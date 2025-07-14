@@ -44,6 +44,7 @@ import {
   getResponsiveSpacing
 } from '../../styles/commonStyles';
 import { supplyService, RegularSuppliesNeed, EmergencySupplyNeed } from '../../services';
+import { formatDateForInput } from '../../utils/dateHelper';
 
 interface SupplyRequest {
   id: number;
@@ -252,7 +253,7 @@ const RequestTab: React.FC<RequestTabProps> = ({
     const matchingItem = {
       ...newMatchingItem,
       id: Date.now(),
-      matchedDate: new Date().toISOString().split('T')[0]
+      matchedDate: formatDateForInput(new Date())
     };
 
     setMatchingItems(prev => ({

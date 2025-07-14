@@ -39,6 +39,7 @@ import {
   getStatusStyle,
   getResponsiveSpacing
 } from '../../styles/commonStyles';
+import { formatDateForInput } from '../../utils/dateHelper';
 
 interface EmergencySupplyRequest {
   id: number;
@@ -144,7 +145,7 @@ const EmergencyRequestTab: React.FC = () => {
     const matchingItem = {
       ...newMatchingItem,
       id: Date.now(),
-      matchedDate: new Date().toISOString().split('T')[0]
+      matchedDate: formatDateForInput(new Date())
     };
 
     setMatchingItems(prev => ({

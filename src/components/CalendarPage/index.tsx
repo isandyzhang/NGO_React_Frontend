@@ -28,6 +28,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../../styles/commonStyles';
 import { CalendarEvent } from '../../services/scheduleService';
+import { formatDateForInput } from '../../utils/dateHelper';
 
 // 配置中文本地化
 const locales = {
@@ -113,8 +114,8 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
   // 表單資料
   const [formData, setFormData] = useState<NewEventForm>({
     title: '',
-    start: new Date().toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0],
+    start: formatDateForInput(new Date()),
+    end: formatDateForInput(new Date()),
     startTime: '09:00',
     endTime: '10:00',
     type: 'other',
@@ -133,7 +134,7 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
    * 重置表單
    */
   const resetForm = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatDateForInput(new Date());
     setFormData({
       title: '',
       start: today,
@@ -158,8 +159,9 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
   const handleAddEvent = useCallback((slotInfo?: { start: Date; end: Date }) => {
     resetForm();
     if (slotInfo) {
-      const startDate = slotInfo.start.toISOString().split('T')[0];
-      const endDate = slotInfo.end.toISOString().split('T')[0];
+      // 使用本地時間格式化函數，避免時區問題
+      const startDate = formatDateForInput(slotInfo.start);
+      const endDate = formatDateForInput(slotInfo.end);
       setFormData(prev => ({
         ...prev,
         start: startDate,
@@ -176,8 +178,8 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
     setSelectedEvent(event);
     setFormData({
       title: event.title,
-      start: event.start.toISOString().split('T')[0],
-      end: event.end.toISOString().split('T')[0],
+      start: formatDateForInput(event.start),
+      end: formatDateForInput(event.end),
       startTime: format(event.start, 'HH:mm'),
       endTime: format(event.end, 'HH:mm'),
       type: event.type,
