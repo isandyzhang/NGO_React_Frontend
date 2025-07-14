@@ -104,12 +104,22 @@ export interface CaseListResponse {
   pageSize: number;
 }
 
+export interface PagedResponse<T> {
+  data: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
 // 個案管理 API 服務
 export const caseService = {
-  // 獲取所有個案
-  getAllCases: async (): Promise<CaseResponse[]> => {
+  // 獲取所有個案（支援分頁）
+  getAllCases: async (page: number = 1, pageSize: number = 10): Promise<PagedResponse<CaseResponse>> => {
     try {
-      const response = await api.get<CaseResponse[]>('/Case');
+      const response = await api.get<PagedResponse<CaseResponse>>('/Case', { page, pageSize });
       return response;
     } catch (error) {
       console.error('獲取案例列表失敗:', error);
