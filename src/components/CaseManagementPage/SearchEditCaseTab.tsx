@@ -20,6 +20,10 @@ import {
   Typography,
   CircularProgress,
   Alert,
+  Pagination,
+  Stack,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import { 
   Search,
@@ -65,17 +69,57 @@ const SearchEditCaseTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 分頁相關狀態
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // 筛选条件状态
+  const [ageRange, setAgeRange] = useState<{min: number | null, max: number | null}>({min: null, max: null});
+  const [selectedCity, setSelectedCity] = useState<string>('');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
+
   // 載入案例資料
-  const loadCases = async () => {
+  const loadCases = async (page: number = 1) => {
     try {
       setLoading(true);
       setError(null);
       
-      const data = await caseService.getAllCases();
-      setCaseRecords(data);
+      console.log('開始載入案例資料，頁碼:', page);
+      const response = await caseService.getAllCases(page, pageSize);
+      console.log('API 回應:', response);
+      
+      // 處理 PagedResponse<CaseResponse> 格式
+      const transformedData: CaseRecord[] = response.data.map(item => ({
+        caseId: item.caseId,
+        name: item.name,
+        gender: item.gender,
+        birthday: item.birthday,
+        identityNumber: item.identityNumber,
+        phone: item.phone,
+        city: item.city,
+        district: item.district,
+        address: item.address,
+        email: item.email,
+        description: item.description,
+        createdAt: item.createdAt,
+        status: item.status,
+        profileImage: item.profileImage,
+        detailAddress: item.detailAddress,
+        workerName: item.workerName
+      }));
+      
+      // 应用筛选条件
+      const filteredData = filterCases(transformedData);
+      setCaseRecords(filteredData);
+      setTotalCount(filteredData.length);
+      setTotalPages(Math.ceil(filteredData.length / pageSize));
+      setCurrentPage(response.page);
     } catch (err) {
       setError(err instanceof Error ? err.message : '載入資料時發生錯誤');
       console.error('載入案例資料錯誤:', err);
+      setCaseRecords([]); // 確保在錯誤時設置為空陣列
     } finally {
       setLoading(false);
     }
@@ -86,9 +130,47 @@ const SearchEditCaseTab: React.FC = () => {
     loadCases();
   }, []);
 
+  // 当筛选条件改变时重新筛选
+  useEffect(() => {
+    if (caseRecords.length > 0) {
+      handleSearch();
+    }
+  }, [ageRange, selectedCity, selectedDifficulty]);
+
+  // 筛选函数
+  const filterCases = (cases: CaseRecord[]) => {
+    return cases.filter(caseRecord => {
+      // 年龄筛选
+      if (ageRange.min !== null || ageRange.max !== null) {
+        if (caseRecord.birthday) {
+          const birthDate = new Date(caseRecord.birthday);
+          const today = new Date();
+          const age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+          
+          if (ageRange.min !== null && actualAge < ageRange.min) return false;
+          if (ageRange.max !== null && actualAge > ageRange.max) return false;
+        }
+      }
+
+      // 城市筛选
+      if (selectedCity && caseRecord.city !== selectedCity) {
+        return false;
+      }
+
+      // 困难类型筛选 (假设困难类型存储在description中)
+      if (selectedDifficulty && !caseRecord.description.includes(selectedDifficulty)) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+
   const handleSearch = async () => {
     if (!searchContent.trim()) {
-      loadCases();
+      loadCases(1);
       return;
     }
 
@@ -96,11 +178,99 @@ const SearchEditCaseTab: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const response = await caseService.searchCases({ query: searchContent });
-      setCaseRecords(response.data);
+      const response = await caseService.searchCases({ 
+        query: searchContent, 
+        page: 1, 
+        pageSize 
+      });
+      
+      // 轉換搜尋結果為 CaseRecord[] 格式
+      const transformedData: CaseRecord[] = response.data.map(item => ({
+        caseId: item.caseId,
+        name: item.name,
+        gender: item.gender,
+        birthday: item.birthday,
+        identityNumber: item.identityNumber,
+        phone: item.phone,
+        city: item.city,
+        district: item.district,
+        address: item.address,
+        email: item.email,
+        description: item.description,
+        createdAt: item.createdAt,
+        status: item.status,
+        profileImage: item.profileImage,
+        detailAddress: item.detailAddress,
+        workerName: item.workerName
+      }));
+      
+      // 应用筛选条件
+      const filteredData = filterCases(transformedData);
+      setCaseRecords(filteredData);
+      setTotalCount(filteredData.length);
+      setTotalPages(Math.ceil(filteredData.length / pageSize));
+      setCurrentPage(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : '搜尋時發生錯誤');
       console.error('搜尋錯誤:', err);
+      setCaseRecords([]); // 確保在錯誤時設置為空陣列
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 處理分頁變更
+  const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
+    if (searchContent.trim()) {
+      // 如果有搜尋內容，執行搜尋分頁
+      handleSearchPage(page);
+    } else {
+      // 否則載入一般分頁
+      loadCases(page);
+    }
+  };
+
+  // 搜尋分頁
+  const handleSearchPage = async (page: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('開始搜尋分頁，關鍵字:', searchContent, '頁碼:', page);
+      const response = await caseService.searchCases({ 
+        query: searchContent, 
+        page, 
+        pageSize 
+      });
+      
+      // 轉換搜尋結果為 CaseRecord[] 格式
+      const transformedData: CaseRecord[] = response.data.map(item => ({
+        caseId: item.caseId,
+        name: item.name,
+        gender: item.gender,
+        birthday: item.birthday,
+        identityNumber: item.identityNumber,
+        phone: item.phone,
+        city: item.city,
+        district: item.district,
+        address: item.address,
+        email: item.email,
+        description: item.description,
+        createdAt: item.createdAt,
+        status: item.status,
+        profileImage: item.profileImage,
+        detailAddress: item.detailAddress,
+        workerName: item.workerName
+      }));
+      
+      setCaseRecords(transformedData);
+      setTotalCount(response.total);
+      setTotalPages(response.totalPages);
+      setCurrentPage(response.page);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '搜尋分頁時發生錯誤');
+      console.error('搜尋分頁錯誤:', err);
+      setCaseRecords([]);
     } finally {
       setLoading(false);
     }
@@ -244,7 +414,8 @@ const SearchEditCaseTab: React.FC = () => {
 
       {/* 搜尋區域 */}
       <Paper sx={{ p: 2, mb: 3, bgcolor: THEME_COLORS.BACKGROUND_CARD }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* 第一行：关键字搜索 */}
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 2 }}>
           <TextField
             placeholder={`請輸入關鍵字`}
             value={searchContent}
@@ -267,6 +438,85 @@ const SearchEditCaseTab: React.FC = () => {
             sx={{ minWidth: 100, bgcolor: THEME_COLORS.PRIMARY }}
           >
             {loading ? '搜尋中...' : '查詢'}
+          </Button>
+        </Box>
+
+        {/* 第二行：筛选条件 */}
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* 年龄范围 */}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, minWidth: 60 }}>
+              年齡範圍:
+            </Typography>
+            <TextField
+              type="number"
+              placeholder="最小"
+              value={ageRange.min || ''}
+              onChange={(e) => setAgeRange(prev => ({...prev, min: e.target.value ? parseInt(e.target.value) : null}))}
+              size="small"
+              sx={{ width: 80 }}
+            />
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>-</Typography>
+            <TextField
+              type="number"
+              placeholder="最大"
+              value={ageRange.max || ''}
+              onChange={(e) => setAgeRange(prev => ({...prev, max: e.target.value ? parseInt(e.target.value) : null}))}
+              size="small"
+              sx={{ width: 80 }}
+            />
+          </Box>
+
+          {/* 居住城市 */}
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>居住城市</InputLabel>
+            <Select
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+              label="居住城市"
+            >
+              <MenuItem value="">全部城市</MenuItem>
+              {Object.keys(districtOptions).map(city => (
+                <MenuItem key={city} value={city}>{city}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* 困难类型 */}
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>困難類型</InputLabel>
+            <Select
+              value={selectedDifficulty}
+              onChange={(e) => setSelectedDifficulty(e.target.value)}
+              label="困難類型"
+            >
+              <MenuItem value="">全部類型</MenuItem>
+              {difficultyOptions.map(difficulty => (
+                <MenuItem key={difficulty} value={difficulty}>{difficulty}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* 清除筛选按钮 */}
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setAgeRange({min: null, max: null});
+              setSelectedCity('');
+              setSelectedDifficulty('');
+              loadCases(1);
+            }}
+            sx={{ 
+              minWidth: 80,
+              borderColor: THEME_COLORS.BORDER_DEFAULT,
+              color: THEME_COLORS.TEXT_SECONDARY,
+              '&:hover': {
+                borderColor: THEME_COLORS.PRIMARY,
+                backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
+              }
+            }}
+          >
+            清除篩選
           </Button>
         </Box>
       </Paper>
@@ -596,6 +846,24 @@ const SearchEditCaseTab: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* 分頁控制 */}
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Stack spacing={2}>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              color="primary"
+              size="large"
+              showFirstButton
+              showLastButton
+              disabled={loading}
+            />
+          </Stack>
+        </Box>
+      )}
     </Box>
   );
 };

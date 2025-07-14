@@ -76,6 +76,7 @@ export const THEME_COLORS = {
   // 語義化的狀態色彩，提供直觀的視覺反饋
   SUCCESS: '#4caf50',                   // 成功色 - 綠色系，與主色保持一致
   SUCCESS_LIGHT: '#f1f8e9',             // 淺成功色 - 用於背景高亮
+  SUCCESS_DARK: '#2e7d32',              // 深成功色 - 用於文字和強調
   ERROR: '#f44336',                     // 錯誤色 - 紅色系，警示作用
   ERROR_DARK: '#d32f2f',                // 深錯誤色 - 用於 hover 效果
   ERROR_LIGHT: '#ffebee',               // 淺錯誤色 - 用於背景提示
