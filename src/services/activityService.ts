@@ -196,6 +196,63 @@ class ActivityService {
   }
 
   /**
+   * 上傳圖片到 Azure Blob Storage
+   */
+  async uploadImage(formData: FormData): Promise<{ imageUrl: string }> {
+    try {
+      // 使用原生 fetch 來處理 FormData，避免 axios 自動設定 Content-Type
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5264/api';
+      const token = localStorage.getItem('authToken');
+      const uploadUrl = `${apiBaseUrl}/Activity/upload/image`;
+      
+      console.log('🚀 開始上傳圖片');
+      console.log('📡 API URL:', uploadUrl);
+      console.log('🔐 Token exists:', !!token);
+      console.log('📦 FormData keys:', Array.from(formData.keys()));
+      
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: formData
+      });
+
+      console.log('📈 Response status:', response.status);
+      console.log('📊 Response ok:', response.ok);
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        try {
+          const errorData = await response.json();
+          console.log('❌ Error data:', errorData);
+          errorMessage = errorData.message || errorData.title || errorMessage;
+        } catch (parseError) {
+          console.log('❌ 無法解析錯誤回應為 JSON:', parseError);
+          const textError = await response.text();
+          console.log('❌ Error text:', textError);
+          errorMessage = textError || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('✅ 上傳成功:', result);
+      return result;
+    } catch (error: any) {
+      console.error('💥 上傳圖片失敗:', error);
+      console.error('💥 Error type:', typeof error);
+      console.error('💥 Error message:', error.message);
+      console.error('💥 Error stack:', error.stack);
+      
+      // 重新拋出錯誤，但確保有有意義的訊息
+      throw new Error(error.message || '圖片上傳失敗：網路錯誤或伺服器無回應');
+    }
+  }
+
+  /**
    * 取得分頁活動
    */
   async getActivitiesPaged(

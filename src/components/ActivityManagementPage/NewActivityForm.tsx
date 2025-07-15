@@ -204,9 +204,9 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
   };
 
   /**
-   * 處理圖片上傳
+   * 處理圖片上傳到 Azure Blob Storage
    */
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       // 驗證檔案類型
@@ -221,14 +221,48 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
+      try {
+        // 顯示上傳中狀態
         setFormData(prev => ({
           ...prev,
-          imageUrl: e.target?.result as string
+          imageUrl: 'uploading...'
         }));
-      };
-      reader.readAsDataURL(file);
+
+        // 上傳到 Azure Blob Storage
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await activityService.uploadImage(formData);
+        
+        // 設定 Azure URL
+        setFormData(prev => ({
+          ...prev,
+          imageUrl: response.imageUrl
+        }));
+
+        alert('圖片上傳成功！');
+      } catch (error: any) {
+        console.error('圖片上傳失敗:', error);
+        
+        // 顯示詳細錯誤訊息
+        let errorMessage = '圖片上傳失敗：';
+        if (error.message) {
+          errorMessage += error.message;
+        } else if (error.response?.data?.message) {
+          errorMessage += error.response.data.message;
+        } else {
+          errorMessage += '未知錯誤，請檢查網路連線和後端服務';
+        }
+        
+        alert(errorMessage);
+        console.log('完整錯誤物件:', error);
+        
+        // 清除圖片
+        setFormData(prev => ({
+          ...prev,
+          imageUrl: ''
+        }));
+      }
     }
   };
 
@@ -534,33 +568,60 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
             }}>
               {formData.imageUrl ? (
                 <Box sx={{ position: 'relative' }}>
-                  <Box 
-                    component="img"
-                    src={formData.imageUrl}
-                    alt="活動圖片預覽"
-                    sx={{
-                      maxWidth: '100%',
-                      maxHeight: 300,
-                      borderRadius: 1,
-                      boxShadow: theme.shadows[1]
-                    }}
-                  />
-                  <IconButton
-                    onClick={handleRemoveImage}
-                    sx={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      bgcolor: THEME_COLORS.OVERLAY_DARK,
-                      color: 'white',
-                      '&:hover': {
-                        bgcolor: THEME_COLORS.OVERLAY_DARK_HOVER,
-                      }
-                    }}
-                    size="small"
-                  >
-                    <Cancel />
-                  </IconButton>
+                  {formData.imageUrl === 'uploading...' ? (
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center',
+                      p: 3 
+                    }}>
+                      <Typography variant="body2" sx={{ mb: 2 }}>
+                        圖片上傳中...
+                      </Typography>
+                      <Box sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        border: '3px solid #f3f3f3',
+                        borderTop: `3px solid ${dynamicColors.primary}`,
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        '@keyframes spin': {
+                          '0%': { transform: 'rotate(0deg)' },
+                          '100%': { transform: 'rotate(360deg)' }
+                        }
+                      }} />
+                    </Box>
+                  ) : (
+                    <>
+                      <Box 
+                        component="img"
+                        src={formData.imageUrl}
+                        alt="活動圖片預覽"
+                        sx={{
+                          maxWidth: '100%',
+                          maxHeight: 300,
+                          borderRadius: 1,
+                          boxShadow: theme.shadows[1]
+                        }}
+                      />
+                      <IconButton
+                        onClick={handleRemoveImage}
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          bgcolor: THEME_COLORS.OVERLAY_DARK,
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: THEME_COLORS.OVERLAY_DARK_HOVER,
+                          }
+                        }}
+                        size="small"
+                      >
+                        <Cancel />
+                      </IconButton>
+                    </>
+                  )}
                 </Box>
               ) : (
                 <Box>
