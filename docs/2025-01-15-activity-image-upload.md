@@ -99,21 +99,20 @@ async uploadImage(formData: FormData): Promise<{ imageUrl: string }>
 
 ## 🚨 目前狀態
 
-### ⚠️ 待解決問題
-- **圖片上傳失敗**: 用戶反應上傳圖片時直接跳出失敗訊息
-- 已加入詳細錯誤處理，需要查看具體錯誤原因
+### ✅ **功能測試成功** (2025-01-15 更新)
+- **圖片上傳功能正常運作** - 使用假 URL 版本測試成功
+- **活動建立流程完整** - 可以選圖、上傳、建立活動
+- **錯誤處理完善** - 加入詳細的除錯訊息
 
-### 🔧 排查步驟
-1. **重新編譯後端**: `dotnet build && dotnet run`
-2. **檢查錯誤訊息**: 查看瀏覽器 Console 和錯誤彈窗
-3. **測試基本連通性**: 使用 `/api/Activity/test-upload` 端點
-4. **設定 Azure 連接字串**: 替換 appsettings.json 中的預設值
+### 🔧 已完成的除錯
+1. **API 路由衝突** - 修正為 `/api/Activity/upload/image`
+2. **Azure 連接字串格式** - 暫時使用假 URL 測試邏輯
+3. **詳細錯誤處理** - Console 顯示完整除錯資訊
+4. **前端圖片處理** - 加入上傳中動畫和狀態管理
 
-### 可能的錯誤原因
-- Azure Storage 連接字串未設定（`"你的Azure Storage連接字串"`）
-- 後端服務未啟動
-- API 路徑錯誤
-- 網路連線問題
+### ⚠️ 待完成項目
+- **Azure Storage 帳戶設定** - 需要真正的連接字串
+- **程式碼更新** - 將假 URL 改回真正的 Azure 上傳邏輯
 
 ## 📁 修改的檔案清單
 
@@ -130,25 +129,43 @@ async uploadImage(formData: FormData): Promise<{ imageUrl: string }>
 
 ## 🎯 下一步工作
 
-1. **排查當前上傳失敗問題**
-   - 查看詳細錯誤訊息
-   - 確認 Azure Storage 設定
-   - 測試 API 連通性
-
-2. **Azure Storage 設定**
+### 立即待辦 (已測試成功，需要真正 Azure)
+1. **Azure Storage 設定**
    - 建立 Azure Storage 帳戶
-   - 取得連接字串
-   - 設定容器權限
+   - 取得真正的連接字串
+   - 設定容器權限為 Public Blob
 
-3. **功能測試**
-   - 測試圖片上傳流程
-   - 驗證活動建立功能
-   - 確認圖片顯示正常
+2. **程式碼更新**
+   - 在 `appsettings.json` 設定真正連接字串
+   - 將 `ActivityController.cs` 的假 URL 邏輯改回 Azure 上傳
+   - 測試真正的圖片上傳功能
 
-4. **優化改進**
-   - 加入圖片壓縮
-   - 支援多張圖片
-   - 改善使用者體驗
+### 未來優化
+3. **功能增強**
+   - 加入圖片壓縮 (client-side)
+   - 支援多張圖片上傳
+   - 圖片編輯功能 (裁切、濾鏡)
+
+4. **使用者體驗改進**
+   - 拖拉上傳功能
+   - 上傳進度條
+   - 圖片預覽優化
+
+## 📊 Git 提交記錄
+
+### 前端專案 (Case-Management-System)
+- **Branch**: `eventmanagement`
+- **Commit**: `9f8dcc2` - feat: 實作 Azure Blob Storage 圖片上傳功能
+- **檔案**: 3 files changed, 321 insertions(+), 34 deletions(-)
+
+### 後端專案 (NGO_WebAPI_Backend)  
+- **Branch**: `eventmanagement`
+- **Commit**: `72925cc` - feat: 新增 Azure Blob Storage 圖片上傳 API
+- **檔案**: 3 files changed, 89 insertions(+), 2 deletions(-)
+
+### 🚀 已推送到遠端
+- 前端: https://github.com/isandyzhang/NGO_React_Frontend/tree/eventmanagement
+- 後端: https://github.com/isandyzhang/NGO_WebAPI_Backend/tree/eventmanagement
 
 ## 💡 技術筆記
 
