@@ -358,6 +358,36 @@ const SearchEditCaseTab: React.FC = () => {
     );
   };
 
+  // 計算年齡函數
+  const calculateAge = (birthday?: string) => {
+    if (!birthday) return '未知';
+    
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      return age - 1;
+    }
+    return age;
+  };
+
+  // 困難類型顏色映射函數
+  const getDifficultyColor = (difficulty: string) => {
+    const colorMap: { [key: string]: string } = {
+      '經濟困難': THEME_COLORS.ERROR,        // 紅色 - 緊急
+      '家庭問題': THEME_COLORS.WARNING,      // 橙色 - 警告
+      '學習困難': THEME_COLORS.INFO,         // 藍色 - 資訊
+      '健康問題': THEME_COLORS.ERROR_DARK,   // 深紅色 - 嚴重
+      '行為問題': '#9c27b0',                 // 紫色 - 行為相關
+      '人際關係': '#00bcd4',                 // 青色 - 社交相關
+      '情緒困擾': '#ff5722',                 // 深橙色 - 情緒相關
+      '其他困難': THEME_COLORS.TEXT_MUTED    // 灰色 - 其他
+    };
+    return colorMap[difficulty] || THEME_COLORS.PRIMARY;
+  };
+
 
 
   // 選項資料
@@ -492,7 +522,19 @@ const SearchEditCaseTab: React.FC = () => {
             >
               <MenuItem value="">全部類型</MenuItem>
               {difficultyOptions.map(difficulty => (
-                <MenuItem key={difficulty} value={difficulty}>{difficulty}</MenuItem>
+                <MenuItem key={difficulty} value={difficulty}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box 
+                      sx={{ 
+                        width: 12, 
+                        height: 12, 
+                        borderRadius: '50%',
+                        backgroundColor: getDifficultyColor(difficulty)
+                      }} 
+                    />
+                    {difficulty}
+                  </Box>
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -528,6 +570,7 @@ const SearchEditCaseTab: React.FC = () => {
             <TableRow sx={{ backgroundColor: THEME_COLORS.BACKGROUND_SECONDARY }}>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>姓名</TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>性別</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>年齡</TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>電話</TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>城市</TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>困難類型</TableCell>
@@ -538,14 +581,14 @@ const SearchEditCaseTab: React.FC = () => {
           <TableBody>
             {loading && caseRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
                   <CircularProgress />
                   <Typography sx={{ mt: 2 }}>載入中...</Typography>
                 </TableCell>
               </TableRow>
             ) : caseRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
                   <Typography color="textSecondary">
                     {searchContent ? '查無符合條件的資料' : '暫無案例資料'}
                   </Typography>
@@ -587,6 +630,9 @@ const SearchEditCaseTab: React.FC = () => {
                       />
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
+                      {calculateAge(record.birthday)}歲
+                    </TableCell>
+                    <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
                       {record.phone}
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
@@ -596,7 +642,11 @@ const SearchEditCaseTab: React.FC = () => {
                       <Chip 
                         label={record.description}
                         size="small"
-                        sx={{ backgroundColor: THEME_COLORS.WARNING, color: 'white' }}
+                        sx={{ 
+                          backgroundColor: getDifficultyColor(record.description), 
+                          color: 'white',
+                          fontWeight: 500
+                        }}
                       />
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
@@ -628,7 +678,7 @@ const SearchEditCaseTab: React.FC = () => {
 
                   {/* 詳細資料展開行 */}
                   <TableRow>
-                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                                            <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
                       <Collapse in={expandedRows.includes(record.caseId)} timeout="auto" unmountOnExit>
                         <Box sx={{ 
                           margin: 2, 
@@ -753,7 +803,19 @@ const SearchEditCaseTab: React.FC = () => {
                               >
                                 <MenuItem value="">請選擇困難類型</MenuItem>
                                 {difficultyOptions.map((option) => (
-                                  <MenuItem key={option} value={option}>{option}</MenuItem>
+                                  <MenuItem key={option} value={option}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Box 
+                                        sx={{ 
+                                          width: 12, 
+                                          height: 12, 
+                                          borderRadius: '50%',
+                                          backgroundColor: getDifficultyColor(option)
+                                        }} 
+                                      />
+                                      {option}
+                                    </Box>
+                                  </MenuItem>
                                 ))}
                               </TextField>
 

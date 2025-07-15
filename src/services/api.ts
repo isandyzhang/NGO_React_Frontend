@@ -4,9 +4,6 @@ import { config } from '../config/env';
 // API 基礎配置
 const API_BASE_URL = config.apiBaseUrl;
 
-// 加入 console.log 來檢查 API_BASE_URL 的值
-console.log('API_BASE_URL:', API_BASE_URL);
-
 /**
  * 創建 Axios 實例
  * 配置統一的 API 請求設定，包括基礎 URL、超時時間和預設標頭
@@ -24,8 +21,7 @@ const apiClient = axios.create({
  * 
  * 功能：
  * 1. 自動添加身份驗證令牌到請求標頭
- * 2. 記錄 API 請求資訊（開發除錯用）
- * 3. 統一處理請求前的數據處理
+ * 2. 統一處理請求前的數據處理
  */
 apiClient.interceptors.request.use(
   (config: any) => {
@@ -35,12 +31,9 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // 開發環境下記錄請求資訊
-    console.log('API Request:', config.method?.toUpperCase(), config.url);
     return config;
   },
   (error: any) => {
-    console.error('Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -51,18 +44,13 @@ apiClient.interceptors.request.use(
  * 功能：
  * 1. 統一處理 API 響應
  * 2. 自動處理身份驗證失效（401 錯誤）
- * 3. 記錄響應資訊和錯誤
- * 4. 提供統一的錯誤處理機制
+ * 3. 提供統一的錯誤處理機制
  */
 apiClient.interceptors.response.use(
   (response: any) => {
-    // 開發環境下記錄響應資訊
-    console.log('API Response:', response.status, response.config.url);
     return response;
   },
   (error: any) => {
-    console.error('Response Error:', error);
-    
     // 處理身份驗證失效
     if (error.response?.status === 401) {
       // 清除過期的令牌並重導向到登入頁
@@ -77,32 +65,7 @@ apiClient.interceptors.response.use(
 /**
  * API 服務物件 (API Service)
  * 
- * 提供統一的 HTTP 請求方法，封裝 Axios 操作：
- * 
- * 支援的 HTTP 方法：
- * - GET: 獲取資料
- * - POST: 創建新資料
- * - PUT: 更新完整資料
- * - PATCH: 部分更新資料
- * - DELETE: 刪除資料
- * 
- * 特色：
- * - TypeScript 泛型支援，提供型別安全
- * - 自動處理 JSON 序列化/反序列化
- * - 統一的錯誤處理
- * - 自動添加身份驗證標頭
- * 
- * 使用範例：
- * ```typescript
- * // 獲取用戶列表
- * const users = await api.get<User[]>('/users');
- * 
- * // 創建新用戶
- * const newUser = await api.post<User>('/users', userData);
- * 
- * // 更新用戶資料
- * const updatedUser = await api.put<User>(`/users/${id}`, userData);
- * ```
+ * 提供統一的 HTTP 請求方法，封裝 Axios 操作
  */
 export const api = {
   // GET 請求 - 獲取資料

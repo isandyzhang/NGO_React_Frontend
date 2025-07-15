@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   TextField,
@@ -18,10 +18,12 @@ import {
   Collapse,
   Typography,
   Modal,
-  Card,
-  CardContent,
-  Divider,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
 } from '@mui/material';
 import { 
   Search,
@@ -29,26 +31,40 @@ import {
   ExpandLess,
   Calculate,
   CheckCircle,
-  Cancel,
-  Person,
-  CalendarToday,
   Warning,
+  GetApp,
+  Assignment,
+  Inventory,
+  Visibility,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { 
   getStatusStyle,
   getResponsiveSpacing
 } from '../../styles/commonStyles';
+import { 
+  supplyService, 
+  RegularSuppliesNeed, 
+  RegularSupplyMatch,
+  distributionBatchService,
+  CreateDistributionBatchRequest,
+  DistributionBatch,
+  DistributionBatchDetail
+} from '../../services';
 
-interface DistributionRecord {
-  id: number;
-  distributionDate: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
-  totalCases: number;
-  totalItems: number;
-  createdBy: string;
-  approvedBy?: string;
-  completedDate?: string;
+interface DistributionTabProps {
+  isEmergencySupply?: boolean;
+}
+
+interface MatchingResult {
+  needId: number;
+  caseName: string;
+  itemName: string;
+  requestedQuantity: number;
+  matchedQuantity: number;
+  status: 'fully_matched' | 'partially_matched' | 'not_matched';
+  matchDate: string;
+  notes?: string;
 }
 
 interface MatchingRecord {
@@ -68,110 +84,166 @@ interface MatchingRecord {
   matchedDate: string;
 }
 
-interface DistributionTabProps {
-  isEmergencySupply?: boolean;
-}
-
 const DistributionTab: React.FC<DistributionTabProps> = ({ 
   isEmergencySupply = false 
 }) => {
-  const [searchType, setSearchType] = useState(isEmergencySupply ? '個案姓名' : '分配日期');
+  const [searchType, setSearchType] = useState('');
   const [searchContent, setSearchContent] = useState('');
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
+  const [orderConfirmationOpen, setOrderConfirmationOpen] = useState(false);
+  const [matchingResults, setMatchingResults] = useState<MatchingResult[]>([]);
   const [distributionModalOpen, setDistributionModalOpen] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [batchHistoryRefresh, setBatchHistoryRefresh] = useState(0);
   
-  // 模擬發放記錄資料（常駐物資）
-  const [distributionRecords] = useState<DistributionRecord[]>([
-    {
-      id: 1,
-      distributionDate: '2024-01-15',
-      status: 'completed',
-      totalCases: 8,
-      totalItems: 25,
-      createdBy: '張管理員',
-      approvedBy: '李主管',
-      completedDate: '2024-01-16'
-    },
-    {
-      id: 2,
-      distributionDate: '2024-01-01',
-      status: 'completed',
-      totalCases: 12,
-      totalItems: 35,
-      createdBy: '王管理員',
-      approvedBy: '李主管',
-      completedDate: '2024-01-02'
-    }
-  ]);
+  // 媒合記錄資料
+  const [matchingRecords, setMatchingRecords] = useState<MatchingRecord[]>([]);
 
-  // 模擬媒合記錄資料（緊急物資）
-  const [matchingRecords] = useState<MatchingRecord[]>([
-    {
-      id: 1,
-      emergencyRequestId: 'EMG001',
-      caseName: '張小明',
-      caseId: 'CASE001',
-      requestedItem: 'A4 白紙',
-      requestedQuantity: 5,
-      unit: '包',
-      urgencyLevel: 'high',
-      availableStock: 12,
-      stockLocation: '倉庫A-架位3',
-      matchingScore: 95,
-      status: 'pending',
-      requestDate: '2024-01-18',
-      matchedDate: '2024-01-18'
-    },
-    {
-      id: 2,
-      emergencyRequestId: 'EMG002',
-      caseName: '李小花',
-      caseId: 'CASE002',
-      requestedItem: '清潔用酒精',
-      requestedQuantity: 2,
-      unit: '瓶',
-      urgencyLevel: 'high',
-      availableStock: 8,
-      stockLocation: '倉庫B-架位1',
-      matchingScore: 88,
-      status: 'approved',
-      requestDate: '2024-01-17',
-      matchedDate: '2024-01-17'
-    },
-    {
-      id: 3,
-      emergencyRequestId: 'EMG003',
-      caseName: '王小強',
-      caseId: 'CASE005',
-      requestedItem: '原子筆',
-      requestedQuantity: 10,
-      unit: '支',
-      urgencyLevel: 'medium',
-      availableStock: 15,
-      stockLocation: '倉庫A-架位1',
-      matchingScore: 92,
-      status: 'pending',
-      requestDate: '2024-01-16',
-      matchedDate: '2024-01-16'
-    },
-    {
-      id: 4,
-      emergencyRequestId: 'EMG004',
-      caseName: '陳小美',
-      caseId: 'CASE003',
-      requestedItem: '洗手乳',
-      requestedQuantity: 3,
-      unit: '瓶',
-      urgencyLevel: 'low',
-      availableStock: 5,
-      stockLocation: '倉庫B-架位2',
-      matchingScore: 75,
-      status: 'rejected',
-      requestDate: '2024-01-15',
-      matchedDate: '2024-01-15'
+  // 分發批次歷史記錄相關狀態
+  const [batches, setBatches] = useState<DistributionBatch[]>([]);
+  const [batchLoading, setBatchLoading] = useState(true);
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const [batchExpandedRows, setBatchExpandedRows] = useState<number[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<DistributionBatchDetail | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // 獲取當前月份
+  const getCurrentMonth = () => {
+    const now = new Date();
+    return `${now.getFullYear()}年${now.getMonth() + 1}月`;
+  };
+
+  // 載入真實資料
+  useEffect(() => {
+    loadRealData();
+    loadBatches();
+  }, []);
+
+  // 載入分發批次歷史記錄
+  const loadBatches = async () => {
+    try {
+      setBatchLoading(true);
+      setBatchError(null);
+      const data = await distributionBatchService.getDistributionBatches();
+      setBatches(data);
+    } catch (err) {
+      console.error('載入分發批次列表失敗:', err);
+      setBatchError('載入分發批次列表失敗，請稍後重試');
+    } finally {
+      setBatchLoading(false);
     }
-  ]);
+  };
+
+  // 刷新分發批次歷史記錄
+  useEffect(() => {
+    if (batchHistoryRefresh > 0) {
+      loadBatches();
+    }
+  }, [batchHistoryRefresh]);
+
+  // 載入真實資料
+  const loadRealData = async () => {
+    try {
+      const needs = await supplyService.getRegularSuppliesNeeds();
+      
+      const matchingRecordsData = needs.map((need) => ({
+        id: need.needId,
+        emergencyRequestId: `REQ${need.needId.toString().padStart(3, '0')}`,
+        caseName: need.caseName || '未知個案',
+        caseId: need.caseId?.toString() || 'UNKNOWN',
+        requestedItem: need.itemName,
+        requestedQuantity: need.quantity,
+        unit: need.unit,
+        urgencyLevel: 'medium' as const,
+        availableStock: 0,
+        stockLocation: '待確認',
+        matchingScore: 0,
+        status: need.status === 'completed' ? 'approved' : need.status as 'pending' | 'approved' | 'rejected',
+        requestDate: need.requestDate,
+        matchedDate: need.requestDate
+      }));
+      
+      setMatchingRecords(matchingRecordsData);
+    } catch (error) {
+      console.error('載入真實資料失敗:', error);
+    }
+  };
+
+  // 切換批次行展開狀態
+  const toggleBatchRowExpansion = (id: number) => {
+    setBatchExpandedRows(prev => 
+      prev.includes(id) 
+        ? prev.filter(rowId => rowId !== id)
+        : [...prev, id]
+    );
+  };
+
+  // 查看批次詳細信息
+  const handleViewBatchDetail = async (batchId: number) => {
+    try {
+      setLoadingDetail(true);
+      const detail = await distributionBatchService.getDistributionBatch(batchId);
+      setSelectedBatch(detail);
+      setDetailDialogOpen(true);
+    } catch (err) {
+      console.error('載入分發批次詳情失敗:', err);
+      alert('載入分發批次詳情失敗，請稍後重試');
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  // 下載分發報告
+  const handleDownloadReport = (batch: DistributionBatch) => {
+    const reportData = {
+      '分發批次ID': batch.distributionBatchId,
+      '分發日期': batch.distributionDate,
+      '處理個案數': batch.caseCount,
+      '總物資件數': batch.totalSupplyItems,
+      '狀態': batch.status === 'pending' ? '等待批准' : '已完成',
+      '創建者': batch.createdByWorker,
+      '創建時間': batch.createdAt,
+      '批准者': batch.approvedByWorker || '未批准',
+      '批准時間': batch.approvedAt || '未批准',
+      '配對記錄數': batch.matchCount,
+    };
+
+    const csvContent = [
+      Object.keys(reportData).join(','),
+      Object.values(reportData).join(',')
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `分發批次報告_${batch.distributionBatchId}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // 獲取批次狀態樣式
+  const getBatchStatusChip = (status: string) => {
+    const statusConfig = {
+      pending: { label: '等待批准', color: 'warning' as const },
+      completed: { label: '已完成', color: 'success' as const },
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || 
+                   { label: '未知', color: 'default' as const };
+    
+    return (
+      <Chip
+        label={config.label}
+        color={config.color}
+        size="small"
+        sx={{ fontWeight: 500 }}
+      />
+    );
+  };
 
   const handleSearch = () => {
     console.log('搜尋條件:', { searchType, searchContent });
@@ -189,34 +261,215 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
     setIsCalculating(true);
     setDistributionModalOpen(false);
     
-    setTimeout(() => {
+    try {
+      const allNeeds = await supplyService.getRegularSuppliesNeeds();
+      const approvedRequests = allNeeds.filter(need => need.status === 'approved');
+      
+      if (approvedRequests.length === 0) {
+        alert('目前沒有已批准的申請可供分配');
       setIsCalculating(false);
-      alert('分配計算完成，請查看結果！');
-    }, 2000);
+        return;
+      }
+
+      const allSupplies = await supplyService.getSupplies();
+      const matchingResults: MatchingResult[] = [];
+      
+      for (const need of approvedRequests) {
+        const matchingSupplies = allSupplies.filter(supply => 
+          supply.name.toLowerCase().includes(need.itemName.toLowerCase()) &&
+          supply.currentStock > 0
+        );
+        
+        if (matchingSupplies.length > 0) {
+          const bestMatch = matchingSupplies.reduce((best, current) => 
+            current.currentStock > best.currentStock ? current : best
+          );
+          
+          const matchedQuantity = Math.min(need.quantity, bestMatch.currentStock);
+          
+          if (matchedQuantity > 0) {
+            matchingResults.push({
+              needId: need.needId,
+              caseName: need.caseName || '未知個案',
+              itemName: need.itemName,
+              requestedQuantity: need.quantity,
+              matchedQuantity: matchedQuantity,
+              status: matchedQuantity === need.quantity ? 'fully_matched' : 'partially_matched',
+              matchDate: new Date().toISOString(),
+              notes: `從 ${bestMatch.name} 分配`
+            });
+          }
+        } else {
+          matchingResults.push({
+            needId: need.needId,
+            caseName: need.caseName || '未知個案',
+            itemName: need.itemName,
+            requestedQuantity: need.quantity,
+            matchedQuantity: 0,
+            status: 'not_matched',
+            matchDate: new Date().toISOString(),
+            notes: '無匹配庫存'
+          });
+        }
+      }
+      
+      setMatchingResults(matchingResults);
+      setOrderConfirmationOpen(true);
+      
+    } catch (error) {
+      console.error('自動分配失敗:', error);
+      alert('自動分配失敗，請稍後重試');
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  const handleConfirmOrder = async () => {
+    const results = {
+      matchCreated: 0,
+      stockUpdated: 0,
+      needStatusUpdated: 0,
+      batchCreated: false,
+      errors: [] as string[]
+    };
+
+    try {
+      // 1. 創建 RegularSupplyMatch 記錄
+      for (const result of matchingResults.filter(r => r.status !== 'not_matched')) {
+        try {
+          const allSupplies = await supplyService.getSupplies();
+          const matchingSupply = allSupplies.find(supply => 
+            supply.name.toLowerCase().includes(result.itemName.toLowerCase())
+          );
+
+          if (matchingSupply) {
+            const matchData: Omit<RegularSupplyMatch, 'regularMatchId'> = {
+              regularNeedId: result.needId,
+              supplyId: matchingSupply.supplyId,
+              matchDate: result.matchDate,
+              matchedByWorkerId: 1,
+              note: result.notes,
+              status: 'matched'
+            };
+
+            await supplyService.createRegularSupplyMatch(matchData);
+            results.matchCreated++;
+          }
+        } catch (error) {
+          console.error(`創建配對記錄失敗 (需求ID: ${result.needId}):`, error);
+          results.errors.push(`創建配對記錄失敗: ${result.itemName}`);
+        }
+      }
+
+      // 2. 更新庫存數量
+      for (const result of matchingResults.filter(r => r.status !== 'not_matched')) {
+        try {
+          const allSupplies = await supplyService.getSupplies();
+          const matchingSupply = allSupplies.find(supply => 
+            supply.name.toLowerCase().includes(result.itemName.toLowerCase())
+          );
+
+          if (matchingSupply) {
+            const updatedSupply = {
+              ...matchingSupply,
+              currentStock: matchingSupply.currentStock - result.matchedQuantity
+            };
+            await supplyService.updateSupply(matchingSupply.supplyId, updatedSupply);
+            results.stockUpdated++;
+          }
+        } catch (error) {
+          console.error(`更新庫存失敗 (物資: ${result.itemName}):`, error);
+          results.errors.push(`更新庫存失敗: ${result.itemName}`);
+        }
+      }
+
+      // 3. 更新需求狀態
+      for (const result of matchingResults) {
+        try {
+          await supplyService.approveRegularSuppliesNeed(result.needId);
+          results.needStatusUpdated++;
+        } catch (error) {
+          console.error(`更新需求狀態失敗 (需求ID: ${result.needId}):`, error);
+          results.errors.push(`更新需求狀態失敗: ${result.itemName}`);
+        }
+      }
+
+      // 4. 創建分發批次記錄
+      try {
+        const matchIds = matchingResults
+          .filter(r => r.status !== 'not_matched')
+          .map((_, index) => index + 1);
+        
+        const createBatchRequest: CreateDistributionBatchRequest = {
+          distributionDate: new Date().toISOString(),
+          caseCount: matchingResults.length,
+          totalSupplyItems: matchingResults.reduce((sum, r) => sum + r.matchedQuantity, 0),
+          createdByWorkerId: 1,
+          notes: `${getCurrentMonth()} 自動分發批次，共處理 ${matchingResults.length} 個申請`,
+          matchIds: matchIds
+        };
+        
+        const batchResult = await distributionBatchService.createDistributionBatch(createBatchRequest);
+        await distributionBatchService.approveDistributionBatch(batchResult.id, {
+          approvedByWorkerId: 1
+        });
+        
+        results.batchCreated = true;
+      } catch (error) {
+        console.error('創建分發批次記錄失敗:', error);
+        results.errors.push('創建分發批次記錄失敗');
+      }
+
+      // 重新載入資料
+      try {
+        await loadRealData();
+      } catch (error) {
+        console.error('重新載入資料失敗:', error);
+      }
+      
+      // 顯示結果
+      const fullyMatchedCount = matchingResults.filter(r => r.status === 'fully_matched').length;
+      const partialCount = matchingResults.filter(r => r.status === 'partially_matched').length;
+      const failedCount = matchingResults.filter(r => r.status === 'not_matched').length;
+      
+      const message = `
+📊 分發完成統計：
+• 完全配對：${fullyMatchedCount} 項
+• 部分配對：${partialCount} 項（保持批准狀態，等待下次配發）
+• 無法配對：${failedCount} 項（保持批准狀態，等待下次配發）
+
+🔄 系統操作結果：
+• 配對記錄創建：${results.matchCreated} 筆
+• 庫存更新：${results.stockUpdated} 筆
+• 需求狀態更新：${results.needStatusUpdated} 筆
+• 分發批次記錄：${results.batchCreated ? '成功' : '失敗'}
+
+${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''}
+      `;
+      
+      alert(message);
+      setOrderConfirmationOpen(false);
+      
+      // 刷新分發批次歷史記錄
+      setBatchHistoryRefresh(prev => prev + 1);
+    } catch (error) {
+      console.error('確認訂單失敗:', error);
+      alert('確認訂單失敗，請稍後重試');
+    }
   };
 
   const handleMatchingDecision = (matchingId: number, decision: 'approved' | 'rejected') => {
     console.log(`媒合決定: ${matchingId} - ${decision}`);
-    // TODO: 發送到後端更新媒合狀態
     alert(`媒合已${decision === 'approved' ? '批准' : '拒絕'}！`);
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusText = (status: string) => {
     switch (status) {
-      case 'pending': return '待審核';
+      case 'pending': return '待處理';
       case 'approved': return '已批准';
       case 'rejected': return '已拒絕';
       case 'completed': return '已完成';
-      default: return '未知';
-    }
-  };
-
-  const getUrgencyLabel = (urgency: string) => {
-    switch (urgency) {
-      case 'high': return '高';
-      case 'medium': return '中';
-      case 'low': return '低';
-      default: return '未知';
+      default: return status;
     }
   };
 
@@ -225,322 +478,37 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
       case 'high': return THEME_COLORS.ERROR;
       case 'medium': return THEME_COLORS.WARNING;
       case 'low': return THEME_COLORS.SUCCESS;
-      default: return THEME_COLORS.TEXT_MUTED;
+      default: return THEME_COLORS.TEXT_SECONDARY;
     }
   };
 
-
-
-  const getCurrentMonth = () => {
-    const date = new Date();
-    return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+  const getMatchingScoreColor = (score: number) => {
+    if (score >= 90) return THEME_COLORS.SUCCESS;
+    if (score >= 70) return THEME_COLORS.WARNING;
+    return THEME_COLORS.ERROR;
   };
 
-  // 根據物資類型過濾資料
-  const filteredRecords = isEmergencySupply ? [] : distributionRecords;
   const filteredMatchingRecords = isEmergencySupply ? matchingRecords : [];
 
   return (
-    <Box sx={{ width: '100%' }}>
-      {isEmergencySupply ? (
-        // 緊急物資媒合功能
-        <>
-          {/* 媒合統計區域 */}
-          <Paper elevation={1} sx={{ 
-            p: getResponsiveSpacing('md'),
-            mb: 3,
-            bgcolor: THEME_COLORS.ERROR_LIGHT,
-            border: `1px solid ${THEME_COLORS.ERROR}`,
-          }}>
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              flexDirection: { xs: 'column', sm: 'row' },
-              gap: 2
-            }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1,
-                  p: 1.5,
-                  borderRadius: 2,
-                  bgcolor: THEME_COLORS.ERROR,
-                  color: 'white'
-                }}>
-                  <Warning sx={{ fontSize: 24 }} />
-                </Box>
-                <Box>
-                  <Typography variant="h6" sx={{
-                    fontWeight: 600,
-                    color: THEME_COLORS.ERROR,
-                    mb: 0.5
-                  }}>
-                    📋 物資自動媒合
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: THEME_COLORS.TEXT_MUTED,
-                    fontSize: '0.875rem'
-                  }}>
-                    系統自動分析需求與庫存，推薦最佳配對方案
-                  </Typography>
-                </Box>
-              </Box>
-              
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Card variant="outlined" sx={{ p: 2, textAlign: 'center', minWidth: 80 }}>
-                  <Typography variant="h6" sx={{ color: THEME_COLORS.ERROR }}>
-                    {filteredMatchingRecords.filter(r => r.status === 'pending').length}
-                  </Typography>
-                  <Typography variant="caption">待審核</Typography>
-                </Card>
-                <Card variant="outlined" sx={{ p: 2, textAlign: 'center', minWidth: 80 }}>
-                  <Typography variant="h6" sx={{ color: THEME_COLORS.SUCCESS }}>
-                    {filteredMatchingRecords.filter(r => r.status === 'approved').length}
-                  </Typography>
-                  <Typography variant="caption">已批准</Typography>
-                </Card>
-              </Box>
-            </Box>
-          </Paper>
-
-          {/* 搜尋區域 */}
-          <Paper elevation={1} sx={{ 
-            p: getResponsiveSpacing('md'),
-            mb: 3
-          }}>
-            <Box sx={{ 
-              display: 'flex', 
-              gap: 2, 
-              alignItems: 'center',
-              flexDirection: { xs: 'column', sm: 'row' }
-            }}>
-              <Select
-                value={searchType}
-                onChange={(e) => setSearchType(e.target.value)}
-                size="small"
-                sx={{ 
-                  minWidth: 120,
-                  height: 40
-                }}
-              >
-                <MenuItem value="個案姓名">個案姓名</MenuItem>
-                <MenuItem value="物資名稱">物資名稱</MenuItem>
-                <MenuItem value="緊急程度">緊急程度</MenuItem>
-                <MenuItem value="狀態">狀態</MenuItem>
-              </Select>
-              
-              <TextField
-                value={searchContent}
-                onChange={(e) => setSearchContent(e.target.value)}
-                placeholder="搜尋物資媒合記錄..."
-                size="small"
-                sx={{ 
-                  flex: 1,
-                  minWidth: 200,
-                  height: 40
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              
-              <Button
-                variant="contained"
-                onClick={handleSearch}
-                sx={{
-                  height: 40,
-                  px: 3,
-                  bgcolor: THEME_COLORS.ERROR,
-                  '&:hover': {
-                    opacity: 0.8,
-                  }
-                }}
-              >
-                搜尋
-              </Button>
-            </Box>
-          </Paper>
-
-          {/* 媒合記錄表格 */}
-          <TableContainer component={Paper} elevation={1}>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
-                  <TableCell sx={{ fontWeight: 600 }}>個案資訊</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>需求物資</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>庫存狀況</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>媒合評分</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>緊急程度</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>狀態</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredMatchingRecords.map((matching) => (
-                  <React.Fragment key={matching.id}>
-                    <TableRow hover>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Person sx={{ fontSize: 16, color: THEME_COLORS.ERROR }} />
-                          <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                              {matching.caseName}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-                              {matching.caseId}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {matching.requestedItem}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-                            需求: {matching.requestedQuantity} {matching.unit}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="body2" sx={{ 
-                            fontWeight: 500,
-                            color: matching.availableStock >= matching.requestedQuantity 
-                              ? THEME_COLORS.SUCCESS 
-                              : THEME_COLORS.ERROR 
-                          }}>
-                            庫存: {matching.availableStock} {matching.unit}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-                            {matching.stockLocation}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="h6" sx={{ 
-                            fontWeight: 600,
-                            color: matching.matchingScore >= 90 ? THEME_COLORS.SUCCESS : 
-                                   matching.matchingScore >= 70 ? THEME_COLORS.WARNING : THEME_COLORS.ERROR
-                          }}>
-                            {matching.matchingScore}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-                            分
-                          </Typography>
-                        </Box>
-                        <Typography variant="caption" sx={{ 
-                          display: 'block',
-                          color: THEME_COLORS.TEXT_MUTED,
-                          fontStyle: 'italic'
-                        }}>
-                          {matching.matchingScore >= 90 ? '極佳匹配' : 
-                           matching.matchingScore >= 70 ? '良好匹配' : '一般匹配'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getUrgencyLabel(matching.urgencyLevel)}
-                          size="small"
-                          sx={{
-                            bgcolor: getUrgencyColor(matching.urgencyLevel),
-                            color: 'white',
-                            fontWeight: 500,
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getStatusLabel(matching.status)}
-                          size="small"
-                          sx={{
-                            bgcolor: getStatusStyle(matching.status).bg,
-                            color: getStatusStyle(matching.status).color,
-                            fontWeight: 500,
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {matching.status === 'pending' ? (
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => handleMatchingDecision(matching.id, 'approved')}
-                              sx={{
-                                borderColor: THEME_COLORS.SUCCESS,
-                                color: THEME_COLORS.SUCCESS,
-                                minWidth: 'auto',
-                                px: 1.5,
-                                fontSize: '0.75rem'
-                              }}
-                            >
-                              批准
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => handleMatchingDecision(matching.id, 'rejected')}
-                              sx={{
-                                borderColor: THEME_COLORS.ERROR,
-                                color: THEME_COLORS.ERROR,
-                                minWidth: 'auto',
-                                px: 1.5,
-                                fontSize: '0.75rem'
-                              }}
-                            >
-                              拒絕
-                            </Button>
-                          </Box>
-                        ) : (
-                          <IconButton
-                            size="small"
-                            onClick={() => toggleRowExpansion(matching.id)}
-                          >
-                            {expandedRows.includes(matching.id) ? <ExpandLess /> : <ExpandMore />}
-                          </IconButton>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell colSpan={7} sx={{ p: 0 }}>
-                        <Collapse in={expandedRows.includes(matching.id)}>
-                          <Box sx={{ p: 2, bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
-                            <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                              📋 自動媒合詳情
-                            </Typography>
-                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                              申請編號：{matching.emergencyRequestId}
-                            </Typography>
-                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                              申請日期：{matching.requestDate}
-                            </Typography>
-                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                              媒合日期：{matching.matchedDate}
-                            </Typography>
-                            <Typography variant="body2" sx={{ 
-                              color: THEME_COLORS.TEXT_MUTED,
-                              fontStyle: 'italic'
-                            }}>
-                              媒合依據：緊急程度({matching.urgencyLevel}) + 庫存充足度 + 地理位置 + 歷史配對成功率
-                            </Typography>
-                          </Box>
-                        </Collapse>
-                      </TableCell>
-                    </TableRow>
-                  </React.Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </>
+    <Box sx={{ width: '100%', p: getResponsiveSpacing('md') }}>
+      {isCalculating ? (
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          minHeight: '400px',
+          textAlign: 'center'
+        }}>
+          <CircularProgress size={60} sx={{ mb: 3, color: THEME_COLORS.SUCCESS }} />
+          <Typography variant="h6" sx={{ color: THEME_COLORS.PRIMARY, mb: 2 }}>
+            🔄 執行自動分配中...
+          </Typography>
+          <Typography variant="body1" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+            請稍候，系統正在分析所有變數...
+          </Typography>
+        </Box>
       ) : (
         <>
           {/* 分配操作區域 */}
@@ -564,7 +532,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
                   gap: 1,
                   p: 1.5,
                   borderRadius: 2,
-                  bgcolor: THEME_COLORS.PRIMARY,
+                  bgcolor: THEME_COLORS.SUCCESS,
                   color: 'white'
                 }}>
                   <Calculate sx={{ fontSize: 24 }} />
@@ -572,7 +540,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
                 <Box>
                   <Typography variant="h6" sx={{
                     fontWeight: 600,
-                    color: THEME_COLORS.PRIMARY,
+                    color: THEME_COLORS.SUCCESS,
                     mb: 0.5
                   }}>
                     {getCurrentMonth()} 物資分配
@@ -581,71 +549,76 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
                     color: THEME_COLORS.TEXT_MUTED,
                     fontSize: '0.875rem'
                   }}>
-                    根據個案需求和物資庫存進行自動分配
+                    針對已批准的申請進行自動物資配發媒合
                   </Typography>
                 </Box>
               </Box>
               
-              <Box sx={{ textAlign: 'center' }}>
-                <Button
-                  variant="contained"
-                  startIcon={<Calculate />}
-                  onClick={() => setDistributionModalOpen(true)}
-                  sx={{
-                    bgcolor: THEME_COLORS.PRIMARY,
-                    color: 'white',
-                    px: 4,
-                    py: 1.5,
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  🚀 啟動自動分配
-                </Button>
-              </Box>
+              <Button
+                variant="contained"
+                startIcon={<Calculate />}
+                onClick={() => setDistributionModalOpen(true)}
+                sx={{
+                  bgcolor: THEME_COLORS.SUCCESS,
+                  color: 'white',
+                  px: 3,
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  '&:hover': {
+                    bgcolor: THEME_COLORS.SUCCESS_DARK,
+                  }
+                }}
+              >
+                🚀 啟動自動分配
+              </Button>
             </Box>
           </Paper>
 
-          {/* 搜尋區域 */}
-          <Paper elevation={1} sx={{ 
-            p: getResponsiveSpacing('md'),
-            mb: 3
-          }}>
+          {/* 搜尋和篩選區域 */}
+          <Paper elevation={1} sx={{ p: getResponsiveSpacing('md'), mb: 3 }}>
             <Box sx={{ 
               display: 'flex', 
               gap: 2, 
               alignItems: 'center',
-              flexDirection: { xs: 'column', sm: 'row' }
+              flexDirection: { xs: 'column', sm: 'row' },
+              mb: 2
             }}>
               <Select
                 value={searchType}
                 onChange={(e) => setSearchType(e.target.value)}
-                size="small"
+                displayEmpty
                 sx={{ 
-                  minWidth: 120,
-                  height: 40
+                  minWidth: 200,
+                  '& .MuiSelect-select': {
+                    py: 1.5,
+                  }
                 }}
               >
-                <MenuItem value="分配日期">分配日期</MenuItem>
-                <MenuItem value="狀態">狀態</MenuItem>
-                <MenuItem value="創建者">創建者</MenuItem>
-                <MenuItem value="核准者">核准者</MenuItem>
+                <MenuItem value="">分配日期</MenuItem>
+                <MenuItem value="個案姓名">個案姓名</MenuItem>
+                <MenuItem value="物資名稱">物資名稱</MenuItem>
+                <MenuItem value="媒合狀態">媒合狀態</MenuItem>
               </Select>
               
               <TextField
+                placeholder="請輸入分配日期"
                 value={searchContent}
                 onChange={(e) => setSearchContent(e.target.value)}
-                placeholder="搜尋物資發放記錄..."
-                size="small"
                 sx={{ 
-                  flex: 1,
-                  minWidth: 200,
-                  height: 40
+                  flexGrow: 1,
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: THEME_COLORS.TEXT_SECONDARY,
+                    },
+                  }
                 }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Search />
+                      <Search sx={{ color: THEME_COLORS.TEXT_MUTED }} />
                     </InputAdornment>
                   ),
                 }}
@@ -653,13 +626,18 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
               
               <Button
                 variant="contained"
+                startIcon={<Search />}
                 onClick={handleSearch}
                 sx={{
-                  height: 40,
-                  px: 3,
                   bgcolor: THEME_COLORS.PRIMARY,
+                  color: 'white',
+                  px: 3,
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  textTransform: 'none',
                   '&:hover': {
-                    opacity: 0.8,
+                    bgcolor: THEME_COLORS.PRIMARY_DARK,
                   }
                 }}
               >
@@ -668,73 +646,206 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
             </Box>
           </Paper>
 
-          {/* 發放記錄表格 */}
-          <TableContainer component={Paper} elevation={1}>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
-                  <TableCell sx={{ fontWeight: 600 }}>分配日期</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>受惠個案數</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>物資總數</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>創建者</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>狀態</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredRecords.map((record) => (
-                  <React.Fragment key={record.id}>
-                    <TableRow hover>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <CalendarToday sx={{ fontSize: 16, color: THEME_COLORS.PRIMARY }} />
-                          <Typography variant="body2">
-                            {record.distributionDate}
+          {/* 緊急物資媒合功能 */}
+          {isEmergencySupply && (
+            <>
+              {/* 媒合統計區域 */}
+              <Paper elevation={1} sx={{ 
+                p: getResponsiveSpacing('md'),
+                mb: 3,
+                bgcolor: THEME_COLORS.ERROR_LIGHT,
+                border: `1px solid ${THEME_COLORS.ERROR}`,
+              }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  gap: 2
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1,
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: THEME_COLORS.ERROR,
+                      color: 'white'
+                    }}>
+                      <Warning sx={{ fontSize: 24 }} />
+                    </Box>
+                          <Box>
+                      <Typography variant="h6" sx={{
+                        fontWeight: 600,
+                        color: THEME_COLORS.ERROR,
+                        mb: 0.5
+                      }}>
+                        📋 物資自動媒合
+                            </Typography>
+                      <Typography variant="body2" sx={{ 
+                        color: THEME_COLORS.TEXT_MUTED,
+                        fontSize: '0.875rem'
+                      }}>
+                        系統自動分析需求與庫存，推薦最佳配對方案
+                            </Typography>
+                          </Box>
+                        </Box>
+                  
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" sx={{ 
+                        fontWeight: 700,
+                        color: THEME_COLORS.ERROR,
+                        mb: 0.5
+                      }}>
+                        {filteredMatchingRecords.filter(r => r.status === 'pending').length}
+                          </Typography>
+                      <Typography variant="caption" sx={{ 
+                        color: THEME_COLORS.TEXT_MUTED,
+                        fontSize: '0.75rem'
+                      }}>
+                        待處理媒合
                           </Typography>
                         </Box>
-                      </TableCell>
-                      <TableCell>{record.totalCases} 個案</TableCell>
-                      <TableCell>{record.totalItems} 項</TableCell>
-                      <TableCell>{record.createdBy}</TableCell>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" sx={{ 
+                        fontWeight: 700,
+                        color: THEME_COLORS.SUCCESS,
+                        mb: 0.5
+                      }}>
+                        {filteredMatchingRecords.filter(r => r.status === 'approved').length}
+                          </Typography>
+                      <Typography variant="caption" sx={{ 
+                        color: THEME_COLORS.TEXT_MUTED,
+                        fontSize: '0.75rem'
+                      }}>
+                        已批准媒合
+                          </Typography>
+                        </Box>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" sx={{ 
+                        fontWeight: 700,
+                        color: THEME_COLORS.WARNING,
+                        mb: 0.5
+                      }}>
+                        {(filteredMatchingRecords.reduce((sum, r) => sum + r.matchingScore, 0) / filteredMatchingRecords.length || 0).toFixed(0)}%
+                          </Typography>
+                        <Typography variant="caption" sx={{ 
+                          color: THEME_COLORS.TEXT_MUTED,
+                        fontSize: '0.75rem'
+                        }}>
+                        平均媒合度
+                        </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Paper>
+
+              {/* 媒合記錄表格 */}
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>申請編號</TableCell>
+                      <TableCell>個案姓名</TableCell>
+                      <TableCell>申請物品</TableCell>
+                      <TableCell>數量</TableCell>
+                      <TableCell>緊急程度</TableCell>
+                      <TableCell>媒合度</TableCell>
+                      <TableCell>狀態</TableCell>
+                      <TableCell>操作</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredMatchingRecords.map((matching) => (
+                      <React.Fragment key={matching.id}>
+                        <TableRow hover>
+                          <TableCell>{matching.emergencyRequestId}</TableCell>
+                          <TableCell>{matching.caseName}</TableCell>
+                          <TableCell>{matching.requestedItem}</TableCell>
+                          <TableCell>{matching.requestedQuantity} {matching.unit}</TableCell>
                       <TableCell>
                         <Chip
-                          label={getStatusLabel(record.status)}
+                              label={matching.urgencyLevel} 
                           size="small"
                           sx={{
-                            bgcolor: getStatusStyle(record.status).bg,
-                            color: getStatusStyle(record.status).color,
-                            fontWeight: 500,
+                            bgcolor: getUrgencyColor(matching.urgencyLevel),
+                            color: 'white',
+                                fontWeight: 500
                           }}
                         />
                       </TableCell>
                       <TableCell>
-                        <IconButton
-                          size="small"
-                          onClick={() => toggleRowExpansion(record.id)}
-                        >
-                          {expandedRows.includes(record.id) ? <ExpandLess /> : <ExpandMore />}
-                        </IconButton>
+                            <Typography 
+                              variant="body2" 
+                          sx={{
+                                color: getMatchingScoreColor(matching.matchingScore),
+                                fontWeight: 600
+                              }}
+                            >
+                              {matching.matchingScore}%
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={getStatusText(matching.status)} 
+                              size="small"
+                              sx={getStatusStyle(matching.status)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                              size="small"
+                                variant="contained"
+                                color="success"
+                              onClick={() => handleMatchingDecision(matching.id, 'approved')}
+                              sx={{
+                                  minWidth: 60,
+                                  textTransform: 'none',
+                                fontSize: '0.75rem'
+                              }}
+                            >
+                              批准
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                                color="error"
+                              onClick={() => handleMatchingDecision(matching.id, 'rejected')}
+                              sx={{
+                                  minWidth: 60,
+                                  textTransform: 'none',
+                                fontSize: '0.75rem'
+                              }}
+                            >
+                              拒絕
+                            </Button>
+                          <IconButton
+                            size="small"
+                            onClick={() => toggleRowExpansion(matching.id)}
+                          >
+                            {expandedRows.includes(matching.id) ? <ExpandLess /> : <ExpandMore />}
+                          </IconButton>
+                            </Box>
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell colSpan={6} sx={{ p: 0 }}>
-                        <Collapse in={expandedRows.includes(record.id)}>
-                          <Box sx={{ p: 2, bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
-                            <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                              分配詳情
+                          <TableCell colSpan={8} sx={{ p: 0 }}>
+                        <Collapse in={expandedRows.includes(matching.id)}>
+                              <Box sx={{ p: 3, bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
+                                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                              📋 自動媒合詳情
                             </Typography>
-                            {record.approvedBy && (
-                              <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                核准者：{record.approvedBy}
-                              </Typography>
-                            )}
-                            {record.completedDate && (
-                              <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                完成日期：{record.completedDate}
-                              </Typography>
-                            )}
-                            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-                              本次分配共服務 {record.totalCases} 個個案，發放 {record.totalItems} 項物資
+                                <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                              媒合日期：{matching.matchedDate}
+                            </Typography>
+                                <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                                  庫存位置：{matching.stockLocation}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                              媒合依據：緊急程度({matching.urgencyLevel}) + 庫存充足度 + 地理位置 + 歷史配對成功率
                             </Typography>
                           </Box>
                         </Collapse>
@@ -746,9 +857,133 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
             </Table>
           </TableContainer>
         </>
+          )}
+        
+          {/* 歷史記錄 */}
+          <Box sx={{ mt: 4 }}>
+           
+            {batchLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+            </Box>
+            ) : batchError ? (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {batchError}
+              </Alert>
+            ) : (
+              <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                    <TableRow>
+                      <TableCell>批次ID</TableCell>
+                      <TableCell>分發日期</TableCell>
+                      <TableCell>個案數</TableCell>
+                      <TableCell>物資件數</TableCell>
+                      <TableCell>狀態</TableCell>
+                      <TableCell>創建者</TableCell>
+                      <TableCell>創建時間</TableCell>
+                      <TableCell>操作</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                    {batches.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                            <Assignment sx={{ fontSize: 48, color: THEME_COLORS.TEXT_MUTED }} />
+                            <Typography variant="h6" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                              尚無分發歷史記錄
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                              執行自動分配後，這裡將顯示物資分發的歷史記錄
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      </TableRow>
+                    ) : (
+                      batches.map((batch) => (
+                        <React.Fragment key={batch.distributionBatchId}>
+                          <TableRow hover>
+                            <TableCell>{batch.distributionBatchId}</TableCell>
+                      <TableCell>
+                              {new Date(batch.distributionDate).toLocaleDateString()}
+                      </TableCell>
+                            <TableCell>{batch.caseCount}</TableCell>
+                            <TableCell>{batch.totalSupplyItems}</TableCell>
+                      <TableCell>
+                              {getBatchStatusChip(batch.status)}
+                            </TableCell>
+                            <TableCell>{batch.createdByWorker}</TableCell>
+                            <TableCell>
+                              {new Date(batch.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton
+                          size="small"
+                                  onClick={() => handleViewBatchDetail(batch.distributionBatchId)}
+                                  disabled={loadingDetail}
+                                  title="查看詳情"
+                        >
+                                  <Visibility />
+                        </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDownloadReport(batch)}
+                                  title="下載報告"
+                                >
+                                  <GetApp />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => toggleBatchRowExpansion(batch.distributionBatchId)}
+                                >
+                                  {batchExpandedRows.includes(batch.distributionBatchId) ? <ExpandLess /> : <ExpandMore />}
+                                </IconButton>
+                              </Box>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                            <TableCell colSpan={8} sx={{ p: 0 }}>
+                              <Collapse in={batchExpandedRows.includes(batch.distributionBatchId)}>
+                                <Box sx={{ p: 3, bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
+                                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                                    📋 批次詳細資訊
+                            </Typography>
+                                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
+                                    <Box>
+                                      <Typography variant="body2" color="text.secondary">
+                                        批准者: {batch.approvedByWorker || '未批准'}
+                              </Typography>
+                                      <Typography variant="body2" color="text.secondary">
+                                        批准時間: {batch.approvedAt ? new Date(batch.approvedAt).toLocaleString() : '未批准'}
+                              </Typography>
+                                    </Box>
+                                    <Box>
+                                      <Typography variant="body2" color="text.secondary">
+                                        配對記錄數: {batch.matchCount}
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary">
+                                        備註: {batch.notes || '無'}
+                            </Typography>
+                                    </Box>
+                                  </Box>
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
+                      ))
+                    )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+            )}
+          </Box>
+        </>
       )}
 
-      {/* 分配確認Modal */}
+      {/* 自動分配確認對話框 */}
       <Modal
         open={distributionModalOpen}
         onClose={() => setDistributionModalOpen(false)}
@@ -762,37 +997,32 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
           bgcolor: 'background.paper',
           borderRadius: 2,
           boxShadow: 24,
-          p: 4,
+          p: 4
         }}>
-          <Typography variant="h6" sx={{ 
-            mb: 3,
-            fontWeight: 600,
-            color: THEME_COLORS.PRIMARY
-          }}>
-            📋 啟動自動物資分配
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            🚀 確認啟動自動分配
           </Typography>
-          
-          <Typography variant="body2" sx={{ 
-            mb: 3,
-            color: THEME_COLORS.TEXT_SECONDARY,
-            lineHeight: 1.6
-          }}>
-            系統將根據以下條件進行自動分配：
-            <br />• 📊 個案需求優先級分析
-            <br />• 📦 實時庫存狀況追蹤
-            <br />• 📈 歷史分配成功率統計
-            <br />• ⚖️ 公平性權重計算
-            <br />• 🎯 最優路徑配送規劃
+          <Typography variant="body2" sx={{ mb: 2, color: THEME_COLORS.TEXT_MUTED }}>
+            系統將處理所有已批准的申請，根據以下條件進行自動分配：
           </Typography>
-
+          <Box component="ul" sx={{ mb: 2, pl: 2 }}>
+            <li>庫存充足度 (40%)</li>
+            <li>物資匹配度 (30%)</li>
+            <li>地理位置 (20%)</li>
+            <li>歷史成功率 (10%)</li>
+          </Box>
+          <Typography variant="body2" sx={{ mb: 3, color: THEME_COLORS.WARNING }}>
+            本次自動計算將針對 {getCurrentMonth()} 的<strong>已批准申請</strong>進行物資分配
+          </Typography>
           <Alert severity="info" sx={{ mb: 3 }}>
-            本次自動計算將針對 {getCurrentMonth()} 進行物資分配規劃
+            <strong>注意：</strong>只有狀態為「批准」的申請才會被納入自動分配。<br/>
+            系統將根據庫存情況進行智能配對，無法完全滿足的申請將保持「批准」狀態。
           </Alert>
-
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               onClick={() => setDistributionModalOpen(false)}
+              sx={{ textTransform: 'none' }}
             >
               取消
             </Button>
@@ -800,48 +1030,175 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
               variant="contained"
               onClick={handleStartDistribution}
               sx={{
-                bgcolor: THEME_COLORS.PRIMARY,
-                color: 'white',
+                bgcolor: THEME_COLORS.SUCCESS,
+                textTransform: 'none',
+                '&:hover': {
+                  bgcolor: THEME_COLORS.SUCCESS_DARK,
+                }
               }}
             >
-              🚀 開始自動計算
+              確認啟動
             </Button>
           </Box>
         </Box>
       </Modal>
 
-      {/* 計算中Modal */}
-      <Modal open={isCalculating}>
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: { xs: '90%', sm: 300 },
-          bgcolor: 'background.paper',
-          borderRadius: 2,
-          boxShadow: 24,
-          p: 4,
-          textAlign: 'center'
-        }}>
-          <Calculate sx={{ 
-            fontSize: 48, 
-            color: THEME_COLORS.PRIMARY,
-            mb: 2,
-            animation: 'spin 1s linear infinite',
-            '@keyframes spin': {
-              '0%': { transform: 'rotate(0deg)' },
-              '100%': { transform: 'rotate(360deg)' }
-            }
-          }} />
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            📋 系統正在計算最佳分配方案
+      {/* 訂單確認對話框 */}
+      <Dialog
+        open={orderConfirmationOpen}
+        onClose={() => setOrderConfirmationOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            📋 自動分配結果確認
           </Typography>
-          <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-            系統正在分析所有變數，請稍候...
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            系統已完成自動分配分析，以下是配對結果：
           </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>個案姓名</TableCell>
+                  <TableCell>申請物品</TableCell>
+                  <TableCell>申請數量</TableCell>
+                  <TableCell>配對數量</TableCell>
+                  <TableCell>配對狀態</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {matchingResults.map((result, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{result.caseName}</TableCell>
+                    <TableCell>{result.itemName}</TableCell>
+                    <TableCell>{result.requestedQuantity}</TableCell>
+                    <TableCell>{result.matchedQuantity}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={
+                          result.status === 'fully_matched' ? '完全配對' :
+                          result.status === 'partially_matched' ? '部分配對' : '無法配對'
+                        }
+                        size="small"
+                        color={
+                          result.status === 'fully_matched' ? 'success' :
+                          result.status === 'partially_matched' ? 'warning' : 'error'
+                        }
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setOrderConfirmationOpen(false)}
+            variant="outlined"
+            sx={{ textTransform: 'none' }}
+          >
+            取消
+          </Button>
+          <Button
+            onClick={handleConfirmOrder}
+            variant="contained"
+            color="primary"
+            startIcon={<CheckCircle />}
+          >
+            確認訂單
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 批次詳細信息對話框 */}
+      <Dialog
+        open={detailDialogOpen}
+        onClose={() => setDetailDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            分發批次詳情 #{selectedBatch?.distributionBatchId}
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          {loadingDetail ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : selectedBatch && (
+            <Box>
+              <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  📋 批次基本信息
+          </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
+                  <Box>
+                    <Typography variant="body2"><strong>分發日期:</strong> {new Date(selectedBatch.distributionDate).toLocaleDateString()}</Typography>
+                    <Typography variant="body2"><strong>處理個案數:</strong> {selectedBatch.caseCount}</Typography>
+                    <Typography variant="body2"><strong>總物資件數:</strong> {selectedBatch.totalSupplyItems}</Typography>
         </Box>
-      </Modal>
+                  <Box>
+                    <Typography variant="body2"><strong>狀態:</strong> {selectedBatch.status === 'pending' ? '等待批准' : '已完成'}</Typography>
+                    <Typography variant="body2"><strong>創建者:</strong> {selectedBatch.createdByWorker}</Typography>
+                    <Typography variant="body2"><strong>批准者:</strong> {selectedBatch.approvedByWorker || '未批准'}</Typography>
+                  </Box>
+                </Box>
+                {selectedBatch.notes && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2"><strong>備註:</strong> {selectedBatch.notes}</Typography>
+                  </Box>
+                )}
+              </Paper>
+
+              <Paper elevation={1} sx={{ p: 3 }}>
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  📦 配對記錄詳情
+                </Typography>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>申請人</TableCell>
+                        <TableCell>物品名稱</TableCell>
+                        <TableCell>申請數量</TableCell>
+                        <TableCell>配對數量</TableCell>
+                        <TableCell>申請日期</TableCell>
+                        <TableCell>配對日期</TableCell>
+                        <TableCell>備註</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {selectedBatch.matches.map((match, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{match.caseName}</TableCell>
+                          <TableCell>{match.supplyName}</TableCell>
+                          <TableCell>{match.requestedQuantity}</TableCell>
+                          <TableCell>{match.matchedQuantity}</TableCell>
+                          <TableCell>{new Date(match.requestedDate).toLocaleDateString()}</TableCell>
+                          <TableCell>{new Date(match.matchDate).toLocaleDateString()}</TableCell>
+                          <TableCell>{match.note || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailDialogOpen(false)}>
+            關閉
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

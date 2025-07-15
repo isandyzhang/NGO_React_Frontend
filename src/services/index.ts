@@ -8,6 +8,7 @@ export * as calendarService from './calendarService';
 export { supplyService } from './supplyService';
 export { newsService } from './newsService';
 export { scheduleService } from './scheduleService';
+export { default as distributionBatchService } from './distributionBatchService';
 
 // 類型定義統一導出
 export type {
@@ -32,9 +33,10 @@ export type {
 } from './registrationService';
 
 export type {
-  // 行事曆相關類型
+  // 排程管理相关类型
+  Schedule,
   CalendarEvent,
-} from '../components/CalendarPage';
+} from './scheduleService';
 
 export type {
   // 物資管理相關類型
@@ -55,6 +57,10 @@ export type {
 } from './newsService';
 
 export type {
-  // 排程管理相關類型
-  Schedule,
-} from './scheduleService'; 
+  // 分發批次相關類型
+  DistributionBatch,
+  DistributionBatchDetail,
+  DistributionMatch,
+  CreateDistributionBatchRequest,
+  ApproveDistributionBatchRequest,
+} from './distributionBatchService'; 

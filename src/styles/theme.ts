@@ -115,6 +115,150 @@ export const THEME_COLORS = {
   // ===================================
   MALE_AVATAR: '#90caf9',    // 男生淡藍色
   FEMALE_AVATAR: '#f8bbd0',  // 女生淡紅色
+  
+  // ===================================
+  // 🎨 色票顏色系統 (Color Palette System)
+  // ===================================
+  // 完整的色票系統，從暖色到冷色的全光譜配色
+  
+  // 🟤 棕色系 (Brown Tones)
+  BROWN_50: '#efebe9',
+  BROWN_100: '#d7ccc8',
+  BROWN_200: '#bcaaa4',
+  BROWN_300: '#a1887f',
+  BROWN_400: '#8d6e63',
+  BROWN_500: '#795548',
+  BROWN_600: '#6d4c41',
+  BROWN_700: '#5d4037',
+  BROWN_800: '#4e342e',
+  BROWN_900: '#3e2723',
+  
+  // 🌸 粉色系 (Pink Tones)
+  PINK_50: '#fce4ec',
+  PINK_100: '#f8bbd9',
+  PINK_200: '#f48fb1',
+  PINK_300: '#f06292',
+  PINK_400: '#ec407a',
+  PINK_500: '#e91e63',
+  PINK_600: '#d81b60',
+  PINK_700: '#c2185b',
+  PINK_800: '#ad1457',
+  PINK_900: '#880e4f',
+  
+  // 🟣 紫色系 (Purple Tones)
+  PURPLE_50: '#f3e5f5',
+  PURPLE_100: '#e1bee7',
+  PURPLE_200: '#ce93d8',
+  PURPLE_300: '#ba68c8',
+  PURPLE_400: '#ab47bc',
+  PURPLE_500: '#9c27b0',
+  PURPLE_600: '#8e24aa',
+  PURPLE_700: '#7b1fa2',
+  PURPLE_800: '#6a1b9a',
+  PURPLE_900: '#4a148c',
+  
+  // 🟦 深紫色系 (Deep Purple Tones)
+  DEEP_PURPLE_50: '#ede7f6',
+  DEEP_PURPLE_100: '#d1c4e9',
+  DEEP_PURPLE_200: '#b39ddb',
+  DEEP_PURPLE_300: '#9575cd',
+  DEEP_PURPLE_400: '#7e57c2',
+  DEEP_PURPLE_500: '#673ab7',
+  DEEP_PURPLE_600: '#5e35b1',
+  DEEP_PURPLE_700: '#512da8',
+  DEEP_PURPLE_800: '#4527a0',
+  DEEP_PURPLE_900: '#311b92',
+  
+  // 🔵 藍色系 (Blue Tones)
+  BLUE_50: '#e3f2fd',
+  BLUE_100: '#bbdefb',
+  BLUE_200: '#90caf9',
+  BLUE_300: '#64b5f6',
+  BLUE_400: '#42a5f5',
+  BLUE_500: '#2196f3',
+  BLUE_600: '#1e88e5',
+  BLUE_700: '#1976d2',
+  BLUE_800: '#1565c0',
+  BLUE_900: '#0d47a1',
+  
+  // 🟢 青色系 (Teal Tones)
+  TEAL_50: '#e0f2f1',
+  TEAL_100: '#b2dfdb',
+  TEAL_200: '#80cbc4',
+  TEAL_300: '#4db6ac',
+  TEAL_400: '#26a69a',
+  TEAL_500: '#009688',
+  TEAL_600: '#00796b',
+  TEAL_700: '#00695c',
+  TEAL_800: '#004d40',
+  TEAL_900: '#00332a',
+  
+  // 🟢 綠色系 (Green Tones)
+  GREEN_50: '#e8f5e8',
+  GREEN_100: '#c8e6c9',
+  GREEN_200: '#a5d6a7',
+  GREEN_300: '#81c784',
+  GREEN_400: '#66bb6a',
+  GREEN_500: '#4caf50',
+  GREEN_600: '#43a047',
+  GREEN_700: '#388e3c',
+  GREEN_800: '#2e7d32',
+  GREEN_900: '#1b5e20',
+  
+  // 🟡 黃綠色系 (Light Green Tones)
+  LIGHT_GREEN_50: '#f1f8e9',
+  LIGHT_GREEN_100: '#dcedc8',
+  LIGHT_GREEN_200: '#c5e1a5',
+  LIGHT_GREEN_300: '#aed581',
+  LIGHT_GREEN_400: '#9ccc65',
+  LIGHT_GREEN_500: '#8bc34a',
+  LIGHT_GREEN_600: '#7cb342',
+  LIGHT_GREEN_700: '#689f38',
+  LIGHT_GREEN_800: '#558b2f',
+  LIGHT_GREEN_900: '#33691e',
+  
+  // ===================================
+  // 🎨 色票陣列 (Color Palette Arrays)
+  // ===================================
+  // 方便圖表使用的色票陣列
+  
+  // 主要色票 - 全光譜
+  PALETTE_PRIMARY: [
+    '#f8bbd9', '#ec407a', '#e91e63', '#d81b60', // 粉色系
+    '#e1bee7', '#ba68c8', '#9c27b0', '#7b1fa2', // 紫色系
+    '#b39ddb', '#7e57c2', '#673ab7', '#512da8', // 深紫色系
+    '#90caf9', '#2196f3', '#1976d2', '#0d47a1', // 藍色系
+    '#80cbc4', '#009688', '#00796b', '#00695c', // 青色系
+    '#a5d6a7', '#4caf50', '#388e3c', '#2e7d32', // 綠色系
+    '#c5e1a5', '#8bc34a', '#689f38', '#558b2f', // 黃綠色系
+  ],
+  
+  // 暖色系色票
+  PALETTE_WARM: [
+    '#d7ccc8', '#a1887f', '#8d6e63', '#6d4c41', // 棕色系
+    '#f8bbd9', '#f48fb1', '#ec407a', '#e91e63', // 粉色系
+    '#e1bee7', '#ce93d8', '#ba68c8', '#ab47bc', // 紫色系
+  ],
+  
+  // 冷色系色票
+  PALETTE_COOL: [
+    '#90caf9', '#64b5f6', '#2196f3', '#1976d2', // 藍色系
+    '#80cbc4', '#4db6ac', '#009688', '#00796b', // 青色系
+    '#a5d6a7', '#66bb6a', '#4caf50', '#43a047', // 綠色系
+    '#c5e1a5', '#9ccc65', '#8bc34a', '#7cb342', // 黃綠色系
+  ],
+  
+  // 柔和色票
+  PALETTE_SOFT: [
+    '#efebe9', '#f8bbd9', '#f3e5f5', '#ede7f6', // 淺暖色
+    '#e3f2fd', '#e0f2f1', '#e8f5e8', '#f1f8e9', // 淺冷色
+  ],
+  
+  // 強調色票
+  PALETTE_ACCENT: [
+    '#e91e63', '#9c27b0', '#673ab7', '#2196f3', // 強烈色彩
+    '#009688', '#4caf50', '#8bc34a', '#ff9800', // 活力色彩
+  ],
 } as const;
 
 // 輔助函數：獲取主題顏色
@@ -321,53 +465,33 @@ export const theme = createTheme({
   // ===================================
   // 📊 圖表色彩配置 (Chart Color Configuration)
   // ===================================
-  // 🎨 設計理念：簡化配色，以主題綠色為核心，搭配相近色系
-  // 🌈 色彩策略：統一使用綠色系及相近的自然色調，避免過於鮮豔的配色
+  // 🎨 設計理念：使用完整色票系統，提供豐富的視覺層次
+  // 🌈 色彩策略：從暖色到冷色的全光譜配色，提供最佳的數據視覺化效果
   chart: {
-    // 基礎圖表色彩 - 簡化為綠色系為主的配色
-    colors: [
-      '#4caf50',  // 主綠色 - 品牌色
-      '#66bb6a',  // 中綠色 - 輔助色
-      '#81c784',  // 淺綠色 - 第三色
-      '#a5d6a7',  // 更淺綠色 - 第四色
-      '#388e3c',  // 深綠色 - 強調色
-    ],
+    // 基礎圖表色彩 - 使用主要色票
+    colors: [...THEME_COLORS.PALETTE_PRIMARY],
     
-    // 主要數據系列 - 綠色系漸變
-    primary: [
-      '#4caf50',  // 主綠色
-      '#66bb6a',  // 中綠色
-      '#81c784',  // 淺綠色
-      '#a5d6a7',  // 更淺綠色
-    ],
+    // 主要數據系列 - 暖色系
+    primary: [...THEME_COLORS.PALETTE_WARM],
     
-    // 次要數據系列 - 深綠色系
-    secondary: [
-      '#388e3c',  // 深綠色
-      '#2e7d32',  // 更深綠色
-      '#1b5e20',  // 最深綠色
-      '#4caf50',  // 回到主色
-    ],
+    // 次要數據系列 - 冷色系
+    secondary: [...THEME_COLORS.PALETTE_COOL],
     
-    // 分類數據色彩 - 簡化為綠色系及中性色
-    categorical: [
-      '#4caf50',  // 主綠色
-      '#66bb6a',  // 中綠色
-      '#81c784',  // 淺綠色
-      '#a5d6a7',  // 更淺綠色
-      '#388e3c',  // 深綠色
-      '#2e7d32',  // 更深綠色
-      '#c8e6c9',  // 極淺綠色
-      '#e8f5e8',  // 背景綠色
-    ],
+    // 分類數據色彩 - 完整光譜
+    categorical: [...THEME_COLORS.PALETTE_PRIMARY],
     
-    // 地區分布專用色彩 - 綠色系漸變
+    // 地區分布專用色彩 - 藍色系漸變
     geographic: [
-      '#4caf50',  // 主綠色
-      '#66bb6a',  // 中綠色
-      '#81c784',  // 淺綠色
-      '#a5d6a7',  // 更淺綠色
-      '#388e3c',  // 深綠色
+      THEME_COLORS.BLUE_50,   // 極淺藍
+      THEME_COLORS.BLUE_100,  // 淺藍
+      THEME_COLORS.BLUE_200,  // 中淺藍
+      THEME_COLORS.BLUE_300,  // 中藍
+      THEME_COLORS.BLUE_400,  // 中深藍
+      THEME_COLORS.BLUE_500,  // 標準藍
+      THEME_COLORS.BLUE_600,  // 深藍
+      THEME_COLORS.BLUE_700,  // 更深藍
+      THEME_COLORS.BLUE_800,  // 深藍
+      THEME_COLORS.BLUE_900,  // 最深藍
     ],
     
     // 趨勢數據色彩 - 保持語義化但簡化

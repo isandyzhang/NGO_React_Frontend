@@ -3,7 +3,6 @@ import { Outlet } from 'react-router-dom';
 import { Box, useTheme, useMediaQuery, IconButton, AppBar, Toolbar, Typography } from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 import Sidebar from './Sidebar';
-import { useAuth } from '../../hooks/useAuth';
 
 /**
  * 主要布局組件 (MainLayout)
@@ -118,12 +117,12 @@ const MainLayout: React.FC = () => {
           marginTop: isMobile ? '64px' : 0, // 行動版需要留出 AppBar 空間
           px: { 
             xs: 1.5, // 手機版：12px
-            sm: 2.5, // 平板版：20px
-            md: 3.5, // 中等螢幕：28px
-            lg: 4.5, // 大螢幕：36px
+            sm: 2.5, // 小平板：20px
+            md: 3,   // 平板版：24px (針對平板優化)
+            lg: 4,   // 大螢幕：32px
             xl: 5    // 超大螢幕：40px
           },  
-          py: { xs: 2, sm: 2.5, md: 3 }, // 響應式垂直padding
+          py: { xs: 2, sm: 2.5, md: 3.5, lg: 3 }, // 響應式垂直padding，平板增加間距
           bgcolor: theme.palette.background.default,
           minHeight: isMobile ? 'calc(100vh - 64px)' : '100vh',
           width: isMobile ? '100%' : 'calc(100vw - 324px)', // 調整為正確寬度

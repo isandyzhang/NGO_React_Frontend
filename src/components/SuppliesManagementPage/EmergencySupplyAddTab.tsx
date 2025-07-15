@@ -28,6 +28,7 @@ import {
   getResponsiveSpacing,
   getSelectValidationStyle 
 } from '../../styles/commonStyles';
+import { caseService, CaseResponse } from '../../services/caseService';
 
 interface EmergencySupplyRequestData {
   itemName: string;
@@ -41,7 +42,7 @@ interface EmergencySupplyRequestData {
 interface CaseRecord {
   id: string;
   name: string;
-  age: number;
+  age?: number;
   contact: string;
   status: 'active' | 'inactive';
   lastUpdate: string;
@@ -67,58 +68,34 @@ const EmergencySupplyAddTab: React.FC<EmergencySupplyAddTabProps> = ({
 
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: boolean}>({});
   const [selectedCase, setSelectedCase] = useState<CaseRecord | null>(null);
+  const [caseDatabase, setCaseDatabase] = useState<CaseRecord[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // 模擬個案資料庫
-  const [caseDatabase] = useState<CaseRecord[]>([
-    {
-      id: 'CASE001',
-      name: '張小明',
-      age: 65,
-      contact: '0912-345-678',
-      status: 'active',
-      lastUpdate: '2024-01-15'
-    },
-    {
-      id: 'CASE002', 
-      name: '李小花',
-      age: 72,
-      contact: '0923-456-789',
-      status: 'active',
-      lastUpdate: '2024-01-14'
-    },
-    {
-      id: 'CASE003',
-      name: '王小華',
-      age: 58,
-      contact: '0934-567-890',
-      status: 'active',
-      lastUpdate: '2024-01-13'
-    },
-    {
-      id: 'CASE004',
-      name: '陳小美',
-      age: 67,
-      contact: '0945-678-901',
-      status: 'inactive',
-      lastUpdate: '2024-01-10'
-    },
-    {
-      id: 'CASE005',
-      name: '林小強',
-      age: 55,
-      contact: '0956-789-012',
-      status: 'active',
-      lastUpdate: '2024-01-16'
-    },
-    {
-      id: 'CASE006',
-      name: '黃小娟',
-      age: 63,
-      contact: '0967-890-123',
-      status: 'active',
-      lastUpdate: '2024-01-12'
+  // 載入個案資料
+  const loadCaseData = async () => {
+    setLoading(true);
+    try {
+      const response = await caseService.getAllCases(1, 100); // 獲取前100個個案
+      const caseRecords: CaseRecord[] = response.data.map((caseItem: CaseResponse) => ({
+        id: caseItem.caseId.toString(),
+        name: caseItem.name,
+        age: caseItem.birthday ? new Date().getFullYear() - new Date(caseItem.birthday).getFullYear() : undefined,
+        contact: caseItem.phone,
+        status: caseItem.status === 'active' ? 'active' : 'inactive',
+        lastUpdate: new Date(caseItem.createdAt).toISOString().split('T')[0]
+      }));
+      setCaseDatabase(caseRecords);
+    } catch (error) {
+      console.error('載入個案資料失敗:', error);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  // 組件載入時獲取個案資料
+  useEffect(() => {
+    loadCaseData();
+  }, []);
 
   // 處理預填的 CASE ID
   useEffect(() => {
@@ -342,9 +319,9 @@ const EmergencySupplyAddTab: React.FC<EmergencySupplyAddTabProps> = ({
                     <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
                       {option.name}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED, fontSize: '0.8rem' }}>
-                      ID: {option.id} | 年齡: {option.age}歲 | 聯絡: {option.contact}
-                    </Typography>
+                                          <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED, fontSize: '0.8rem' }}>
+                        ID: {option.id} | {option.age ? `年齡: ${option.age}歲` : '年齡: 未知'} | 聯絡: {option.contact}
+                      </Typography>
                     <Typography variant="caption" sx={{ 
                       color: option.status === 'active' ? THEME_COLORS.SUCCESS : THEME_COLORS.TEXT_MUTED,
                       fontSize: '0.75rem'
@@ -405,9 +382,9 @@ const EmergencySupplyAddTab: React.FC<EmergencySupplyAddTabProps> = ({
               <Typography variant="body2" sx={{ mb: 0.5 }}>
                 <strong>ID：</strong>{selectedCase.id}
               </Typography>
-              <Typography variant="body2" sx={{ mb: 0.5 }}>
-                <strong>年齡：</strong>{selectedCase.age}歲
-              </Typography>
+                              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>年齡：</strong>{selectedCase.age ? `${selectedCase.age}歲` : '未知'}
+                </Typography>
               <Typography variant="body2">
                 <strong>聯絡方式：</strong>{selectedCase.contact}
               </Typography>

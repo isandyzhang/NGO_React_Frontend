@@ -1,4 +1,4 @@
-import { CalendarEvent } from '../components/CalendarPage';
+import { CalendarEvent } from './scheduleService';
 
 /**
  * 日曆事件 API 服務

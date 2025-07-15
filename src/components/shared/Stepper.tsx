@@ -68,7 +68,7 @@ const Stepper: React.FC<StepperProps> = ({
   return (
     <Box sx={{ width: '100%' }}>
       {/* 横向步骤指示器 */}
-      <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'transparent' }}>
+      <Paper elevation={0} sx={{ p: { xs: 3, md: 3.5 }, mb: { xs: 3, md: 3.5 }, bgcolor: 'transparent' }}>
         <MuiStepper 
           activeStep={activeStep} 
           alternativeLabel
@@ -101,8 +101,8 @@ const Stepper: React.FC<StepperProps> = ({
                     return (
                       <Box
                         sx={{
-                          width: 32,
-                          height: 32,
+                          width: { xs: 32, md: 36 }, // 平板增加大小
+                          height: { xs: 32, md: 36 }, // 平板增加大小
                           borderRadius: '50%',
                           bgcolor: THEME_COLORS.SUCCESS,
                           display: 'flex',
@@ -111,15 +111,15 @@ const Stepper: React.FC<StepperProps> = ({
                           color: 'white',
                         }}
                       >
-                        <Check sx={{ fontSize: 20 }} />
+                        <Check sx={{ fontSize: { xs: 20, md: 22 } }} />
                       </Box>
                     );
                   }
                   return (
                     <Box
                       sx={{
-                        width: 32,
-                        height: 32,
+                        width: { xs: 32, md: 36 }, // 平板增加大小
+                        height: { xs: 32, md: 36 }, // 平板增加大小
                         borderRadius: '50%',
                         bgcolor: active ? THEME_COLORS.PRIMARY : THEME_COLORS.BACKGROUND_SECONDARY,
                         display: 'flex',
@@ -127,6 +127,7 @@ const Stepper: React.FC<StepperProps> = ({
                         justifyContent: 'center',
                         color: active ? 'white' : THEME_COLORS.TEXT_MUTED,
                         border: active ? 'none' : `2px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                        fontSize: { xs: '0.875rem', md: '1rem' }, // 平板增加字體大小
                       }}
                     >
                       {index + 1}
@@ -168,13 +169,15 @@ const Stepper: React.FC<StepperProps> = ({
 
       {/* 操作按钮 */}
       {showActions && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: { xs: 4, md: 5 } }}>
           <Button
             disabled={activeStep === 0}
             onClick={handleBack}
             startIcon={<NavigateBefore />}
             sx={{
               color: THEME_COLORS.TEXT_MUTED,
+              minHeight: { md: '44px' }, // 平板增加觸摸高度
+              px: { md: 3 }, // 平板增加水平內邊距
               '&:hover': {
                 color: THEME_COLORS.PRIMARY,
               },
@@ -191,6 +194,8 @@ const Stepper: React.FC<StepperProps> = ({
                 disabled={!canProceed}
                 sx={{
                   bgcolor: THEME_COLORS.SUCCESS,
+                  minHeight: { md: '44px' }, // 平板增加觸摸高度
+                  px: { md: 3 }, // 平板增加水平內邊距
                   '&:hover': {
                     bgcolor: THEME_COLORS.PRIMARY_DARK,
                   },
@@ -206,6 +211,8 @@ const Stepper: React.FC<StepperProps> = ({
                 endIcon={<NavigateNext />}
                 sx={{
                   bgcolor: THEME_COLORS.PRIMARY,
+                  minHeight: { md: '44px' }, // 平板增加觸摸高度
+                  px: { md: 3 }, // 平板增加水平內邊距
                   '&:hover': {
                     bgcolor: THEME_COLORS.PRIMARY_DARK,
                   },

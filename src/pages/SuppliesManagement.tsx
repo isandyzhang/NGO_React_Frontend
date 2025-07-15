@@ -24,8 +24,7 @@ import { commonStyles, getResponsiveSpacing } from '../styles/commonStyles';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
 import EmergencySupplyAddTab from '../components/SuppliesManagementPage/EmergencySupplyAddTab';
-import RegularInventoryTab from '../components/SuppliesManagementPage/RegularInventoryTab';
-import EmergencyInventoryTab from '../components/SuppliesManagementPage/EmergencyInventoryTab';
+import InventoryTab from '../components/SuppliesManagementPage/InventoryTab';
 import RegularRequestTab from '../components/SuppliesManagementPage/RegularRequestTab';
 import EmergencyRequestTab from '../components/SuppliesManagementPage/EmergencyRequestTab';
 import DistributionTab from '../components/SuppliesManagementPage/DistributionTab';
@@ -78,11 +77,6 @@ const SuppliesManagement: React.FC = () => {
       component: <EmergencySupplyAddTab prefilledCaseId={selectedCaseId} />
     },
     {
-      label: '物資庫存',
-      icon: <Storage sx={{ fontSize: 20 }} />,
-      component: <EmergencyInventoryTab />
-    },
-    {
       label: '物資申請及紀錄',
       icon: <Assignment sx={{ fontSize: 20 }} />,
       component: <EmergencyRequestTab />
@@ -91,7 +85,7 @@ const SuppliesManagement: React.FC = () => {
     {
       label: '物資庫存',
       icon: <Storage sx={{ fontSize: 20 }} />,
-      component: <RegularInventoryTab />
+      component: <InventoryTab />
     },
     {
       label: '物資申請及紀錄',

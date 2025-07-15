@@ -323,7 +323,35 @@ body {
  * 針對不同螢幕尺寸的樣式調整
  */
 
-/** 平板設備 (768px 以下) */
+/** 平板設備 (768px - 1024px) - 橫屏平板優化 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .container {
+    padding: 0 var(--spacing-lg);    /* 平板適中的內邊距 */
+  }
+  
+  :root {
+    --card-padding: 20px;            /* 平板標準卡片內邊距 */
+    --spacing-md: 18px;              /* 平板調整中等間距 */
+    --spacing-lg: 28px;              /* 平板調整大間距 */
+  }
+  
+  /* 平板觸摸友好性優化 */
+  .MuiButton-root {
+    min-height: 44px !important;     /* 最小觸摸目標高度 */
+    padding: 8px 16px !important;    /* 觸摸友好的內邊距 */
+  }
+  
+  .MuiIconButton-root {
+    min-width: 44px !important;      /* 最小觸摸目標寬度 */
+    min-height: 44px !important;     /* 最小觸摸目標高度 */
+  }
+  
+  .MuiTableCell-root {
+    padding: 12px 16px !important;   /* 表格單元格增加內邊距 */
+  }
+}
+
+/** 平板設備 (768px 以下) - 小平板和手機 */
 @media (max-width: 768px) {
   .container {
     padding: 0 var(--spacing-sm);    /* 減少左右內邊距 */
@@ -331,6 +359,17 @@ body {
   
   :root {
     --card-padding: 16px;            /* 減少卡片內邊距 */
+  }
+  
+  /* 觸摸友好性優化 */
+  .MuiButton-root {
+    min-height: 48px !important;     /* 較大的觸摸目標高度 */
+    padding: 10px 16px !important;   /* 觸摸友好的內邊距 */
+  }
+  
+  .MuiIconButton-root {
+    min-width: 48px !important;      /* 較大的觸摸目標寬度 */
+    min-height: 48px !important;     /* 較大的觸摸目標高度 */
   }
 }
 

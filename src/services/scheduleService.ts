@@ -97,7 +97,7 @@ class ScheduleService {
 
     const responseData = await api.post<Schedule>("/schedule", defaultData);
 
-    console.log("✅ 後端回傳的 schedule 資料:", responseData);
+    // 後端回傳的 schedule 資料
 
     if (!responseData || typeof responseData.scheduleId === "undefined") {
       console.error("❌ 回傳資料不含有效 scheduleId：", responseData);

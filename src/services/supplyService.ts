@@ -4,8 +4,8 @@ import { api } from './api';
  * 物資分類介面
  */
 export interface SupplyCategory {
-  categoryId: number;
-  categoryName: string;
+  id: number;
+  name: string;
   description?: string;
 }
 
@@ -25,6 +25,8 @@ export interface Supply {
   supplyType: 'regular' | 'emergency';
   addedDate: string;
   expiryDate?: string;
+  description?: string;
+  imageUrl?: string;
   urgencyLevel?: 'high' | 'medium' | 'low';
   lastUsed?: string;
 }
@@ -34,6 +36,9 @@ export interface Supply {
  */
 export interface RegularSuppliesNeed {
   needId: number;
+  caseId?: number;
+  caseName?: string;
+  supplyId?: number;
   itemName: string;
   category: string;
   quantity: number;
@@ -42,9 +47,8 @@ export interface RegularSuppliesNeed {
   requestDate: string;
   status: 'pending' | 'approved' | 'rejected' | 'completed';
   estimatedCost: number;
-  caseName?: string;
-  caseId?: string;
   deliveryMethod?: '自取' | '宅配';
+  pickupDate?: string;
   matched: boolean;
 }
 
@@ -144,7 +148,7 @@ class SupplyService {
    */
   async getSupplyCategories(): Promise<SupplyCategory[]> {
     try {
-      const response = await api.get<SupplyCategory[]>('/SupplyCategory');
+      const response = await api.get<SupplyCategory[]>('/Supply/categories');
       return response;
     } catch (error) {
       console.error('取得物資分類失敗:', error);
@@ -196,7 +200,18 @@ class SupplyService {
    */
   async updateSupply(id: number, supplyData: Partial<Supply>): Promise<void> {
     try {
-      await api.put<void>(`/Supply/${id}`, supplyData);
+      // 轉換前端字段名到後端字段名
+      const updateData: any = {};
+      
+      if (supplyData.name !== undefined) updateData.Name = supplyData.name;
+      if (supplyData.categoryId !== undefined) updateData.CategoryId = supplyData.categoryId;
+      if (supplyData.currentStock !== undefined) updateData.Quantity = supplyData.currentStock;
+      if (supplyData.cost !== undefined) updateData.Price = supplyData.cost;
+      if (supplyData.description !== undefined) updateData.Description = supplyData.description;
+      if (supplyData.supplyType !== undefined) updateData.SupplyType = supplyData.supplyType;
+      if (supplyData.imageUrl !== undefined) updateData.ImageUrl = supplyData.imageUrl;
+      
+      await api.put<void>(`/Supply/${id}`, updateData);
     } catch (error) {
       console.error(`更新物資 ${id} 失敗:`, error);
       throw error;
@@ -216,6 +231,27 @@ class SupplyService {
   }
 
   /**
+   * 取得物資統計資料
+   */
+  async getSupplyStats(): Promise<{
+    totalItems: number;
+    lowStockItems: number;
+    totalValue: number;
+  }> {
+    try {
+      const response = await api.get<{
+        totalItems: number;
+        lowStockItems: number;
+        totalValue: number;
+      }>('/Supply/stats');
+      return response;
+    } catch (error) {
+      console.error('取得物資統計失敗:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 取得常駐物資需求
    */
   async getRegularSuppliesNeeds(): Promise<RegularSuppliesNeed[]> {
@@ -224,6 +260,67 @@ class SupplyService {
       return response;
     } catch (error) {
       console.error('取得常駐物資需求失敗:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 取得常駐物資需求統計
+   */
+  async getRegularSuppliesNeedStats(): Promise<{
+    totalRequests: number;
+    pendingRequests: number;
+    approvedRequests: number;
+    rejectedRequests: number;
+    totalEstimatedCost: number;
+  }> {
+    try {
+      const response = await api.get<{
+        totalRequests: number;
+        pendingRequests: number;
+        approvedRequests: number;
+        rejectedRequests: number;
+        totalEstimatedCost: number;
+      }>('/RegularSuppliesNeed/stats');
+      return response;
+    } catch (error) {
+      console.error('取得常駐物資需求統計失敗:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 批准常駐物資需求
+   */
+  async approveRegularSuppliesNeed(id: number): Promise<void> {
+    try {
+      await api.post<void>(`/RegularSuppliesNeed/${id}/approve`);
+    } catch (error) {
+      console.error(`批准常駐物資需求 ${id} 失敗:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 拒絕常駐物資需求
+   */
+  async rejectRegularSuppliesNeed(id: number): Promise<void> {
+    try {
+      await api.post<void>(`/RegularSuppliesNeed/${id}/reject`);
+    } catch (error) {
+      console.error(`拒絕常駐物資需求 ${id} 失敗:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 刪除常駐物資需求
+   */
+  async deleteRegularSuppliesNeed(id: number): Promise<void> {
+    try {
+      await api.delete<void>(`/RegularSuppliesNeed/${id}`);
+    } catch (error) {
+      console.error(`刪除常駐物資需求 ${id} 失敗:`, error);
       throw error;
     }
   }

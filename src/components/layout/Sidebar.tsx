@@ -14,16 +14,11 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  Dashboard,
-  People,
   Add,
   Assessment,
   ExitToApp,
-  Inventory,
-  Event,
   Folder,
   Home,
-  Person,
   LocalShipping,
   CalendarToday,
 } from '@mui/icons-material';
@@ -98,18 +93,19 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
   >
   
       {/* 系統 Logo 和品牌名稱區塊 */}
-      <Box sx={{ p: 3, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+      <Box sx={{ p: { xs: 3, md: 3.5 }, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <Typography 
           variant="h5" 
           sx={{ 
             fontWeight: 600, 
             display: 'flex', 
             alignItems: 'center', 
-            gap: 1,
-            color: 'common.white'
+            gap: { xs: 1, md: 1.5 }, // 平板增加間距
+            color: 'common.white',
+            fontSize: { md: '1.4rem' } // 平板略微增加字體大小
           }}
         >
-          <Assessment sx={{ fontSize: 28, color: 'common.white' }} />
+          <Assessment sx={{ fontSize: { xs: 28, md: 32 }, color: 'common.white' }} />
           恩舉NGO管理系統
         </Typography>
       </Box>
@@ -167,7 +163,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
       </Box>
 
       {/* 主要導航選單 */}
-      <List sx={{ px: 2, py: 3 }}>
+      <List sx={{ px: { xs: 2, md: 2.5 }, py: { xs: 3, md: 3.5 } }}>
         {menuItems.map((item) => (
           <ListItemButton
             component={Link}
@@ -176,21 +172,30 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
             selected={location.pathname === item.path}
             sx={{
               borderRadius: '12px',
-              mb: 1,
+              mb: { xs: 1, md: 1.5 }, // 平板增加間距
+              py: { xs: 1, md: 1.5 }, // 平板增加垂直內邊距
+              px: { xs: 2, md: 2.5 }, // 平板增加水平內邊距
               color: 'common.white',
               bgcolor: location.pathname === item.path ? 'rgba(255,255,255,0.1)' : 'transparent',
+              minHeight: { md: '52px' }, // 平板增加最小高度
               '&:hover': {
                 bgcolor: 'rgba(255,255,255,0.05)',
               },
               transition: 'all 0.2s',
             }}
           >
-            <ListItemIcon sx={{ color: 'common.white', minWidth: '40px' }}>{item.icon}</ListItemIcon>
+            <ListItemIcon sx={{ 
+              color: 'common.white', 
+              minWidth: { xs: '40px', md: '44px' }, // 平板增加圖標區域
+              '& .MuiSvgIcon-root': {
+                fontSize: { xs: 20, md: 22 } // 平板增加圖標大小
+              }
+            }}>{item.icon}</ListItemIcon>
             <ListItemText 
               primary={
                 <Typography
                   sx={{
-                    fontSize: '1rem',
+                    fontSize: { xs: '1rem', md: '1.05rem' }, // 平板略微增加字體大小
                     fontWeight: location.pathname === item.path ? 600 : 400,
                     color: 'common.white'
                   }}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   TextField,
@@ -23,7 +23,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  CircularProgress
 } from '@mui/material';
 import { 
   Search,
@@ -40,6 +41,7 @@ import {
   getResponsiveSpacing
 } from '../../styles/commonStyles';
 import { formatDateForInput } from '../../utils/dateHelper';
+import { supplyService, EmergencySupplyNeed } from '../../services/supplyService';
 
 interface EmergencySupplyRequest {
   id: number;
@@ -55,6 +57,7 @@ interface EmergencySupplyRequest {
   caseName: string;
   caseId: string;
   matched: boolean;
+  emergencyReason?: string;
 }
 
 const EmergencyRequestTab: React.FC = () => {
@@ -76,53 +79,42 @@ const EmergencyRequestTab: React.FC = () => {
   const [matchingQuantity, setMatchingQuantity] = useState(1);
 
   // 緊急物資申請資料
-  const [requestData] = useState<EmergencySupplyRequest[]>([
-    {
-      id: 1,
-      itemName: '體溫計',
-      category: '緊急醫療用品',
-      quantity: 3,
-      unit: '個',
-      urgency: 'high',
-      requestedBy: '張小明',
-      requestDate: '2024-01-16',
-      status: 'pending',
-      estimatedCost: 450,
-      caseName: '張小明',
-      caseId: 'CASE001',
-      matched: false
-    },
-    {
-      id: 2,
-      itemName: '急救包',
-      category: '緊急醫療用品',
-      quantity: 1,
-      unit: '套',
-      urgency: 'high',
-      requestedBy: '李小花',
-      requestDate: '2024-01-18',
-      status: 'approved',
-      estimatedCost: 800,
-      caseName: '李小花',
-      caseId: 'CASE002',
-      matched: false
-    },
-    {
-      id: 3,
-      itemName: '應急照明燈',
-      category: '照明設備',
-      quantity: 2,
-      unit: '個',
-      urgency: 'medium',
-      requestedBy: '王小華',
-      requestDate: '2024-01-17',
-      status: 'pending',
-      estimatedCost: 900,
-      caseName: '王小華',
-      caseId: 'CASE003',
-      matched: false
+  const [requestData, setRequestData] = useState<EmergencySupplyRequest[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // 載入緊急物資需求資料
+  const loadEmergencySupplyRequests = async () => {
+    setLoading(true);
+    try {
+      const emergencyNeeds = await supplyService.getEmergencySupplyNeeds();
+      const requests: EmergencySupplyRequest[] = emergencyNeeds.map((need: EmergencySupplyNeed) => ({
+        id: need.emergencyNeedId,
+        itemName: need.itemName,
+        category: need.category,
+        quantity: need.quantity,
+        unit: need.unit,
+        urgency: need.urgency,
+        requestedBy: need.requestedBy,
+        requestDate: new Date(need.requestDate).toISOString().split('T')[0],
+        status: need.status,
+        estimatedCost: need.estimatedCost,
+        caseName: need.caseName,
+        caseId: need.caseId,
+        matched: need.matched,
+        emergencyReason: need.emergencyReason
+      }));
+      setRequestData(requests);
+    } catch (error) {
+      console.error('載入緊急物資需求失敗:', error);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  // 組件載入時獲取資料
+  useEffect(() => {
+    loadEmergencySupplyRequests();
+  }, []);
 
   const handleSearch = () => {
     console.log('搜尋條件:', { searchType, searchContent });
@@ -310,7 +302,27 @@ const EmergencyRequestTab: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {requestData.map((request) => (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <CircularProgress sx={{ color: THEME_COLORS.ERROR }} />
+                    <Typography variant="body2" color="textSecondary">
+                      載入緊急物資需求資料中...
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ) : requestData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
+                  <Typography variant="body2" color="textSecondary">
+                    目前無緊急物資需求申請
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              requestData.map((request) => (
               <React.Fragment key={request.id}>
                 <TableRow hover>
                   <TableCell>
@@ -603,7 +615,7 @@ const EmergencyRequestTab: React.FC = () => {
                   </TableCell>
                 </TableRow>
               </React.Fragment>
-            ))}
+            )))}
           </TableBody>
         </Table>
       </TableContainer>

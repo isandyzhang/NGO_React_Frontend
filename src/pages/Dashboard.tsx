@@ -17,6 +17,7 @@ import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
 import { CalendarEvent } from '../services/scheduleService';
 import { calendarService, caseService, activityService, authService } from '../services';
+import { dashboardService, DashboardStats, GenderDistribution, CaseDistribution, DifficultyAnalysis } from '../services/dashboardService';
 import { 
   People, 
   Assignment, 
@@ -49,6 +50,11 @@ const Dashboard: React.FC = () => {
   
   // 最近行事曆活動狀態
   const [recentEvents, setRecentEvents] = useState<CalendarEvent[]>([]);
+  
+  // 圖表數據狀態
+  const [genderData, setGenderData] = useState<{id: number, value: number, label: string}[]>([]);
+  const [regionDistributionData, setRegionDistributionData] = useState<{region: string, count: number}[]>([]);
+  const [difficultyData, setDifficultyData] = useState<{difficulty: string, count: number}[]>([]);
   
   // 模擬通知資料 - 主要為活動相關通知
   const notifications = [
@@ -103,59 +109,37 @@ const Dashboard: React.FC = () => {
       title: '個案人數',
       value: '0',
       icon: <Assignment />,
-      color: THEME_COLORS.CHART_PRIMARY
+      color: THEME_COLORS.PINK_500
     },
     {
       title: '志工人數',
       value: '0',
       icon: <People />,
-      color: THEME_COLORS.CHART_SECONDARY
+      color: THEME_COLORS.BLUE_500
     },
     {
       title: '活動總數',
       value: '0',
       icon: <CalendarToday />,
-      color: THEME_COLORS.CHART_ACCENT_1
+      color: THEME_COLORS.TEAL_500
     },
     {
       title: '本月完成活動',
       value: '0',
       icon: <TrendingUp />,
-      color: THEME_COLORS.CHART_ACCENT_2
+      color: THEME_COLORS.PURPLE_500
     }
   ]);
 
-  // 性別分布統計資料（圓餅圖用）
-  const genderData = [
-    { id: 0, value: 89, label: '男生' },
-    { id: 1, value: 67, label: '女生' }
-  ];
 
 
-
-  // 全台灣個案分布資料（長條圖用）
-  const regionDistributionData = [
-    { region: '台北市', count: 45 },
-    { region: '新北市', count: 38 },
-    { region: '桃園市', count: 28 },
-    { region: '台中市', count: 22 },
-    { region: '台南市', count: 18 },
-    { region: '高雄市', count: 15 },
-    { region: '新竹縣', count: 12 },
-    { region: '彰化縣', count: 10 },
-    { region: '基隆市', count: 8 },
-    { region: '宜蘭縣', count: 6 },
-    { region: '雲林縣', count: 5 },
-    { region: '其他', count: 9 }
-  ];
-
-  // 事件類型配置 - 使用新的圖表顏色
+  // 事件類型配置 - 使用色票系統
   const eventTypes = {
-    meeting: { label: '會議', color: THEME_COLORS.CHART_SECONDARY },
-    activity: { label: '活動', color: THEME_COLORS.CHART_PRIMARY },
-    'case-visit': { label: '個案訪問', color: THEME_COLORS.CHART_ACCENT_1 },
-    training: { label: '培訓', color: THEME_COLORS.CHART_ACCENT_2 },
-    other: { label: '其他', color: THEME_COLORS.CHART_NEUTRAL },
+    meeting: { label: '會議', color: THEME_COLORS.PURPLE_500 },
+    activity: { label: '活動', color: THEME_COLORS.PINK_500 },
+    'case-visit': { label: '個案訪問', color: THEME_COLORS.BLUE_500 },
+    training: { label: '培訓', color: THEME_COLORS.TEAL_500 },
+    other: { label: '其他', color: THEME_COLORS.LIGHT_GREEN_500 },
   };
 
   /**
@@ -186,40 +170,34 @@ const Dashboard: React.FC = () => {
   // 載入統計資料
   const loadStatistics = async () => {
     try {
-      // 載入個案統計
-      const cases = await caseService.getAllCases();
-      
-      // 載入志工統計
-      const workers = await authService.getWorkers();
-      
-      // 載入活動統計
-      const activityStats = await activityService.getActivityStatistics();
+      // 使用新的dashboardService載入統計資料
+      const stats = await dashboardService.getStats();
       
       // 更新統計卡片
       setStatsCards([
         {
           title: '個案人數',
-          value: cases.length.toString(),
+          value: stats.totalCases.toString(),
           icon: <Assignment />,
-          color: THEME_COLORS.CHART_PRIMARY
+          color: THEME_COLORS.PINK_500
         },
         {
-          title: '志工人數',
-          value: workers.length.toString(),
+          title: '用戶人數',
+          value: stats.totalUsers.toString(),
           icon: <People />,
-          color: THEME_COLORS.CHART_SECONDARY
+          color: THEME_COLORS.BLUE_500
         },
         {
           title: '活動總數',
-          value: activityStats.totalActivities.toString(),
+          value: stats.totalActivities.toString(),
           icon: <CalendarToday />,
-          color: THEME_COLORS.CHART_ACCENT_1
+          color: THEME_COLORS.TEAL_500
         },
         {
           title: '本月完成活動',
-          value: activityStats.completedActivities.toString(),
+          value: stats.monthlyCompletedActivities.toString(),
           icon: <TrendingUp />,
-          color: THEME_COLORS.CHART_ACCENT_2
+          color: THEME_COLORS.PURPLE_500
         }
       ]);
     } catch (error) {
@@ -227,10 +205,44 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // 載入圖表數據
+  const loadChartData = async () => {
+    try {
+      // 載入性別分佈數據
+      const genderDistribution = await dashboardService.getGenderDistribution();
+      const genderChartData = genderDistribution.map((item, index) => ({
+        id: index,
+        value: item.count,
+        label: item.gender === 'Male' ? '男生' : item.gender === 'Female' ? '女生' : item.gender
+      }));
+      setGenderData(genderChartData);
+
+      // 載入個案城市分佈數據
+      const caseDistribution = await dashboardService.getCaseDistribution();
+      const regionChartData = caseDistribution.map(item => ({
+        region: item.city,
+        count: item.count
+      }));
+      setRegionDistributionData(regionChartData);
+
+      // 載入困難類型分析數據
+      const difficultyAnalysis = await dashboardService.getDifficultyAnalysis();
+      const difficultyChartData = difficultyAnalysis.map(item => ({
+        difficulty: item.difficultyType,
+        count: item.count
+      }));
+      setDifficultyData(difficultyChartData);
+
+    } catch (error) {
+      console.error('載入圖表數據失敗:', error);
+    }
+  };
+
   // 組件載入時載入資料
   useEffect(() => {
     loadRecentEvents();
     loadStatistics();
+    loadChartData();
   }, []);
 
   /**
@@ -263,55 +275,73 @@ const Dashboard: React.FC = () => {
     return { date: displayDate, time: timeStr };
   };
 
-  // 個案面臨困難分析資料 - 使用主題顏色
-  const difficultiesData = [
-    { id: 0, value: 145, label: '經濟困難', change: '+8.2%' },
-    { id: 1, value: 85, label: '情緒障礙', change: '+7%' },
-    { id: 2, value: 40, label: '溝通障礙', change: '+2.5%' },
-    { id: 3, value: 12, label: '醫療需求', change: '+4.1%' },
-    { id: 4, value: 8, label: '成癮問題', change: '-2.3%' },
-    { id: 5, value: 5, label: '家庭暴力', change: '-6.5%' },
-    { id: 6, value: 2, label: '犯罪紀錄', change: '+1.7%' }
-  ];
+  // 將困難數據轉換為圖表格式
+  const difficultiesData = difficultyData.map((item, index) => ({
+    id: index,
+    value: item.count,
+    label: item.difficulty,
+    change: '+0%' // 暫時使用固定值，後續可以加入變化計算
+  }));
 
-  // 困難分析圖表顏色 - 使用主題categorical顏色
-  const difficultiesColors = theme.chart.categorical.slice(0, difficultiesData.length);
+  // 困難分析圖表顏色 - 使用色票系統
+  const getDifficultyColor = (difficulty: string) => {
+    const colorMap: { [key: string]: string } = {
+      '經濟困難': THEME_COLORS.PINK_500,     // 粉色系 - 緊急
+      '家庭問題': THEME_COLORS.BROWN_500,    // 棕色系 - 家庭
+      '學習困難': THEME_COLORS.BLUE_500,     // 藍色系 - 學習
+      '健康問題': THEME_COLORS.PINK_700,     // 深粉色 - 健康
+      '行為問題': THEME_COLORS.PURPLE_500,   // 紫色系 - 行為
+      '人際關係': THEME_COLORS.TEAL_500,     // 青色系 - 社交
+      '情緒困擾': THEME_COLORS.DEEP_PURPLE_500, // 深紫色 - 情緒
+      '其他困難': THEME_COLORS.LIGHT_GREEN_500  // 黃綠色 - 其他
+    };
+    return colorMap[difficulty] || THEME_COLORS.PRIMARY;
+  };
+
+  // 根據困難類型動態生成顏色
+  const difficultiesColors = difficultiesData.map(item => 
+    getDifficultyColor(item.label)
+  );
+
+  // 地區分布使用色票系統 - 完整光譜
+  const regionColors = theme.chart.geographic;
 
     return (
     <PageContainer>
       {/* 統一的頁面頭部組件 */}
       <PageHeader
         breadcrumbs={[
-          { label: '儀表板', icon: <DashboardIcon sx={{ fontSize: 16 }} /> }
+          { label: '儀表板', icon: <DashboardIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 } }} /> }
         ]}
         rightContent={
           <Box sx={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: { xs: 1, md: 2 }
+            gap: { xs: 1, sm: 1.5, md: 2 },
+            px: { xs: 1, sm: 0 }
           }}>
             {/* 右上角日期和版本資訊區域 */}
             <Box sx={{ 
-              display: { xs: 'none', lg: 'flex' },
+              display: { xs: 'none', md: 'flex' },
               flexDirection: 'column',
               alignItems: 'flex-end',
-              gap: 0.5,
-              mr: 1
+              gap: { xs: 0.5, sm: 0.75, md: 1 },
+              mr: { xs: 1, sm: 1.5 }
             }}>
               {/* 今日日期顯示 */}
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: 0.5 
+                gap: { xs: 0.5, md: 0.75 } // 平板增加間距
               }}>
                 <CalendarToday sx={{ 
-                  fontSize: 14, 
+                  fontSize: { xs: 12, sm: 14, md: 18 }, // 平板增加圖標大小
                   color: theme.customColors.icon 
                 }} />
                 <Typography sx={{
                   ...theme.customTypography.legendLabel,
                   color: 'text.secondary',
-                  fontSize: '0.75rem'
+                  fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.85rem' } // 平板增加字體大小
                 }}>
                   {formatDate(today)}
                 </Typography>
@@ -321,16 +351,16 @@ const Dashboard: React.FC = () => {
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: 0.5 
+                gap: { xs: 0.5, md: 0.75 } // 平板增加間距
               }}>
                 <Info sx={{ 
-                  fontSize: 14, 
+                  fontSize: { xs: 12, sm: 14, md: 18 }, // 平板增加圖標大小
                   color: theme.customColors.icon 
                 }} />
                 <Typography sx={{
                   ...theme.customTypography.legendLabel,
                   color: 'text.secondary',
-                  fontSize: '0.75rem'
+                  fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.85rem' } // 平板增加字體大小
                 }}>
                   系統版本 {systemVersion}
                 </Typography>
@@ -345,13 +375,16 @@ const Dashboard: React.FC = () => {
                 border: '1px solid',
                 borderColor: 'divider',
                 borderRadius: 2,
+                p: { xs: 1, sm: 1.5, md: 2 }, // 平板增加內邊距
+                minWidth: { md: '48px' }, // 平板最小寬度
+                minHeight: { md: '48px' }, // 平板最小高度
                 '&:hover': {
                   bgcolor: 'action.hover'
                 }
               }}
             >
               <Badge badgeContent={notifications.length} color="error">
-                <NotificationsNone sx={{ fontSize: 20 }} />
+                <NotificationsNone sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }} />
               </Badge>
             </IconButton>
           </Box>
@@ -365,8 +398,8 @@ const Dashboard: React.FC = () => {
         onClose={handleNotificationClose}
         PaperProps={{
           sx: {
-            width: { xs: 320, sm: 380 }, 
-            maxHeight: 500,
+            width: { xs: 280, sm: 320, md: 400, lg: 380 }, // 平板增加寬度
+            maxHeight: { xs: 500, md: 600 }, // 平板增加高度
             mt: 1,
             borderRadius: 2,
             boxShadow: theme.shadows[8],
@@ -378,7 +411,7 @@ const Dashboard: React.FC = () => {
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <Box sx={{ 
-          p: 2, 
+          p: { xs: 2, sm: 2.5 }, 
           pb: 1,
           borderRadius: '8px 8px 0 0'
         }}>
@@ -392,12 +425,13 @@ const Dashboard: React.FC = () => {
             key={notification.id} 
             onClick={handleNotificationClose}
             sx={{ 
-              py: 1.5,
-              px: 2,
+              py: { xs: 1.5, sm: 2, md: 2.5 }, // 平板增加垂直內邊距
+              px: { xs: 2, sm: 2.5, md: 3 }, // 平板增加水平內邊距
               flexDirection: 'column',
               alignItems: 'flex-start',
               borderRadius: 1,
               mx: 1,
+              minHeight: { md: '70px' }, // 平板增加最小高度提升觸摸友好性
               '&:hover': {
                 bgcolor: 'action.hover',
                 borderRadius: 1
@@ -406,7 +440,7 @@ const Dashboard: React.FC = () => {
           >
             <Typography sx={{
               ...theme.customTypography.chartLabel,
-              fontSize: { xs: '0.875rem', sm: '1rem' }
+              fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' }
             }}>
               {notification.title}
             </Typography>
@@ -415,12 +449,12 @@ const Dashboard: React.FC = () => {
                 ...theme.customTypography.legendLabel,
                 color: 'text.secondary',
                 mt: 0.5,
-                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
               }}
             >
               {notification.time}
             </Typography>
-            {index < notifications.length - 1 && <Divider sx={{ width: '100%', mt: 1 }} />}
+            {index < notifications.length - 1 && <Divider sx={{ width: '100%', mt: { xs: 1, sm: 1.5 } }} />}
           </MenuItem>
         ))}
         <Divider />
@@ -429,7 +463,7 @@ const Dashboard: React.FC = () => {
           sx={{ 
             justifyContent: 'center',
             color: 'primary.main',
-            py: 1.5,
+            py: { xs: 1.5, sm: 2 },
             borderRadius: '0 0 8px 8px',
             '&:hover': {
               bgcolor: 'action.hover',
@@ -439,7 +473,7 @@ const Dashboard: React.FC = () => {
         >
           <Typography sx={{
             ...theme.customTypography.chartLabel,
-            fontSize: { xs: '0.875rem', sm: '1rem' }
+            fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' }
           }}>
             查看全部通知
           </Typography>
@@ -450,8 +484,11 @@ const Dashboard: React.FC = () => {
       <Box 
         display="flex" 
         flexWrap="wrap" 
-        gap={{ xs: 2, sm: 3 }}
-        sx={{ mb: { xs: 3, md: 4 } }}
+        gap={{ xs: 2, sm: 2, md: 3 }}
+        sx={{ 
+          mb: { xs: 3, md: 4 },
+          px: { xs: 1, sm: 0 }
+        }}
       >
         {statsCards.map((card, index) => (
           <Box 
@@ -460,21 +497,39 @@ const Dashboard: React.FC = () => {
               flexBasis: { 
                 xs: '100%', 
                 sm: 'calc(50% - 8px)', 
-                md: 'calc(25% - 18px)' 
+                md: 'calc(33.333% - 12px)', // 平板橫屏：3列佈局
+                lg: 'calc(25% - 18px)' 
               },
               minWidth: 0,
-              flex: '1 1 auto'
+              flex: '1 1 auto',
+              display: 'flex'
             }}
           >
-            <Card sx={{ ...commonStyles.statsCard }}>
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
+            <Card sx={{ 
+              ...commonStyles.statsCard,
+              height: { xs: 140, sm: 150, md: 170, lg: 160 }, // 平板增加高度
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: { xs: 1, sm: 2 }
+            }}>
+              <CardContent sx={{ 
+                p: { xs: 2, sm: 2.5, md: 3 },
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center'
+              }}>
+                <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ height: '100%' }}>
+                  <Box sx={{ flex: 1 }}>
                     <Typography 
-                      gutterBottom
                       sx={{ 
-                        ...commonStyles.cardLabel,
-                        fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                        ...theme.customTypography.chartLabel,
+                        color: theme.customTypography.cardLabel.color,
+                        fontSize: { xs: '1rem', sm: '1.125rem', md: '1.1rem' }, // 平板略微調整
+                        fontWeight: 500,
+                        mb: { xs: 0.5, sm: 1, md: 1.2 }, // 平板增加間距
+                        letterSpacing: '0.01em'
                       }}
                     >
                       {card.title}
@@ -482,8 +537,11 @@ const Dashboard: React.FC = () => {
                     <Typography 
                       component="div"
                       sx={{ 
-                        ...commonStyles.cardValue,
-                        fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                        ...theme.customTypography.cardValue,
+                        fontSize: { xs: '1.75rem', sm: '2rem', md: '2.1rem', lg: '2.25rem' }, // 平板優化
+                        fontWeight: 700,
+                        lineHeight: 1.1,
+                        letterSpacing: '-0.02em'
                       }}
                     >
                       {card.value}
@@ -492,7 +550,13 @@ const Dashboard: React.FC = () => {
                   <Box 
                     sx={{ 
                       color: card.color,
-                      fontSize: { xs: 32, sm: 40 }
+                      fontSize: { xs: 36, sm: 40, md: 42, lg: 44 }, // 平板優化
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      width: { xs: 48, sm: 52, md: 54, lg: 56 }, // 平板優化
+                      height: { xs: 48, sm: 52, md: 54, lg: 56 } // 平板優化
                     }}
                   >
                     {React.cloneElement(card.icon, { 
@@ -510,41 +574,45 @@ const Dashboard: React.FC = () => {
       <Box 
         display="flex" 
         flexWrap="wrap" 
-        gap={{ xs: 2, sm: 3 }}
-        sx={{ mb: { xs: 3, md: 4 } }}
+        gap={{ xs: 2, sm: 2, md: 3 }}
+        sx={{ 
+          mb: { xs: 3, md: 4 },
+          px: { xs: 1, sm: 0 }
+        }}
       >
         {/* 性別分布 - 圓餅圖 */}
         <Box 
           sx={{
             flexBasis: { 
               xs: '100%', 
-              sm: 'calc(50% - 8px)', 
+              sm: '100%', 
+              md: 'calc(50% - 12px)',
               lg: 'calc(33.333% - 16px)' 
             },
             minWidth: 0,
-            order: { xs: 1, lg: 1 }
+            order: { xs: 1, md: 1, lg: 1 }
           }}
         >
-          <Card>
-            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Card sx={{ boxShadow: { xs: 1, sm: 2 } }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
               <Typography 
                 gutterBottom 
                 sx={{
                   ...commonStyles.cardTitle,
-                  fontSize: { xs: '1rem', sm: '1.125rem' }
+                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
                 }}
               >
                 性別分布
               </Typography>
               <Box 
                 sx={{ 
-                  height: { xs: 200, sm: 250, md: 280, lg: 300 },
+                  height: { xs: 250, sm: 280, md: 320, lg: 320 }, // 平板增加高度
                   width: '100%',
                   display: 'flex', 
                   justifyContent: 'center', 
                   alignItems: 'center',
                   '& .MuiChartsLegend-root': {
-                    transform: { xs: 'scale(0.8)', md: 'scale(1)' }
+                    transform: { xs: 'scale(0.8)', sm: 'scale(0.85)', md: 'scale(0.95)', lg: 'scale(1)' }
                   }
                 }}
               >
@@ -554,9 +622,9 @@ const Dashboard: React.FC = () => {
                       data: genderData,
                     },
                   ]}
-                  colors={[theme.chart.categorical[0], theme.chart.categorical[1]]}
-                  width={300}
-                  height={250}
+                  colors={[THEME_COLORS.BLUE_200, THEME_COLORS.PINK_200]} // 使用色票中的藍色和粉色
+                  width={320}
+                  height={270}
                   sx={{ 
                     maxWidth: '100%', 
                     maxHeight: '100%'
@@ -574,25 +642,26 @@ const Dashboard: React.FC = () => {
           sx={{
             flexBasis: { 
               xs: '100%', 
-              sm: 'calc(50% - 8px)', 
+              sm: '100%', 
+              md: 'calc(50% - 12px)',
               lg: 'calc(33.333% - 16px)' 
             },
             minWidth: 0,
-            order: { xs: 2, lg: 2 }
+            order: { xs: 2, md: 2, lg: 2 }
           }}
         >
-          <Card>
-            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Card sx={{ boxShadow: { xs: 1, sm: 2 } }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
               <Typography 
                 gutterBottom 
                 sx={{
                   ...commonStyles.cardTitle,
-                  fontSize: { xs: '1rem', sm: '1.125rem' }
+                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
                 }}
               >
                 近期活動
               </Typography>
-              <Box sx={{ mt: 2, maxHeight: 280, overflowY: 'auto' }}>
+              <Box sx={{ mt: 2, maxHeight: { xs: 300, sm: 320, md: 320, lg: 300 }, overflowY: 'auto' }}>
                 {recentEvents.length > 0 ? (
                   recentEvents.slice(0, 3).map((event, index) => {
                     const { date, time } = formatEventDateTime(event.start);
@@ -600,8 +669,8 @@ const Dashboard: React.FC = () => {
                     
                     return (
                       <Box key={event.id} sx={{ 
-                        mb: 2, 
-                        p: 1.5,
+                        mb: { xs: 1.5, sm: 2, md: 2.5 }, 
+                        p: { xs: 1.5, sm: 2, md: 2.5 }, // 平板增加內邊距
                         borderRadius: 2,
                         bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
                         border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
@@ -609,18 +678,22 @@ const Dashboard: React.FC = () => {
                           bgcolor: THEME_COLORS.PRIMARY_LIGHT_BG,
                           borderColor: THEME_COLORS.PRIMARY
                         },
-                        transition: 'all 0.2s ease'
+                        transition: 'all 0.2s ease',
+                        minHeight: { md: '80px' }, // 平板增加最小高度提升觸摸友好性
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center'
                       }}>
                         <Box sx={{ 
                           display: 'flex', 
                           justifyContent: 'space-between', 
                           alignItems: 'flex-start',
-                          mb: 1
+                          mb: { xs: 0.5, sm: 1 }
                         }}>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Typography sx={{ 
                               fontWeight: 600,
-                              fontSize: '0.875rem',
+                              fontSize: { xs: '0.875rem', sm: '0.9rem' },
                               color: THEME_COLORS.TEXT_PRIMARY,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -629,7 +702,7 @@ const Dashboard: React.FC = () => {
                               {event.title}
                             </Typography>
                             <Typography sx={{ 
-                              fontSize: '0.75rem',
+                              fontSize: { xs: '0.75rem', sm: '0.8rem' },
                               color: THEME_COLORS.TEXT_MUTED,
                               mt: 0.5
                             }}>
@@ -642,15 +715,15 @@ const Dashboard: React.FC = () => {
                             sx={{
                               backgroundColor: eventType.color,
                               color: 'white',
-                              fontSize: '0.7rem',
-                              height: 20,
+                              fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                              height: { xs: 20, sm: 22 },
                               ml: 1
                             }}
                           />
                         </Box>
                         {event.description && (
                           <Typography sx={{ 
-                            fontSize: '0.75rem',
+                            fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
                             color: THEME_COLORS.TEXT_SECONDARY,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -671,12 +744,12 @@ const Dashboard: React.FC = () => {
                     color: THEME_COLORS.TEXT_MUTED
                   }}>
                     <CalendarToday sx={{ 
-                      fontSize: 32, 
+                      fontSize: { xs: 28, sm: 32, md: 36 }, 
                       mb: 1, 
                       opacity: 0.5 
                     }} />
                     <Typography sx={{ 
-                      fontSize: '0.875rem'
+                      fontSize: { xs: '0.8rem', sm: '0.875rem', md: '0.9rem' }
                     }}>
                       近期無安排活動
                     </Typography>
@@ -692,26 +765,28 @@ const Dashboard: React.FC = () => {
           sx={{
             flexBasis: { 
               xs: '100%', 
+              sm: '100%',
+              md: '100%',
               lg: 'calc(33.333% - 16px)' 
             },
             minWidth: 0,
-            order: { xs: 3, lg: 3 }
+            order: { xs: 3, sm: 3, md: 3, lg: 3 }
           }}
         >
-          <Card>
-            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Card sx={{ boxShadow: { xs: 1, sm: 2 } }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
               <Typography 
                 gutterBottom 
                 sx={{
                   ...commonStyles.cardTitle,
-                  fontSize: { xs: '1rem', sm: '1.125rem' }
+                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
                 }}
               >
                 全台個案地區分布
               </Typography>
               <Box 
                 sx={{ 
-                  height: { xs: 250, sm: 300, md: 350, lg: 300 },
+                  height: { xs: 300, sm: 350, md: 420, lg: 350 }, // 平板增加高度
                   width: '100%',
                   display: 'flex', 
                   justifyContent: 'center', 
@@ -729,12 +804,12 @@ const Dashboard: React.FC = () => {
                       {
                         dataKey: 'count',
                         label: '個案人數',
-                        color: theme.chart.geographic[0]
+                        color: regionColors[0] // 使用新的色票
                       },
                     ]}
-                    colors={theme.chart.geographic}
-                    width={500}
-                    height={300}
+                    colors={regionColors} // 使用色票系統的藍色系
+                    width={550}
+                    height={340} // 平板增加圖表高度
                     sx={{ 
                       maxWidth: '100%', 
                       maxHeight: '100%',
@@ -765,8 +840,11 @@ const Dashboard: React.FC = () => {
       <Box 
         display="flex" 
         flexWrap="wrap" 
-        gap={{ xs: 2, sm: 3 }}
-        sx={{ mb: { xs: 3, md: 4 } }}
+        gap={{ xs: 2, sm: 2, md: 3 }}
+        sx={{ 
+          mb: { xs: 3, md: 4 },
+          px: { xs: 1, sm: 0 }
+        }}
         alignItems="stretch"
       >
         <Box 
@@ -776,29 +854,34 @@ const Dashboard: React.FC = () => {
             display: 'flex'
           }}
         >
-          <Card sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
+          <Card sx={{ 
+            width: '100%', 
+            display: 'flex', 
+            flexDirection: 'column',
+            boxShadow: { xs: 1, sm: 2 }
+          }}>
+            <CardContent sx={{ flex: 1, p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
               <Typography 
                 gutterBottom 
                 sx={{
                   ...commonStyles.cardTitle,
-                  fontSize: { xs: '1rem', sm: '1.125rem' }
+                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
                 }}
               >
                 個案面臨困難分析
               </Typography>
               <Box sx={{ 
                 display: 'flex', 
-                flexDirection: { xs: 'column', md: 'row' },
-                alignItems: { xs: 'center', md: 'center' }, 
-                gap: { xs: 2, md: 3 }
+                flexDirection: { xs: 'column', sm: 'column', md: 'row' },
+                alignItems: { xs: 'center', sm: 'center', md: 'center' }, 
+                gap: { xs: 2, sm: 2.5, md: 3.5 } // 平板增加間距
               }}>
                 {/* 甜甜圈圖 */}
                 <Box 
                   sx={{ 
                     flex: '0 0 auto',
-                    width: { xs: 180, sm: 200, md: 200, lg: 220 },
-                    height: { xs: 180, sm: 200, md: 200, lg: 220 },
+                    width: { xs: 200, sm: 220, md: 220, lg: 240 },
+                    height: { xs: 200, sm: 220, md: 220, lg: 240 },
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center'
@@ -818,8 +901,8 @@ const Dashboard: React.FC = () => {
                       },
                     ]}
                     colors={difficultiesColors}
-                    width={220}
-                    height={220}
+                    width={260}
+                    height={260}
                     sx={{ 
                       maxWidth: '100%', 
                       maxHeight: '100%'
@@ -831,17 +914,24 @@ const Dashboard: React.FC = () => {
                 {/* 圖例 */}
                 <Box sx={{ 
                   flex: 1, 
-                  pl: { xs: 0, md: 2 },
-                  width: { xs: '100%', md: 'auto' }
+                  pl: { xs: 0, sm: 0, md: 2 },
+                  width: { xs: '100%', sm: '100%', md: 'auto' }
                 }}>
                   {difficultiesData.map((difficulty, index) => (
                     <Box key={index} sx={{ 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'space-between',
-                      mb: { xs: 1.5, sm: 2 },
-                      py: 0,
-                      gap: 1
+                      mb: { xs: 1.5, sm: 2, md: 2.5 },
+                      py: { xs: 0.5, sm: 1, md: 1.5 }, // 平板增加垂直內邊距
+                      gap: { xs: 1, sm: 1.5, md: 2 }, // 平板增加間距
+                      minHeight: { md: '44px' }, // 平板增加最小高度提升觸摸友好性
+                      borderRadius: 1,
+                      px: { md: 1 }, // 平板增加水平內邊距
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                      },
+                      transition: 'background-color 0.2s ease'
                     }}>
                       <Box sx={{ 
                         display: 'flex', 
@@ -852,8 +942,8 @@ const Dashboard: React.FC = () => {
                       }}>
                         <Box 
                           sx={{ 
-                            width: { xs: 20, sm: 24 }, 
-                            height: { xs: 12, sm: 16 }, 
+                            width: { xs: 20, sm: 24, md: 28 }, 
+                            height: { xs: 12, sm: 16, md: 18 }, 
                             borderRadius: 1, 
                             bgcolor: difficultiesColors[index],
                             flexShrink: 0
@@ -877,9 +967,9 @@ const Dashboard: React.FC = () => {
                       }}>
                         <Typography sx={{ 
                           ...theme.customTypography.chartLabel, 
-                          minWidth: { xs: '35px', sm: '40px' }, 
+                          minWidth: { xs: '35px', sm: '40px', md: '45px' }, 
                           textAlign: 'right',
-                          fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                          fontSize: { xs: '0.75rem', sm: '0.875rem', md: '0.9rem' }
                         }}>
                           {difficulty.value}人
                         </Typography>
@@ -889,13 +979,13 @@ const Dashboard: React.FC = () => {
                               ? theme.customColors.changePositive 
                               : theme.customColors.changeNegative,
                             color: 'white',
-                            px: { xs: 1, sm: 1.5 },
-                            py: { xs: 0.3, sm: 0.5 },
+                            px: { xs: 1, sm: 1.5, md: 2 },
+                            py: { xs: 0.3, sm: 0.5, md: 0.6 },
                             borderRadius: 2,
-                            minWidth: { xs: '50px', sm: '60px' },
+                            minWidth: { xs: '50px', sm: '60px', md: '65px' },
                             textAlign: 'center',
                             ...theme.customTypography.changeIndicator,
-                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                            fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.8rem' }
                           }}
                         >
                           {difficulty.change}

@@ -77,7 +77,8 @@ const PageHeader: React.FC<PageHeaderProps> = ({
         justifyContent: 'space-between', 
         alignItems: { xs: 'flex-start', sm: 'center' }, 
         flexDirection: { xs: 'column', sm: 'row' },
-        gap: { xs: 1, sm: 2 }
+        gap: { xs: 1, sm: 2, md: 2.5 }, // 平板增加間距
+        py: { md: 0.5 } // 平板增加垂直內邊距
       }}>
         {/* 左側：麵包屑導航區域 */}
         <Box sx={{ flex: 1, minWidth: 0, width: { xs: '100%', sm: 'auto' } }}>
@@ -91,7 +92,8 @@ const PageHeader: React.FC<PageHeaderProps> = ({
             alignItems: 'center',
             flexShrink: 0,
             width: { xs: '100%', sm: 'auto' },
-            gap: 2
+            gap: { xs: 2, md: 2.5 }, // 平板增加間距
+            minHeight: { md: '48px' } // 平板增加最小高度
           }}>
             {/* 自定義右側內容（如按鈕、資訊等） */}
             {rightContent}

@@ -72,7 +72,7 @@ class ActivityService {
       
       // 後端直接回傳陣列，api.get() 已經取了 response.data
       const activities = response || [];
-      console.log('處理後的活動資料:', activities);
+      // 處理後的活動資料
       
       return {
         activities: activities,
@@ -300,7 +300,7 @@ class ActivityService {
         queryParams.audience = searchParams.audience;
       }
       
-      console.log('發送查詢參數:', queryParams);
+      // 發送查詢參數
       
       const response = await api.get<ActivityListPagedResponse>('/Activity/paged', {
         params: queryParams
