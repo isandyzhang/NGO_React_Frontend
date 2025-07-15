@@ -44,6 +44,7 @@ const ActivityManagement: React.FC = () => {
   const [searchContent, setSearchContent] = useState('');
   const [searchStatus, setSearchStatus] = useState<string>('all'); // 搜尋狀態：all, open, close
   const [searchAudience, setSearchAudience] = useState<string>('all'); // 搜尋對象：all, user, case
+  const [searchCategory, setSearchCategory] = useState<string>('all'); // 搜尋分類：all, 生活, 心靈, etc.
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<ActivityRecord | null>(null);
@@ -51,6 +52,7 @@ const ActivityManagement: React.FC = () => {
   const [activityRecords, setActivityRecords] = useState<ActivityRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<{value: string, label: string}[]>([]);
   
   // 載入活動資料
   const loadActivities = async () => {
@@ -68,9 +70,20 @@ const ActivityManagement: React.FC = () => {
     }
   };
 
+  // 載入分類選項
+  const loadCategories = async () => {
+    try {
+      const categoryData = await activityService.getCategories();
+      setCategories(categoryData);
+    } catch (error) {
+      console.error('載入分類選項失敗:', error);
+    }
+  };
+
   // 組件載入時取得資料
   useEffect(() => {
     loadActivities();
+    loadCategories();
   }, []);
 
   // 篩選活動資料
@@ -97,8 +110,13 @@ const ActivityManagement: React.FC = () => {
       filtered = filtered.filter(activity => activity.targetAudience === searchAudience);
     }
 
+    // 分類篩選
+    if (searchCategory !== 'all') {
+      filtered = filtered.filter(activity => activity.category === searchCategory);
+    }
+
     return filtered;
-  }, [activityRecords, searchContent, searchStatus, searchAudience]);
+  }, [activityRecords, searchContent, searchStatus, searchAudience, searchCategory]);
 
   const handleSearch = () => {
     // 搜尋邏輯已經在 filteredActivities 中處理
@@ -232,6 +250,7 @@ const ActivityManagement: React.FC = () => {
             >
               <MenuItem value="all">全部狀態</MenuItem>
               <MenuItem value="open">open</MenuItem>
+              <MenuItem value="full">full</MenuItem>
               <MenuItem value="closed">closed</MenuItem>
               <MenuItem value="completed">completed</MenuItem>
             </Select>
@@ -248,6 +267,23 @@ const ActivityManagement: React.FC = () => {
               <MenuItem value="all">全部對象</MenuItem>
               <MenuItem value="public">public</MenuItem>
               <MenuItem value="case">case</MenuItem>
+            </Select>
+          </FormControl>
+          
+          {/* 分類篩選 */}
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>分類</InputLabel>
+            <Select
+              value={searchCategory}
+              onChange={(e) => setSearchCategory(e.target.value)}
+              label="分類"
+            >
+              <MenuItem value="all">全部分類</MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category.value} value={category.value}>
+                  {category.label}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
           
@@ -268,6 +304,9 @@ const ActivityManagement: React.FC = () => {
         <Paper sx={{ p: 2, mb: 2, bgcolor: THEME_COLORS.BACKGROUND_CARD }}>
           <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
             共 {activityRecords.length} 筆活動資料，篩選後顯示 {filteredActivities.length} 筆
+            {(searchContent || searchStatus !== 'all' || searchAudience !== 'all' || searchCategory !== 'all') && (
+              <span> (已套用篩選條件)</span>
+            )}
           </Typography>
         </Paper>
       )}
@@ -279,6 +318,7 @@ const ActivityManagement: React.FC = () => {
             <TableRow sx={{ backgroundColor: THEME_COLORS.BACKGROUND_SECONDARY }}>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>活動名稱</TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>地點</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>分類</TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>狀態</TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>對象</TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>人數</TableCell>
@@ -289,16 +329,16 @@ const ActivityManagement: React.FC = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
                   <CircularProgress />
                   <Typography sx={{ mt: 2 }}>載入中...</Typography>
                 </TableCell>
               </TableRow>
             ) : (!filteredActivities || filteredActivities.length === 0) ? (
               <TableRow>
-                <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
                   <Typography color="textSecondary">
-                    {searchContent || searchStatus !== 'all' || searchAudience !== 'all' ? '查無符合條件的資料' : '暫無活動資料'}
+                    {searchContent || searchStatus !== 'all' || searchAudience !== 'all' || searchCategory !== 'all' ? '查無符合條件的資料' : '暫無活動資料'}
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -329,6 +369,23 @@ const ActivityManagement: React.FC = () => {
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
                       {record.location}
+                    </TableCell>
+                    <TableCell>
+                      {record.category ? (
+                        <Chip 
+                          label={record.category}
+                          size="small"
+                          sx={{ 
+                            backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
+                            color: THEME_COLORS.PRIMARY,
+                            fontSize: '0.75rem'
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                          未分類
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Chip 
@@ -382,7 +439,7 @@ const ActivityManagement: React.FC = () => {
 
                     {/* 詳細資料展開行 */}
                     <TableRow>
-                      <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                      <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
                         <Collapse in={expandedRows.includes(record.activityId)} timeout="auto" unmountOnExit>
                           <Box sx={{ 
                             margin: 2, 
@@ -484,6 +541,7 @@ const ActivityManagement: React.FC = () => {
                                     label="狀態"
                                   >
                                     <MenuItem value="open">open</MenuItem>
+                                    <MenuItem value="full">full</MenuItem>
                                     <MenuItem value="closed">closed</MenuItem>
                                     <MenuItem value="completed">completed</MenuItem>
                                   </Select>

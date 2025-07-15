@@ -16,6 +16,7 @@ export interface Activity {
   signupDeadline: string;
   workerId: number;
   targetAudience: string;
+  category?: string;
   status: string;
   workerName?: string;
 }
@@ -46,6 +47,14 @@ export interface ActivityListPagedResponse {
   total: number;
   page: number;
   pageSize: number;
+}
+
+/**
+ * 活動分類選項介面
+ */
+export interface CategoryOption {
+  value: string;
+  label: string;
 }
 
 /**
@@ -191,6 +200,19 @@ class ActivityService {
       return response.data;
     } catch (error) {
       console.error('更新活動狀態失敗:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 取得活動分類選項
+   */
+  async getCategories(): Promise<CategoryOption[]> {
+    try {
+      const response = await api.get<CategoryOption[]>('/Activity/categories');
+      return response;
+    } catch (error) {
+      console.error('取得活動分類失敗:', error);
       throw error;
     }
   }

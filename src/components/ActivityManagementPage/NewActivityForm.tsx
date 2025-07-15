@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -9,6 +9,10 @@ import {
   useTheme,
   ToggleButton,
   ToggleButtonGroup,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Cancel, PhotoCamera, Event, Group, LocationOn, AccessTime, Description, Person, People } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
@@ -18,7 +22,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/zh-tw'; // 中文本地化
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../../styles/commonStyles';
-import activityService from '../../services/activityService';
+import activityService, { CategoryOption } from '../../services/activityService';
 
 // 設置 dayjs 為中文
 dayjs.locale('zh-tw');
@@ -36,7 +40,8 @@ interface ActivityFormData {
   endDate: Dayjs | null;
   signupDeadline: Dayjs | null;
   workerId: number;
-  targetAudience: string; // 'general' | 'case'
+  targetAudience: string; // 'public' | 'case'
+  category: string;
   status: string;
 }
 
@@ -51,7 +56,7 @@ interface NewActivityFormProps {
 /**
  * 取得動態主題顏色
  */
-const getDynamicThemeColors = (activityType: 'general' | 'case') => {
+const getDynamicThemeColors = (activityType: 'public' | 'case') => {
   if (activityType === 'case') {
     // 個案活動使用綠色系
     return {
@@ -96,6 +101,9 @@ const getDynamicThemeColors = (activityType: 'general' | 'case') => {
 const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel }) => {
   const theme = useTheme();
 
+  // 分類選項狀態
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+
   // 表單資料狀態
   const [formData, setFormData] = useState<ActivityFormData>({
     activityName: '',
@@ -108,11 +116,26 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
     signupDeadline: dayjs().subtract(1, 'day'),
     workerId: 1, // 可根據實際登入者自動帶入
     targetAudience: 'case',
-    status: 'Active',
+    category: '',
+    status: 'open',
   });
 
+  // 載入分類選項
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categoryData = await activityService.getCategories();
+        setCategories(categoryData);
+      } catch (error) {
+        console.error('載入分類選項失敗:', error);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
   // 動態主題顏色
-  const dynamicColors = useMemo(() => getDynamicThemeColors(formData.targetAudience as 'general' | 'case'), [formData.targetAudience]);
+  const dynamicColors = useMemo(() => getDynamicThemeColors(formData.targetAudience as 'public' | 'case'), [formData.targetAudience]);
 
   // 動態輸入框樣式
   const dynamicInputStyles = useMemo(() => ({
@@ -333,7 +356,8 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
         signupDeadline: dayjs().subtract(1, 'day'),
         workerId: 1,
         targetAudience: 'case',
-        status: 'Active',
+        category: '',
+        status: 'open',
       });
 
       // 呼叫回調函數
@@ -434,7 +458,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
                 },
               }}
             >
-              <ToggleButton value="general" aria-label="志工活動">
+              <ToggleButton value="public" aria-label="志工活動">
                 <People sx={{ mr: 0.5, fontSize: { xs: 16, sm: 18 } }} />
                 志工
               </ToggleButton>
@@ -551,7 +575,32 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
             />
           </Box>
 
-          {/* 第六行：活動圖片上傳 */}
+          {/* 第六行：活動分類 */}
+          <FormControl fullWidth sx={dynamicInputStyles}>
+            <InputLabel id="category-label">活動分類</InputLabel>
+            <Select
+              labelId="category-label"
+              value={formData.category}
+              label="活動分類"
+              onChange={(e) => handleInputChange('category', e.target.value)}
+              sx={{
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: dynamicColors.primary,
+                },
+              }}
+            >
+              <MenuItem value="">
+                <em>不選擇分類</em>
+              </MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category.value} value={category.value}>
+                  {category.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* 第七行：活動圖片上傳 */}
           <Box>
             <Typography variant="body2" sx={{ 
               ...commonStyles.formLabel 
