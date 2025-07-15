@@ -30,6 +30,7 @@ import {
   ExpandLess,
   Save,
   Cancel,
+  Delete,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import activityService from '../../services/activityService';
@@ -184,6 +185,36 @@ const ActivityManagement: React.FC = () => {
     setEditingRow(null);
     setEditFormData(null);
     setFieldErrors({});
+  };
+
+  const handleDelete = async (activityId: number, activityName: string) => {
+    const confirmDelete = window.confirm(
+      `確定要刪除活動「${activityName}」嗎？\n\n此操作無法復原。`
+    );
+    
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+      await activityService.deleteActivity(activityId);
+      
+      // 從列表中移除已刪除的活動
+      setActivityRecords(prev => 
+        prev.filter(record => record.activityId !== activityId)
+      );
+      
+      // 清除編輯狀態
+      setEditingRow(null);
+      setEditFormData(null);
+      setFieldErrors({});
+      
+      alert('活動已成功刪除！');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '刪除活動時發生錯誤');
+      console.error('刪除活動錯誤:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEditInputChange = (field: string, value: any) => {
@@ -575,23 +606,46 @@ const ActivityManagement: React.FC = () => {
 
                             {/* 操作按鈕 */}
                             {editingRow === record.activityId && (
-                              <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'flex-end' }}>
-                                <Button
-                                  variant="outlined"
-                                  onClick={handleCancel}
-                                  startIcon={<Cancel />}
-                                >
-                                  取消
-                                </Button>
+                              <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'space-between' }}>
+                                {/* 左側刪除按鈕 */}
                                 <Button
                                   variant="contained"
-                                  onClick={handleSave}
+                                  onClick={() => handleDelete(record.activityId, record.activityName)}
                                   disabled={loading}
-                                  startIcon={loading ? <CircularProgress size={20} /> : <Save />}
-                                  sx={{ bgcolor: THEME_COLORS.PRIMARY }}
+                                  startIcon={<Delete />}
+                                  sx={{ 
+                                    bgcolor: THEME_COLORS.ERROR,
+                                    color: 'white',
+                                    '&:hover': {
+                                      bgcolor: THEME_COLORS.ERROR_DARK || '#d32f2f',
+                                    },
+                                    '&:disabled': {
+                                      bgcolor: THEME_COLORS.TEXT_MUTED,
+                                    }
+                                  }}
                                 >
-                                  {loading ? '儲存中...' : '儲存'}
+                                  刪除活動
                                 </Button>
+                                
+                                {/* 右側操作按鈕 */}
+                                <Box sx={{ display: 'flex', gap: 2 }}>
+                                  <Button
+                                    variant="outlined"
+                                    onClick={handleCancel}
+                                    startIcon={<Cancel />}
+                                  >
+                                    取消
+                                  </Button>
+                                  <Button
+                                    variant="contained"
+                                    onClick={handleSave}
+                                    disabled={loading}
+                                    startIcon={loading ? <CircularProgress size={20} /> : <Save />}
+                                    sx={{ bgcolor: THEME_COLORS.PRIMARY }}
+                                  >
+                                    {loading ? '儲存中...' : '儲存'}
+                                  </Button>
+                                </Box>
                               </Box>
                             )}
                           </Box>
