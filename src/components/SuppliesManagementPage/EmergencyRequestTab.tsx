@@ -36,13 +36,14 @@ import {
   Cancel,
   Delete,
   Warning,
+  Add,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { 
   getStatusStyle,
   getResponsiveSpacing
 } from '../../styles/commonStyles';
-import { supplyService, EmergencySupplyNeed } from '../../services';
+import { supplyService, EmergencySupplyNeed, authService, caseService } from '../../services';
 
 const EmergencyRequestTab: React.FC = () => {
   const [searchType, setSearchType] = useState('物品名稱');
@@ -72,9 +73,30 @@ const EmergencyRequestTab: React.FC = () => {
     item: null
   });
 
+  // 新增對話框狀態
+  const [addDialog, setAddDialog] = useState({
+    open: false,
+    loading: false
+  });
+
+  // 新增表單資料
+  const [formData, setFormData] = useState({
+    caseId: '',
+    supplyId: '',
+    workerId: '',
+    quantity: 1,
+    requestDate: new Date().toISOString().split('T')[0]
+  });
+
+  // 下拉選單資料
+  const [supplies, setSupplies] = useState<any[]>([]);
+  const [cases, setCases] = useState<any[]>([]);
+  const [workers, setWorkers] = useState<any[]>([]);
+
   // 載入資料
   useEffect(() => {
     loadData();
+    loadDropdownData();
   }, []);
 
   const loadData = async () => {
@@ -94,6 +116,23 @@ const EmergencyRequestTab: React.FC = () => {
       setError('載入資料失敗，請稍後再試');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 載入下拉選單資料
+  const loadDropdownData = async () => {
+    try {
+      const [suppliesData, casesData, workersData] = await Promise.all([
+        supplyService.getSupplies(),
+        caseService.getAllCases(1, 100), // 獲取前100個個案
+        authService.getWorkers()
+      ]);
+      
+      setSupplies(suppliesData);
+      setCases(casesData.data || casesData || []);
+      setWorkers(workersData || []);
+    } catch (err) {
+      console.error('載入下拉選單資料失敗:', err);
     }
   };
 
@@ -169,6 +208,49 @@ const EmergencyRequestTab: React.FC = () => {
       console.error('操作失敗:', err);
       setError('操作失敗，請稍後再試');
     }
+  };
+
+  // 處理新增需求
+  const handleAddRequest = async () => {
+    try {
+      setAddDialog({ open: true, loading: true });
+
+      const requestData = {
+        caseId: formData.caseId,
+        supplyId: formData.supplyId,
+        workerId: formData.workerId,
+        quantity: formData.quantity,
+        requestDate: formData.requestDate,
+        status: 'pending' as const
+      };
+
+      await supplyService.createEmergencySupplyNeed(requestData);
+      
+      // 重新載入資料
+      await loadData();
+      
+      // 關閉對話框並重置表單
+      setAddDialog({ open: false, loading: false });
+      setFormData({
+        caseId: '',
+        supplyId: '',
+        workerId: '',
+        quantity: 1,
+        requestDate: new Date().toISOString().split('T')[0]
+      });
+    } catch (err) {
+      console.error('新增緊急物資需求失敗:', err);
+      setError('新增失敗，請稍後再試');
+      setAddDialog({ open: true, loading: false });
+    }
+  };
+
+  // 處理表單變更
+  const handleFormChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // 篩選和排序資料
@@ -324,6 +406,22 @@ const EmergencyRequestTab: React.FC = () => {
             }}
           >
             {loading ? '搜尋中...' : '搜尋'}
+          </Button>
+          
+          <Button
+            variant="contained"
+            onClick={() => setAddDialog({ open: true, loading: false })}
+            startIcon={<Add />}
+            sx={{
+              minWidth: 120,
+              backgroundColor: THEME_COLORS.SUCCESS,
+              color: 'white',
+              '&:hover': {
+                backgroundColor: THEME_COLORS.SUCCESS_DARK,
+              },
+            }}
+          >
+            新增需求
           </Button>
         </Box>
       </Paper>
@@ -568,6 +666,109 @@ const EmergencyRequestTab: React.FC = () => {
             autoFocus
           >
             確認{getActionText(confirmDialog.type)}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 新增需求對話框 */}
+      <Dialog 
+        open={addDialog.open} 
+        onClose={() => setAddDialog({ open: false, loading: false })}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          新增緊急物資需求
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            {/* 個案選擇 */}
+            <FormControl fullWidth>
+              <InputLabel>個案選擇</InputLabel>
+              <Select
+                value={formData.caseId}
+                onChange={(e) => handleFormChange('caseId', e.target.value)}
+                label="個案選擇"
+              >
+                {cases.map((caseItem) => (
+                  <MenuItem key={caseItem.caseId} value={caseItem.caseId}>
+                    {caseItem.name} (ID: {caseItem.caseId})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* 物資選擇 */}
+            <FormControl fullWidth>
+              <InputLabel>物資選擇</InputLabel>
+              <Select
+                value={formData.supplyId}
+                onChange={(e) => handleFormChange('supplyId', e.target.value)}
+                label="物資選擇"
+              >
+                {supplies.map((supply) => (
+                  <MenuItem key={supply.supplyId} value={supply.supplyId}>
+                    {supply.supplyName} - ${supply.supplyPrice}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* 工作人員選擇 */}
+            <FormControl fullWidth>
+              <InputLabel>申請人</InputLabel>
+              <Select
+                value={formData.workerId}
+                onChange={(e) => handleFormChange('workerId', e.target.value)}
+                label="申請人"
+              >
+                {workers.map((worker) => (
+                  <MenuItem key={worker.workerId} value={worker.workerId}>
+                    {worker.name} ({worker.email})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* 數量 */}
+            <TextField
+              label="數量"
+              type="number"
+              value={formData.quantity}
+              onChange={(e) => handleFormChange('quantity', parseInt(e.target.value) || 1)}
+              InputProps={{
+                inputProps: { min: 1 }
+              }}
+              fullWidth
+            />
+
+            {/* 申請日期 */}
+            <TextField
+              label="申請日期"
+              type="date"
+              value={formData.requestDate}
+              onChange={(e) => handleFormChange('requestDate', e.target.value)}
+              InputLabelProps={{
+                shrink: true,
+              }}
+              fullWidth
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setAddDialog({ open: false, loading: false })}
+            disabled={addDialog.loading}
+          >
+            取消
+          </Button>
+          <Button 
+            onClick={handleAddRequest}
+            variant="contained"
+            disabled={addDialog.loading || !formData.caseId || !formData.supplyId || !formData.workerId}
+            startIcon={addDialog.loading ? <CircularProgress size={20} /> : <Add />}
+          >
+            {addDialog.loading ? '新增中...' : '新增需求'}
           </Button>
         </DialogActions>
       </Dialog>
