@@ -96,7 +96,7 @@ export const authService = {
    */
   async getWorkers(): Promise<WorkerInfo[]> {
     try {
-      return await api.get<WorkerInfo[]>('/auth/workers');
+      return await api.get<WorkerInfo[]>('/Auth/workers');
     } catch (error: any) {
       console.error('取得工作人員列表失敗:', error);
       throw error;
