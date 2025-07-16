@@ -36,14 +36,12 @@ import {
   Delete,
   Inventory,
   Assignment,
-  TrendingUp,
-  AttachMoney,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { 
   getResponsiveSpacing
 } from '../../styles/commonStyles';
-import { supplyService, Supply } from '../../services';
+import { supplyService } from '../../services';
 
 interface SupplyItem {
   id: number;

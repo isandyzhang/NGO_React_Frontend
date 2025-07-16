@@ -339,14 +339,63 @@ class SupplyService {
   }
 
   /**
-   * 新增常駐物資需求
+   * 取得緊急物資需求統計
    */
-  async createRegularSupplyNeed(needData: Partial<RegularSuppliesNeed>): Promise<RegularSuppliesNeed> {
+  async getEmergencySupplyNeedStats(): Promise<{
+    totalRequests: number;
+    pendingRequests: number;
+    approvedRequests: number;
+    rejectedRequests: number;
+    totalEstimatedCost: number;
+  }> {
     try {
-      const response = await api.post<RegularSuppliesNeed>('/RegularSuppliesNeed', needData);
+      const response = await api.get('/EmergencySupplyNeed/statistics');
       return response;
     } catch (error) {
-      console.error('新增常駐物資需求失敗:', error);
+      console.error('取得緊急物資需求統計失敗:', error);
+      // 返回預設值
+      return {
+        totalRequests: 0,
+        pendingRequests: 0,
+        approvedRequests: 0,
+        rejectedRequests: 0,
+        totalEstimatedCost: 0
+      };
+    }
+  }
+
+  /**
+   * 批准緊急物資需求
+   */
+  async approveEmergencySupplyNeed(id: number): Promise<void> {
+    try {
+      await api.put<void>(`/EmergencySupplyNeed/${id}/approve`);
+    } catch (error) {
+      console.error(`批准緊急物資需求 ${id} 失敗:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 拒絕緊急物資需求
+   */
+  async rejectEmergencySupplyNeed(id: number): Promise<void> {
+    try {
+      await api.put<void>(`/EmergencySupplyNeed/${id}/reject`);
+    } catch (error) {
+      console.error(`拒絕緊急物資需求 ${id} 失敗:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 刪除緊急物資需求
+   */
+  async deleteEmergencySupplyNeed(id: number): Promise<void> {
+    try {
+      await api.delete<void>(`/EmergencySupplyNeed/${id}`);
+    } catch (error) {
+      console.error(`刪除緊急物資需求 ${id} 失敗:`, error);
       throw error;
     }
   }
@@ -360,6 +409,19 @@ class SupplyService {
       return response;
     } catch (error) {
       console.error('新增緊急物資需求失敗:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 新增常駐物資需求
+   */
+  async createRegularSupplyNeed(needData: Partial<RegularSuppliesNeed>): Promise<RegularSuppliesNeed> {
+    try {
+      const response = await api.post<RegularSuppliesNeed>('/RegularSuppliesNeed', needData);
+      return response;
+    } catch (error) {
+      console.error('新增常駐物資需求失敗:', error);
       throw error;
     }
   }

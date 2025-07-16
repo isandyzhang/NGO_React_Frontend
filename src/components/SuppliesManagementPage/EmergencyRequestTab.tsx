@@ -17,107 +17,89 @@ import {
   IconButton,
   Collapse,
   Typography,
-  Card,
-  CardContent,
-  Divider,
+  CircularProgress,
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress
+  DialogContentText,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import { 
   Search,
   ExpandMore,
   ExpandLess,
   Person,
-  Warning,
-  Add,
+  CheckCircle,
+  Cancel,
   Delete,
+  Warning,
+  PriorityHigh,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { 
   getStatusStyle,
   getResponsiveSpacing
 } from '../../styles/commonStyles';
-import { formatDateForInput } from '../../utils/dateHelper';
-import { supplyService, EmergencySupplyNeed } from '../../services/supplyService';
-
-interface EmergencySupplyRequest {
-  id: number;
-  itemName: string;
-  category: string;
-  quantity: number;
-  unit: string;
-  urgency: 'low' | 'medium' | 'high';
-  requestedBy: string;
-  requestDate: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
-  estimatedCost: number;
-  caseName: string;
-  caseId: string;
-  matched: boolean;
-  emergencyReason?: string;
-}
+import { supplyService, EmergencySupplyNeed } from '../../services';
 
 const EmergencyRequestTab: React.FC = () => {
   const [searchType, setSearchType] = useState('物品名稱');
   const [searchContent, setSearchContent] = useState('');
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
-  const [matchingItems, setMatchingItems] = useState<{[requestId: number]: any[]}>({});
-  const [newMatchingItem, setNewMatchingItem] = useState({
-    itemName: '',
-    category: '',
-    quantity: 1,
-    unit: '',
-    stockLocation: '',
-    notes: ''
+  
+  // 資料狀態
+  const [requestData, setRequestData] = useState<EmergencySupplyNeed[]>([]);
+  const [stats, setStats] = useState({
+    totalRequests: 0,
+    pendingRequests: 0,
+    approvedRequests: 0,
+    rejectedRequests: 0,
+    totalEstimatedCost: 0
   });
-  const [openMatchingDialog, setOpenMatchingDialog] = useState(false);
-  const [matchingRequestId, setMatchingRequestId] = useState<number | null>(null);
-  const [matchingItemId, setMatchingItemId] = useState('');
-  const [matchingQuantity, setMatchingQuantity] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // 確認對話框狀態
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    type: 'approve' | 'reject' | 'delete';
+    item: EmergencySupplyNeed | null;
+  }>({
+    open: false,
+    type: 'approve',
+    item: null
+  });
 
-  // 緊急物資申請資料
-  const [requestData, setRequestData] = useState<EmergencySupplyRequest[]>([]);
-  const [loading, setLoading] = useState(false);
+  // 載入資料
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  // 載入緊急物資需求資料
-  const loadEmergencySupplyRequests = async () => {
-    setLoading(true);
+  const loadData = async () => {
     try {
-      const emergencyNeeds = await supplyService.getEmergencySupplyNeeds();
-      const requests: EmergencySupplyRequest[] = emergencyNeeds.map((need: EmergencySupplyNeed) => ({
-        id: need.emergencyNeedId,
-        itemName: need.itemName,
-        category: need.category,
-        quantity: need.quantity,
-        unit: need.unit,
-        urgency: need.urgency,
-        requestedBy: need.requestedBy,
-        requestDate: new Date(need.requestDate).toISOString().split('T')[0],
-        status: need.status,
-        estimatedCost: need.estimatedCost,
-        caseName: need.caseName,
-        caseId: need.caseId,
-        matched: need.matched,
-        emergencyReason: need.emergencyReason
-      }));
+      setLoading(true);
+      setError(null);
+      
+      const [requests, requestStats] = await Promise.all([
+        supplyService.getEmergencySupplyNeeds(),
+        supplyService.getEmergencySupplyNeedStats()
+      ]);
+      
       setRequestData(requests);
-    } catch (error) {
-      console.error('載入緊急物資需求失敗:', error);
+      setStats(requestStats);
+    } catch (err) {
+      console.error('載入緊急物資需求失敗:', err);
+      setError('載入資料失敗，請稍後再試');
     } finally {
       setLoading(false);
     }
   };
 
-  // 組件載入時獲取資料
-  useEffect(() => {
-    loadEmergencySupplyRequests();
-  }, []);
-
   const handleSearch = () => {
-    console.log('搜尋條件:', { searchType, searchContent });
+    // TODO: 實作搜尋邏輯
   };
 
   const toggleRowExpansion = (id: number) => {
@@ -126,74 +108,6 @@ const EmergencyRequestTab: React.FC = () => {
         ? prev.filter(rowId => rowId !== id)
         : [...prev, id]
     );
-  };
-
-  const handleAddMatchingItem = (requestId: number) => {
-    if (!newMatchingItem.itemName || !newMatchingItem.quantity) {
-      alert('請填寫物品名稱和數量');
-      return;
-    }
-
-    const matchingItem = {
-      ...newMatchingItem,
-      id: Date.now(),
-      matchedDate: formatDateForInput(new Date())
-    };
-
-    setMatchingItems(prev => ({
-      ...prev,
-      [requestId]: [...(prev[requestId] || []), matchingItem]
-    }));
-
-    // 重設表單
-    setNewMatchingItem({
-      itemName: '',
-      category: '',
-      quantity: 1,
-      unit: '',
-      stockLocation: '',
-      notes: ''
-    });
-  };
-
-  const handleRemoveMatchingItem = (requestId: number, itemId: number) => {
-    setMatchingItems(prev => ({
-      ...prev,
-      [requestId]: prev[requestId]?.filter(item => item.id !== itemId) || []
-    }));
-  };
-
-  // 自動媒合功能
-  const handleAutoMatch = (requestId: number) => {
-    const request = requestData.find(r => r.id === requestId);
-    if (!request) return;
-
-    console.log('執行自動媒合:', request);
-    
-    // TODO: 實作自動媒合邏輯
-    // 1. 根據物品名稱、分類、數量自動搜尋庫存
-    // 2. 找到最適合的庫存物品
-    // 3. 自動建立媒合記錄
-    
-    alert(`正在為 ${request.caseName} 的 ${request.itemName} 執行自動媒合...`);
-  };
-
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'high': return THEME_COLORS.ERROR;
-      case 'medium': return THEME_COLORS.WARNING;
-      case 'low': return THEME_COLORS.SUCCESS;
-      default: return THEME_COLORS.TEXT_MUTED;
-    }
-  };
-
-  const getUrgencyLabel = (urgency: string) => {
-    switch (urgency) {
-      case 'high': return '高';
-      case 'medium': return '中';
-      case 'low': return '低';
-      default: return '未知';
-    }
   };
 
   const getStatusLabel = (status: string) => {
@@ -206,456 +120,492 @@ const EmergencyRequestTab: React.FC = () => {
     }
   };
 
+  const getUrgencyLabel = (urgency: string) => {
+    switch (urgency) {
+      case 'high': return '高';
+      case 'medium': return '中';
+      case 'low': return '低';
+      default: return '未知';
+    }
+  };
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case 'high': return THEME_COLORS.ERROR;
+      case 'medium': return THEME_COLORS.WARNING;
+      case 'low': return THEME_COLORS.SUCCESS;
+      default: return THEME_COLORS.TEXT_MUTED;
+    }
+  };
+
+  const handleApprove = (item: EmergencySupplyNeed) => {
+    setConfirmDialog({
+      open: true,
+      type: 'approve',
+      item: item
+    });
+  };
+
+  const handleReject = (item: EmergencySupplyNeed) => {
+    setConfirmDialog({
+      open: true,
+      type: 'reject',
+      item: item
+    });
+  };
+
+  const handleDelete = (item: EmergencySupplyNeed) => {
+    setConfirmDialog({
+      open: true,
+      type: 'delete',
+      item: item
+    });
+  };
+
+  const confirmAction = async () => {
+    if (!confirmDialog.item) return;
+
+    try {
+      switch (confirmDialog.type) {
+        case 'approve':
+          await supplyService.approveEmergencySupplyNeed(confirmDialog.item.emergencyNeedId);
+          break;
+        case 'reject':
+          await supplyService.rejectEmergencySupplyNeed(confirmDialog.item.emergencyNeedId);
+          break;
+        case 'delete':
+          await supplyService.deleteEmergencySupplyNeed(confirmDialog.item.emergencyNeedId);
+          break;
+      }
+      
+      // 重新載入資料
+      await loadData();
+      
+      // 關閉對話框
+      setConfirmDialog({ open: false, type: 'approve', item: null });
+    } catch (err) {
+      console.error('操作失敗:', err);
+      setError('操作失敗，請稍後再試');
+    }
+  };
+
+  // 篩選和排序資料
+  const filteredData = requestData
+    .filter(item => {
+      if (!searchContent) return true;
+      
+      switch (searchType) {
+        case '物品名稱':
+          return item.itemName.toLowerCase().includes(searchContent.toLowerCase());
+        case '分類':
+          return item.category.toLowerCase().includes(searchContent.toLowerCase());
+        case '申請人':
+          return item.requestedBy.toLowerCase().includes(searchContent.toLowerCase());
+        case '個案名稱':
+          return item.caseName.toLowerCase().includes(searchContent.toLowerCase());
+        default:
+          return true;
+      }
+    })
+    .sort((a, b) => {
+      // 按緊急程度排序：高 > 中 > 低
+      const urgencyOrder = { high: 3, medium: 2, low: 1 };
+      return urgencyOrder[b.urgency as keyof typeof urgencyOrder] - urgencyOrder[a.urgency as keyof typeof urgencyOrder];
+    });
+
+  const getActionText = (type: 'approve' | 'reject' | 'delete') => {
+    switch (type) {
+      case 'approve': return '批准';
+      case 'reject': return '拒絕';
+      case 'delete': return '刪除';
+      default: return '操作';
+    }
+  };
+
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ p: 3 }}>
+      {/* 錯誤訊息 */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      {/* 統計卡片 */}
+      <Paper 
+        elevation={2} 
+        sx={{ 
+          p: 3, 
+          mb: 3, 
+          backgroundColor: THEME_COLORS.BACKGROUND_CARD,
+          borderRadius: 2
+        }}
+      >
+        <Typography variant="h6" gutterBottom sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
+          📊 緊急物資需求統計
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <Box>
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+              總申請數
+            </Typography>
+            <Typography variant="h4" sx={{ color: THEME_COLORS.PRIMARY }}>
+              {stats.totalRequests}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+              待審核
+            </Typography>
+            <Typography variant="h4" sx={{ color: THEME_COLORS.WARNING }}>
+              {stats.pendingRequests}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+              已批准
+            </Typography>
+            <Typography variant="h4" sx={{ color: THEME_COLORS.SUCCESS }}>
+              {stats.approvedRequests}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+              已拒絕
+            </Typography>
+            <Typography variant="h4" sx={{ color: THEME_COLORS.ERROR }}>
+              {stats.rejectedRequests}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+              總預估成本
+            </Typography>
+            <Typography variant="h4" sx={{ color: THEME_COLORS.INFO }}>
+              ${stats.totalEstimatedCost.toLocaleString()}
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
+
       {/* 搜尋區域 */}
-      <Paper elevation={1} sx={{ 
-        p: getResponsiveSpacing('md'),
-        mb: 3,
-        bgcolor: THEME_COLORS.ERROR_LIGHT,
-        border: `1px solid ${THEME_COLORS.ERROR}`
-      }}>
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 2, 
-          alignItems: 'center',
-          flexDirection: { xs: 'column', sm: 'row' }
-        }}>
-          <Select
-            value={searchType}
-            onChange={(e) => setSearchType(e.target.value)}
-            size="small"
-            sx={{ minWidth: 120, height: 40 }}
-          >
-            <MenuItem value="物品名稱">物品名稱</MenuItem>
-            <MenuItem value="分類">分類</MenuItem>
-            <MenuItem value="申請人">申請人</MenuItem>
-            <MenuItem value="個案">個案</MenuItem>
-            <MenuItem value="緊急程度">緊急程度</MenuItem>
-          </Select>
+      <Paper 
+        elevation={1} 
+        sx={{ 
+          p: 2, 
+          mb: 3, 
+          backgroundColor: THEME_COLORS.BACKGROUND_CARD,
+          borderRadius: 1
+        }}
+      >
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>搜尋類型</InputLabel>
+            <Select
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+              label="搜尋類型"
+            >
+              <MenuItem value="物品名稱">物品名稱</MenuItem>
+              <MenuItem value="分類">分類</MenuItem>
+              <MenuItem value="申請人">申請人</MenuItem>
+              <MenuItem value="個案名稱">個案名稱</MenuItem>
+            </Select>
+          </FormControl>
           
           <TextField
+            placeholder={`請輸入${searchType}關鍵字`}
             value={searchContent}
             onChange={(e) => setSearchContent(e.target.value)}
-            placeholder="搜尋緊急物資申請..."
-            size="small"
-            sx={{ flex: 1, minWidth: 200, height: 40 }}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Search />
+                  <Search sx={{ color: THEME_COLORS.TEXT_SECONDARY }} />
                 </InputAdornment>
               ),
             }}
+            sx={{ flex: 1 }}
           />
           
           <Button
             variant="contained"
             onClick={handleSearch}
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} /> : <Search />}
             sx={{
-              height: 40,
-              px: 3,
-              bgcolor: THEME_COLORS.ERROR,
-              '&:hover': { bgcolor: THEME_COLORS.ERROR_DARK }
+              minWidth: 100,
+              backgroundColor: THEME_COLORS.ERROR,
+              color: 'white',
+              '&:hover': {
+                backgroundColor: THEME_COLORS.ERROR_DARK,
+              },
             }}
           >
-            搜尋
+            {loading ? '搜尋中...' : '搜尋'}
           </Button>
         </Box>
       </Paper>
 
-      {/* 統計卡片 */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-        <Paper elevation={1} sx={{ p: 2, flex: 1, minWidth: 200 }}>
-          <Typography variant="body2" color="textSecondary">高優先度申請</Typography>
-          <Typography variant="h4" color={THEME_COLORS.ERROR} sx={{ fontWeight: 600 }}>
-            {requestData.filter(item => item.urgency === 'high').length}
-          </Typography>
-        </Paper>
-        <Paper elevation={1} sx={{ p: 2, flex: 1, minWidth: 200 }}>
-          <Typography variant="body2" color="textSecondary">待審核申請</Typography>
-          <Typography variant="h4" color={THEME_COLORS.WARNING} sx={{ fontWeight: 600 }}>
-            {requestData.filter(item => item.status === 'pending').length}
-          </Typography>
-        </Paper>
-        <Paper elevation={1} sx={{ p: 2, flex: 1, minWidth: 200 }}>
-          <Typography variant="body2" color="textSecondary">總申請金額</Typography>
-          <Typography variant="h4" color={THEME_COLORS.PRIMARY} sx={{ fontWeight: 600 }}>
-            ${requestData.reduce((total, item) => total + item.estimatedCost, 0).toLocaleString()}
-          </Typography>
-        </Paper>
-      </Box>
-
-      {/* 申請表格 */}
-      <TableContainer component={Paper} elevation={1}>
+      {/* 資料表格 */}
+      <TableContainer 
+        component={Paper} 
+        elevation={1}
+        sx={{ 
+          backgroundColor: THEME_COLORS.BACKGROUND_CARD,
+          borderRadius: 1
+        }}
+      >
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: THEME_COLORS.BACKGROUND_SECONDARY }}>
-              <TableCell sx={{ fontWeight: 600 }}>申請人</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>物品名稱</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>分類</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>數量</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>緊急程度</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>申請時間</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>狀態</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>操作</TableCell>
+            <TableRow sx={{ backgroundColor: THEME_COLORS.BACKGROUND_SECONDARY }}>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                物品名稱
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                分類
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                數量
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                緊急程度
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                申請人
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                個案名稱
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                申請日期
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                狀態
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                操作
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                    <CircularProgress sx={{ color: THEME_COLORS.ERROR }} />
-                    <Typography variant="body2" color="textSecondary">
-                      載入緊急物資需求資料中...
-                    </Typography>
-                  </Box>
+                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
+                  <CircularProgress />
+                  <Typography sx={{ mt: 2 }}>載入中...</Typography>
                 </TableCell>
               </TableRow>
-            ) : requestData.length === 0 ? (
+            ) : filteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
-                  <Typography variant="body2" color="textSecondary">
-                    目前無緊急物資需求申請
+                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography color="textSecondary">
+                    暫無緊急物資需求資料
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              requestData.map((request) => (
-              <React.Fragment key={request.id}>
-                <TableRow hover>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Person sx={{ fontSize: 16, color: THEME_COLORS.ERROR }} />
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {request.caseName}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-                          {request.caseId}
+              filteredData.map((row) => (
+                <React.Fragment key={row.emergencyNeedId}>
+                  <TableRow 
+                    hover
+                    sx={{ 
+                      '&:hover': { backgroundColor: THEME_COLORS.HOVER_LIGHT },
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => toggleRowExpansion(row.emergencyNeedId)}
+                  >
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {row.urgency === 'high' && (
+                          <PriorityHigh sx={{ color: THEME_COLORS.ERROR, fontSize: 20 }} />
+                        )}
+                        <Typography sx={{ color: THEME_COLORS.TEXT_PRIMARY, fontWeight: 500 }}>
+                          {row.itemName}
                         </Typography>
                       </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {request.urgency === 'high' && (
-                        <Warning sx={{ fontSize: 16, color: THEME_COLORS.ERROR }} />
-                      )}
-                      {request.itemName}
-                    </Box>
-                  </TableCell>
-                  <TableCell>{request.category}</TableCell>
-                  <TableCell>{request.quantity} {request.unit}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getUrgencyLabel(request.urgency)}
-                      size="small"
-                      sx={{
-                        bgcolor: getUrgencyColor(request.urgency),
-                        color: 'white',
-                        fontWeight: 500,
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>{request.requestDate}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={request.matched ? '已媒合' : '尚未媒合'}
-                      size="small"
-                      sx={{
-                        bgcolor: request.matched ? THEME_COLORS.SUCCESS : THEME_COLORS.WARNING,
-                        color: 'white',
-                        fontWeight: 500,
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
-                      <Button
-                        variant="contained"
+                    </TableCell>
+                    <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
+                      {row.category}
+                    </TableCell>
+                    <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
+                      {row.quantity} {row.unit}
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getUrgencyLabel(row.urgency)}
                         size="small"
                         sx={{
-                          bgcolor: THEME_COLORS.SUCCESS,
+                          backgroundColor: getUrgencyColor(row.urgency),
                           color: 'white',
-                          fontSize: '0.75rem',
-                          px: 2,
-                          '&:hover': { bgcolor: THEME_COLORS.PRIMARY_DARK }
+                          fontWeight: 500,
                         }}
-                        onClick={() => handleAutoMatch(request.id)}
-                      >
-                        自動媒合
-                      </Button>
-                      <Button
-                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Person sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontSize: 18 }} />
+                        <Typography sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
+                          {row.requestedBy}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
+                      {row.caseName}
+                    </TableCell>
+                    <TableCell sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+                      {new Date(row.requestDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getStatusLabel(row.status)}
                         size="small"
-                        sx={{
-                          borderColor: THEME_COLORS.PRIMARY,
-                          color: THEME_COLORS.PRIMARY,
-                          fontSize: '0.75rem',
-                          px: 2,
-                          '&:hover': { 
-                            borderColor: THEME_COLORS.PRIMARY_DARK,
-                            bgcolor: `${THEME_COLORS.PRIMARY}14`
-                          }
-                        }}
-                        onClick={() => {
-                          setMatchingRequestId(request.id);
-                          setOpenMatchingDialog(true);
-                          setMatchingItemId('');
-                          setMatchingQuantity(1);
-                        }}
+                        sx={getStatusStyle(row.status)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        {row.status === 'pending' && (
+                          <>
+                            <IconButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleApprove(row);
+                              }}
+                              sx={{ color: THEME_COLORS.SUCCESS }}
+                            >
+                              <CheckCircle />
+                            </IconButton>
+                            <IconButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReject(row);
+                              }}
+                              sx={{ color: THEME_COLORS.ERROR }}
+                            >
+                              <Cancel />
+                            </IconButton>
+                          </>
+                        )}
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(row);
+                          }}
+                          sx={{ color: THEME_COLORS.TEXT_MUTED }}
+                        >
+                          <Delete />
+                        </IconButton>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleRowExpansion(row.emergencyNeedId);
+                          }}
+                          sx={{ color: THEME_COLORS.TEXT_SECONDARY }}
+                        >
+                          {expandedRows.includes(row.emergencyNeedId) ? <ExpandLess /> : <ExpandMore />}
+                        </IconButton>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+
+                  {/* 展開的詳細資訊 */}
+                  <TableRow>
+                    <TableCell colSpan={9} sx={{ py: 0 }}>
+                      <Collapse 
+                        in={expandedRows.includes(row.emergencyNeedId)} 
+                        timeout="auto" 
+                        unmountOnExit
                       >
-                        手動媒合
-                      </Button>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-                
-                {/* 展開區域 - 手動媒合 */}
-                <TableRow>
-                  <TableCell colSpan={8} sx={{ p: 0 }}>
-                    <Collapse in={expandedRows.includes(request.id)}>
-                      <Box sx={{ p: 3, bgcolor: THEME_COLORS.ERROR_LIGHT }}>
-                        <Box sx={{ 
-                          display: 'flex',
-                          flexDirection: { xs: 'column', md: 'row' },
-                          gap: 3
-                        }}>
-                          {/* 左側：申請詳情 */}
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="h6" sx={{ 
-                              mb: 2, 
-                              fontWeight: 600,
-                              color: THEME_COLORS.TEXT_PRIMARY
-                            }}>
-                              申請詳情
-                            </Typography>
-                            
-                            <Card variant="outlined" sx={{ mb: 2 }}>
-                              <CardContent>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant="body2" sx={{ 
-                                      minWidth: 80, 
-                                      fontWeight: 600, 
-                                      color: THEME_COLORS.TEXT_SECONDARY 
-                                    }}>
-                                      物品：
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                      {request.itemName}
-                                    </Typography>
-                                  </Box>
-                                  
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant="body2" sx={{ 
-                                      minWidth: 80, 
-                                      fontWeight: 600, 
-                                      color: THEME_COLORS.TEXT_SECONDARY 
-                                    }}>
-                                      緊急程度：
-                                    </Typography>
-                                    <Chip
-                                      label={getUrgencyLabel(request.urgency)}
-                                      size="small"
-                                      sx={{
-                                        bgcolor: getUrgencyColor(request.urgency),
-                                        color: 'white',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 500
-                                      }}
-                                    />
-                                  </Box>
-                                  
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant="body2" sx={{ 
-                                      minWidth: 80, 
-                                      fontWeight: 600, 
-                                      color: THEME_COLORS.TEXT_SECONDARY 
-                                    }}>
-                                      預估費用：
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ 
-                                      fontWeight: 500,
-                                      color: THEME_COLORS.SUCCESS
-                                    }}>
-                                      NT$ {request.estimatedCost.toLocaleString()}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                              </CardContent>
-                            </Card>
-                          </Box>
-
-                          {/* 右側：手動媒合 */}
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="h6" sx={{ 
-                              mb: 2, 
-                              fontWeight: 600,
-                              color: THEME_COLORS.ERROR
-                            }}>
-                              手動媒合物資
-                            </Typography>
-
-                            {/* 新增媒合物品表單 */}
-                            <Card variant="outlined" sx={{ mb: 2 }}>
-                              <CardContent>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                  <TextField
-                                    fullWidth
-                                    label="物品名稱"
-                                    value={newMatchingItem.itemName}
-                                    onChange={(e) => setNewMatchingItem(prev => ({
-                                      ...prev,
-                                      itemName: e.target.value
-                                    }))}
-                                    size="small"
-                                  />
-                                  
-                                  <Box sx={{ display: 'flex', gap: 2 }}>
-                                    <TextField
-                                      label="數量"
-                                      type="number"
-                                      value={newMatchingItem.quantity}
-                                      onChange={(e) => setNewMatchingItem(prev => ({
-                                        ...prev,
-                                        quantity: parseInt(e.target.value) || 1
-                                      }))}
-                                      size="small"
-                                      sx={{ width: 100 }}
-                                      inputProps={{ min: 1 }}
-                                    />
-                                    
-                                    <TextField
-                                      label="單位"
-                                      value={newMatchingItem.unit}
-                                      onChange={(e) => setNewMatchingItem(prev => ({
-                                        ...prev,
-                                        unit: e.target.value
-                                      }))}
-                                      size="small"
-                                      sx={{ width: 100 }}
-                                    />
-                                    
-                                    <TextField
-                                      label="庫存位置"
-                                      value={newMatchingItem.stockLocation}
-                                      onChange={(e) => setNewMatchingItem(prev => ({
-                                        ...prev,
-                                        stockLocation: e.target.value
-                                      }))}
-                                      size="small"
-                                      sx={{ flex: 1 }}
-                                    />
-                                  </Box>
-                                  
-                                  <Button
-                                    variant="contained"
-                                    onClick={() => handleAddMatchingItem(request.id)}
-                                    startIcon={<Add />}
-                                    sx={{
-                                      bgcolor: THEME_COLORS.ERROR,
-                                      '&:hover': { bgcolor: THEME_COLORS.ERROR_DARK }
-                                    }}
-                                  >
-                                    添加媒合物品
-                                  </Button>
-                                </Box>
-                              </CardContent>
-                            </Card>
-
-                            {/* 已媒合物品列表 */}
-                            {matchingItems[request.id]?.length > 0 && (
-                              <Card variant="outlined">
-                                <CardContent>
-                                  <Typography variant="body2" sx={{ 
-                                    mb: 2, 
-                                    fontWeight: 600,
-                                    color: THEME_COLORS.TEXT_PRIMARY 
-                                  }}>
-                                    已媒合物品
-                                  </Typography>
-                                  
-                                  {matchingItems[request.id].map((item: any) => (
-                                    <Box key={item.id} sx={{ 
-                                      display: 'flex', 
-                                      justifyContent: 'space-between', 
-                                      alignItems: 'center',
-                                      p: 1,
-                                      bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
-                                      borderRadius: 1,
-                                      mb: 1
-                                    }}>
-                                      <Box>
-                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                          {item.itemName}
-                                        </Typography>
-                                        <Typography variant="caption" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-                                          {item.quantity} {item.unit} - {item.stockLocation}
-                                        </Typography>
-                                      </Box>
-                                      <IconButton
-                                        size="small"
-                                        onClick={() => handleRemoveMatchingItem(request.id, item.id)}
-                                        sx={{ color: THEME_COLORS.ERROR }}
-                                      >
-                                        <Delete />
-                                      </IconButton>
-                                    </Box>
-                                  ))}
-                                </CardContent>
-                              </Card>
-                            )}
+                        <Box sx={{ py: 2 }}>
+                          <Typography 
+                            variant="h6" 
+                            gutterBottom 
+                            sx={{ 
+                              color: THEME_COLORS.TEXT_PRIMARY,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1
+                            }}
+                          >
+                            <Warning sx={{ color: THEME_COLORS.WARNING }} />
+                            緊急物資需求詳細資訊
+                          </Typography>
+                          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2 }}>
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
+                                緊急原因
+                              </Typography>
+                              <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
+                                {row.emergencyReason || '無'}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
+                                預估成本
+                              </Typography>
+                              <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
+                                ${row.estimatedCost.toLocaleString()}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
+                                個案編號
+                              </Typography>
+                              <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
+                                {row.caseId}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
+                                配對狀態
+                              </Typography>
+                              <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
+                                {row.matched ? '已配對' : '未配對'}
+                              </Typography>
+                            </Box>
                           </Box>
                         </Box>
-                      </Box>
-                    </Collapse>
-                  </TableCell>
-                </TableRow>
-              </React.Fragment>
-            )))}
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
+              ))
+            )}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {/* Dialog for manual matching */}
-      <Dialog open={openMatchingDialog} onClose={() => setOpenMatchingDialog(false)}>
-        <DialogTitle>手動媒合</DialogTitle>
-        <DialogContent sx={{ minWidth: 320 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField
-              label="物品ID"
-              value={matchingItemId}
-              onChange={e => setMatchingItemId(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="數量"
-              type="number"
-              value={matchingQuantity}
-              onChange={e => setMatchingQuantity(Number(e.target.value))}
-              fullWidth
-              inputProps={{ min: 1 }}
-            />
-          </Box>
+      {/* 確認對話框 */}
+      <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, type: 'approve', item: null })}>
+        <DialogTitle>
+          確認{getActionText(confirmDialog.type)}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {confirmDialog.item && (
+              <>
+                確定要{getActionText(confirmDialog.type)}物品「{confirmDialog.item.itemName}」的申請嗎？
+                {confirmDialog.type === 'delete' && (
+                  <Typography color="error" sx={{ mt: 1 }}>
+                    此操作無法復原！
+                  </Typography>
+                )}
+              </>
+            )}
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenMatchingDialog(false)}>取消</Button>
-          <Button
+          <Button onClick={() => setConfirmDialog({ open: false, type: 'approve', item: null })}>
+            取消
+          </Button>
+          <Button 
+            onClick={confirmAction}
             variant="contained"
-            onClick={() => {
-              console.log('手動媒合', {
-                requestId: matchingRequestId,
-                itemId: matchingItemId,
-                quantity: matchingQuantity
-              });
-              setOpenMatchingDialog(false);
-            }}
-            disabled={!matchingItemId || matchingQuantity < 1}
+            color={confirmDialog.type === 'delete' ? 'error' : 'primary'}
+            autoFocus
           >
-            確認媒合
+            確認{getActionText(confirmDialog.type)}
           </Button>
         </DialogActions>
       </Dialog>
