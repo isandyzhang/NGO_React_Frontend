@@ -265,6 +265,26 @@ export const commonStyles = {
   /** 狀態標籤顏色配置 */
   // 🔍 重點：每種狀態都有對應的背景色和文字色
   statusChip: {
+    pending: { 
+      bg: '#fff3e0', 
+      color: '#ef6c00' 
+    },
+    approved: { 
+      bg: THEME_COLORS.SUCCESS_LIGHT, 
+      color: THEME_COLORS.SUCCESS 
+    },
+    rejected: { 
+      bg: THEME_COLORS.ERROR_LIGHT, 
+      color: THEME_COLORS.ERROR 
+    },
+    completed: { 
+      bg: '#f3e5f5', 
+      color: '#7b1fa2' 
+    },
+    collected: { 
+      bg: '#e8f5e8', 
+      color: '#2e7d32' 
+    },
     upcoming: { 
       bg: '#e3f2fd', 
       color: '#1976d2' 
@@ -272,10 +292,6 @@ export const commonStyles = {
     ongoing: { 
       bg: THEME_COLORS.SUCCESS_LIGHT, 
       color: THEME_COLORS.SUCCESS 
-    },
-    completed: { 
-      bg: '#f3e5f5', 
-      color: '#7b1fa2' 
     },
     cancelled: { 
       bg: THEME_COLORS.ERROR_LIGHT, 

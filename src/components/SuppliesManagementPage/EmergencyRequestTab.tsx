@@ -115,6 +115,7 @@ const EmergencyRequestTab: React.FC = () => {
       case 'approved': return '批准';
       case 'rejected': return '不批准';
       case 'completed': return '已完成';
+      case 'collected': return '已領取';
       default: return '未知';
     }
   };

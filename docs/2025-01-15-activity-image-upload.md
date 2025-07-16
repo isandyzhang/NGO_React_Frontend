@@ -188,6 +188,61 @@ async uploadImage(formData: FormData): Promise<{ imageUrl: string }>
 
 ---
 
+## 📦 物資管理系統優化 (2025-01-16)
+
+### 🔧 修正的核心問題
+1. **重複領取問題** - 已領取物資的人可以重複領取
+2. **狀態處理不一致** - 後端中文「已領取」與前端英文「collected」狀態不匹配
+3. **分發記錄追蹤缺失** - 無法追蹤哪個批次分發了哪些物資
+
+### ✅ 已完成的功能修正
+
+#### 1. 狀態標準化
+**後端修改** (`RegularSuppliesNeedController.cs`)
+- 統一狀態轉換邏輯：「已領取」→「collected」
+- 新增向後兼容：「completed」→「collected」
+- 修正分發過濾條件：排除 `collected` 和 `completed` 狀態
+
+**前端修改** (`DistributionTab.tsx`, `commonStyles.ts`)
+- 新增 `collected` 狀態的 TAG 樣式和顯示
+- 更新狀態文字對應：`collected` → `已領取`
+
+#### 2. 批次追蹤系統
+**後端新增**
+- `RegularSuppliesNeed` 模型新增 `BatchId` 欄位
+- 新增 `/collect` API 端點支援 `BatchId` 參數
+- 新增 `/batch/{batchId}/details` API 查詢批次分發詳情
+
+**前端整合**
+- 修改分發流程：先建立批次獲得 ID，再用此 ID 標記需求為已領取
+- 新增 `getBatchDistributionDetails` 服務方法
+- 實作動態載入實際配對記錄數
+
+#### 3. 分發詳情顯示
+**功能完善**
+- 修正分發批次詳情對話框：正確顯示實際配對記錄
+- 動態載入配對記錄數：展開時自動查詢實際數量
+- 快取機制：避免重複查詢同一批次
+
+### 🐛 解決的問題
+1. ✅ 防止重複領取：透過狀態檢查排除已領取的申請
+2. ✅ 狀態一致性：統一前後端狀態處理邏輯  
+3. ✅ 批次追蹤：每筆分發記錄都關聯到特定批次
+4. ✅ 詳情顯示：分發批次詳情正確顯示配對記錄
+5. ✅ 數量準確性：配對記錄數顯示實際數量而非固定值
+
+### 📁 主要修改檔案
+**後端 (NGO_WebAPI_Backend)**
+- `Models/RegularSuppliesNeed.cs` - 新增 BatchId 欄位
+- `Controllers/RegularSuppliesNeedController.cs` - 新增批次相關 API
+
+**前端 (Case-Management-System)**  
+- `services/supplyService.ts` - 新增批次詳情查詢方法
+- `components/SuppliesManagementPage/DistributionTab.tsx` - 完善分發流程和詳情顯示
+- `styles/commonStyles.ts` - 新增 collected 狀態樣式
+
+---
+
 ## 🏷️ 新增需求：活動標籤分類功能 (2025-01-15 下午)
 
 ### 📋 需求描述
@@ -292,4 +347,156 @@ public static readonly Dictionary<string, string> Categories = new Dictionary<st
 5. 成功刪除後從列表移除並顯示成功訊息
 
 ---
-**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能。
+
+## 🔧 API連線問題排除 (2025-07-16)
+
+### 📋 遇到的問題
+在物資管理功能測試時發現前端無法連接後端API，所有頁面顯示大量404錯誤。
+
+### 🐛 問題分析
+1. **端口占用問題** - 5264端口被多個dotnet進程占用
+   - PID 4704 (主要監聽進程)
+   - PID 14744 (連線進程)
+   - PID 12056 (殘留連線)
+
+2. **前端代理設定缺失** - Vite開發服務器缺少API代理配置
+   - 前端運行在 5173 端口
+   - 後端API運行在 5264 端口
+   - 缺少 `/api` 路徑代理設定
+
+### ✅ 解決方案
+1. **清理端口占用**
+   ```bash
+   # 檢查端口占用
+   netstat -ano | findstr ":5264"
+   
+   # 終止占用進程
+   powershell "Stop-Process -Id [PID] -Force"
+   ```
+
+2. **添加Vite代理設定**
+   **檔案**: `D:\GitHub\Case-Management-System\vite.config.ts`
+   ```typescript
+   export default defineConfig({
+     plugins: [react()],
+     server: {
+       proxy: {
+         '/api': {
+           target: 'http://localhost:5264',
+           changeOrigin: true,
+           secure: false
+         }
+       }
+     }
+   })
+   ```
+
+3. **環境配置更新**
+   **檔案**: `D:\GitHub\Case-Management-System\src\config\env.ts`
+   - 新增環境配置自動檢測機制
+   - API baseUrl 動態配置支援
+
+### 🧪 驗證結果
+- ✅ `/api/Supply/stats` - 回傳正常統計資料
+- ✅ `/api/Supply/categories` - 回傳5個物資分類
+- ✅ `/api/Supply` - 回傳30個物資項目
+- ✅ 端口5264完全釋放並可重新使用
+
+### 📝 預防措施
+1. **開發習慣**
+   - 使用 `Ctrl+C` 正常停止 dotnet 服務
+   - 關閉 IDE 前確保停止所有偵錯程序
+
+2. **配置檢查腳本**
+   ```bash
+   # 檢查端口占用快速腳本
+   netstat -ano | findstr ":5264"
+   ```
+
+3. **Vite配置注意事項**
+   - 修改 `vite.config.ts` 後需重啟開發服務器
+   - 前端熱更新不適用於配置檔案
+
+---
+
+## 🔄 物資分發頁面優化 (2025-07-16 晚間)
+
+### 📋 問題描述
+每月物資發放的自動分配功能因為運算量較大會運行較久，用戶誤以為系統沒有反應而重複點擊「確認訂單」按鈕，導致重複分配物資的問題。
+
+### ✅ 解決方案實作
+
+#### 防止重複點擊機制
+**檔案**: `D:\GitHub\Case-Management-System\src\components\SuppliesManagementPage\DistributionTab.tsx`
+
+1. **新增狀態變數**:
+   ```typescript
+   const [isProcessing, setIsProcessing] = useState(false);
+   const [processingDialogOpen, setProcessingDialogOpen] = useState(false);
+   ```
+
+2. **修改確認訂單函數**:
+   ```typescript
+   const handleConfirmOrder = async () => {
+     // 防止重複點擊
+     if (isProcessing) {
+       return;
+     }
+
+     setIsProcessing(true);
+     setOrderConfirmationOpen(false);
+     setProcessingDialogOpen(true);
+     
+     // ... 原有處理邏輯
+     
+     } finally {
+       setIsProcessing(false);
+       setProcessingDialogOpen(false);
+     }
+   };
+   ```
+
+3. **確認訂單按鈕改進**:
+   ```typescript
+   <Button
+     onClick={handleConfirmOrder}
+     variant="contained"
+     color="primary"
+     startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+     disabled={isProcessing}
+     sx={{ textTransform: 'none' }}
+   >
+     {isProcessing ? '處理中...' : '確認訂單'}
+   </Button>
+   ```
+
+4. **處理中對話框**:
+   - 不可通過 ESC 或點擊背景關閉
+   - 顯示處理進度和重要提醒
+   - 包含載入動畫和處理步驟說明
+
+### 🛡️ 新增的安全機制
+
+1. **狀態檢查**: 函數開始時檢查 `isProcessing` 狀態
+2. **按鈕禁用**: 處理期間按鈕被禁用且顯示載入狀態
+3. **對話框鎖定**: 處理中對話框無法被關閉
+4. **視覺回饋**: 清楚的載入動畫和進度提示
+5. **警告訊息**: 提醒用戶不要關閉頁面
+
+### 💡 用戶體驗改進
+
+**修改前流程**:
+1. 點擊確認訂單 → 2. 長時間等待（可能重複點擊） → 3. 顯示結果
+
+**修改後流程**:
+1. 點擊確認訂單 → 2. 立即顯示處理中對話框 → 3. 背景執行分配 → 4. 完成後顯示結果
+
+### 🎯 解決效果
+- ✅ 完全防止重複點擊造成的重複分配
+- ✅ 清楚的處理進度視覺回饋
+- ✅ 用戶友好的等待體驗
+- ✅ 系統穩定性提升
+
+---
+
+**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能，2025-07-16 的API連線問題排除，以及物資分發頁面防重複點擊優化。

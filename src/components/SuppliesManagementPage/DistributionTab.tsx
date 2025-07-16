@@ -92,6 +92,8 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   const [matchingResults, setMatchingResults] = useState<MatchingResult[]>([]);
   const [distributionModalOpen, setDistributionModalOpen] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingDialogOpen, setProcessingDialogOpen] = useState(false);
   const [batchHistoryRefresh, setBatchHistoryRefresh] = useState(0);
   
   // 媒合記錄資料
@@ -105,6 +107,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   const [selectedBatch, setSelectedBatch] = useState<DistributionBatchDetail | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [batchMatchCounts, setBatchMatchCounts] = useState<Record<number, number>>({});
 
   // 獲取當前月份
   const getCurrentMonth = () => {
@@ -169,20 +172,67 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   };
 
   // 切換批次行展開狀態
-  const toggleBatchRowExpansion = (id: number) => {
+  const toggleBatchRowExpansion = async (id: number) => {
+    const wasExpanded = batchExpandedRows.includes(id);
+    
     setBatchExpandedRows(prev => 
       prev.includes(id) 
         ? prev.filter(rowId => rowId !== id)
         : [...prev, id]
     );
+
+    // 如果是展開且還沒載入過配對數，則載入實際配對數
+    if (!wasExpanded && !batchMatchCounts[id]) {
+      try {
+        const distributionDetails = await supplyService.getBatchDistributionDetails(id);
+        const actualCount = distributionDetails ? distributionDetails.length : 0;
+        setBatchMatchCounts(prev => ({
+          ...prev,
+          [id]: actualCount
+        }));
+      } catch (error) {
+        console.error(`載入批次 ${id} 配對數失敗:`, error);
+        setBatchMatchCounts(prev => ({
+          ...prev,
+          [id]: 0
+        }));
+      }
+    }
   };
 
   // 查看批次詳細信息
   const handleViewBatchDetail = async (batchId: number) => {
     try {
       setLoadingDetail(true);
-      const detail = await distributionBatchService.getDistributionBatch(batchId);
-      setSelectedBatch(detail);
+      
+      // 同時獲取批次基本信息和實際配對記錄
+      const [detail, distributionDetails] = await Promise.all([
+        distributionBatchService.getDistributionBatch(batchId),
+        supplyService.getBatchDistributionDetails(batchId)
+      ]);
+      
+      // 將實際的配對記錄放入批次詳情中
+      const actualMatches = distributionDetails && Array.isArray(distributionDetails) ? distributionDetails.map(record => ({
+        caseName: record['申請人'],
+        supplyName: record['物品名稱'],
+        requestedQuantity: record['申請數量'],
+        matchedQuantity: record['配對數量'],
+        requestedDate: record['申請日期'],
+        matchDate: record['配對日期'],
+        note: record['備註']
+      })) : [];
+      
+      const detailWithActualMatches = {
+        ...detail,
+        matches: actualMatches,
+        matchCount: actualMatches.length // 更新為實際的配對記錄數量
+      };
+      
+      console.log('BatchId:', batchId);
+      console.log('Distribution details:', distributionDetails);
+      console.log('Detail with matches:', detailWithActualMatches);
+      
+      setSelectedBatch(detailWithActualMatches);
       setDetailDialogOpen(true);
     } catch (err) {
       console.error('載入分發批次詳情失敗:', err);
@@ -261,7 +311,11 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
     
     try {
       const allNeeds = await supplyService.getRegularSuppliesNeeds();
-      const approvedRequests = allNeeds.filter(need => need.status === 'approved');
+      const approvedRequests = allNeeds.filter(need => 
+        need.status === 'approved' && 
+        need.status !== 'collected' && 
+        need.status !== 'completed'
+      );
       
       if (approvedRequests.length === 0) {
         alert('目前沒有已批准的申請可供分配');
@@ -323,6 +377,15 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   };
 
   const handleConfirmOrder = async () => {
+    // 防止重複點擊
+    if (isProcessing) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setOrderConfirmationOpen(false);
+    setProcessingDialogOpen(true);
+
     const results = {
       matchCreated: 0,
       stockUpdated: 0,
@@ -381,18 +444,8 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
         }
       }
 
-      // 3. 更新需求狀態
-      for (const result of matchingResults) {
-        try {
-          await supplyService.approveRegularSuppliesNeed(result.needId);
-          results.needStatusUpdated++;
-        } catch (error) {
-          console.error(`更新需求狀態失敗 (需求ID: ${result.needId}):`, error);
-          results.errors.push(`更新需求狀態失敗: ${result.itemName}`);
-        }
-      }
-
-      // 4. 創建分發批次記錄
+      // 3. 創建分發批次記錄
+      let batchId: number | undefined;
       try {
         const matchIds = matchingResults
           .filter(r => r.status !== 'not_matched')
@@ -408,6 +461,8 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
         };
         
         const batchResult = await distributionBatchService.createDistributionBatch(createBatchRequest);
+        batchId = batchResult.id; // 保存批次ID
+        
         await distributionBatchService.approveDistributionBatch(batchResult.id, {
           approvedByWorkerId: 1
         });
@@ -416,6 +471,17 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
       } catch (error) {
         console.error('創建分發批次記錄失敗:', error);
         results.errors.push('創建分發批次記錄失敗');
+      }
+
+      // 4. 更新需求狀態為已領取（使用批次ID）
+      for (const result of matchingResults) {
+        try {
+          await supplyService.collectRegularSuppliesNeed(result.needId, batchId);
+          results.needStatusUpdated++;
+        } catch (error) {
+          console.error(`更新需求狀態失敗 (需求ID: ${result.needId}):`, error);
+          results.errors.push(`更新需求狀態失敗: ${result.itemName}`);
+        }
       }
 
       // 重新載入資料
@@ -446,13 +512,15 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
       `;
       
       alert(message);
-      setOrderConfirmationOpen(false);
       
       // 刷新分發批次歷史記錄
       setBatchHistoryRefresh(prev => prev + 1);
     } catch (error) {
       console.error('確認訂單失敗:', error);
       alert('確認訂單失敗，請稍後重試');
+    } finally {
+      setIsProcessing(false);
+      setProcessingDialogOpen(false);
     }
   };
 
@@ -467,6 +535,7 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
       case 'approved': return '已批准';
       case 'rejected': return '已拒絕';
       case 'completed': return '已完成';
+      case 'collected': return '已領取';
       default: return status;
     }
   };
@@ -959,7 +1028,7 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                                     </Box>
                                     <Box>
                                       <Typography variant="body2" color="text.secondary">
-                                        配對記錄數: {batch.matchCount}
+                                        配對記錄數: {batchMatchCounts[batch.distributionBatchId] ?? batch.matchCount}
                                       </Typography>
                                       <Typography variant="body2" color="text.secondary">
                                         備註: {batch.notes || '無'}
@@ -1106,9 +1175,11 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
             onClick={handleConfirmOrder}
             variant="contained"
             color="primary"
-            startIcon={<CheckCircle />}
+            startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+            disabled={isProcessing}
+            sx={{ textTransform: 'none' }}
           >
-            確認訂單
+            {isProcessing ? '處理中...' : '確認訂單'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1196,6 +1267,68 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
             關閉
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* 處理中對話框 */}
+      <Dialog
+        open={processingDialogOpen}
+        disableEscapeKeyDown
+        disableBackdropClick
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: 3
+          }}>
+            <CircularProgress size={60} sx={{ color: THEME_COLORS.SUCCESS }} />
+            <Typography variant="h6" sx={{ 
+              color: THEME_COLORS.PRIMARY, 
+              fontWeight: 600,
+              mb: 1
+            }}>
+              🔄 系統正在分配中...
+            </Typography>
+            <Typography variant="body1" sx={{ 
+              color: THEME_COLORS.TEXT_MUTED,
+              mb: 2,
+              lineHeight: 1.6
+            }}>
+              正在處理物資分配，請耐心等候
+            </Typography>
+            <Alert severity="warning" sx={{ width: '100%' }}>
+              <strong>重要提醒：</strong>系統正在執行複雜的分配計算，期間請勿關閉頁面或重複操作。
+            </Alert>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 1,
+              width: '100%',
+              bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+              p: 2,
+              borderRadius: 1
+            }}>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                📝 處理進度：
+              </Typography>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                • 創建配對記錄
+              </Typography>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                • 更新物資庫存
+              </Typography>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                • 更新申請狀態
+              </Typography>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                • 創建分發批次記錄
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
       </Dialog>
     </Box>
   );

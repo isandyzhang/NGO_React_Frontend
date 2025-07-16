@@ -199,7 +199,7 @@ class SupplyService {
    */
   async updateSupply(id: number, supplyData: Partial<Supply>): Promise<void> {
     try {
-      // 轉換前端字段名到後端字段名
+      // 轉換前端字段名到後端字段名，與後端 UpdateSupplyRequest 一致
       const updateData: any = {};
       
       if (supplyData.name !== undefined) updateData.Name = supplyData.name;
@@ -308,6 +308,34 @@ class SupplyService {
       await api.post<void>(`/RegularSuppliesNeed/${id}/reject`);
     } catch (error) {
       console.error(`拒絕常駐物資需求 ${id} 失敗:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 標記常駐物資需求為已領取
+   */
+  async collectRegularSuppliesNeed(id: number, batchId?: number): Promise<void> {
+    try {
+      const payload = batchId ? { batchId } : undefined;
+      await api.post<void>(`/RegularSuppliesNeed/${id}/collect`, payload);
+    } catch (error) {
+      console.error(`標記常駐物資需求 ${id} 為已領取失敗:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根據批次ID取得分發詳情
+   */
+  async getBatchDistributionDetails(batchId: number): Promise<any[]> {
+    try {
+      console.log(`正在請求批次 ${batchId} 的分發詳情...`);
+      const data = await api.get<any[]>(`/RegularSuppliesNeed/batch/${batchId}/details`);
+      console.log('API 回應資料:', data);
+      return data || [];
+    } catch (error) {
+      console.error(`取得批次 ${batchId} 分發詳情失敗:`, error);
       throw error;
     }
   }
