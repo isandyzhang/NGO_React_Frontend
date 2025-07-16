@@ -127,6 +127,7 @@ const RegularRequestTab: React.FC = () => {
       case 'approved': return '批准';
       case 'rejected': return '不批准';
       case 'completed': return '已完成';
+      case 'collected': return '已領取';
       default: return '未知';
     }
   };
@@ -200,7 +201,7 @@ const RegularRequestTab: React.FC = () => {
     })
     .sort((a, b) => {
       // 先按狀態排序，pending 優先
-      const statusOrder = { 'pending': 0, 'approved': 1, 'rejected': 2, 'completed': 3 };
+      const statusOrder = { 'pending': 0, 'approved': 1, 'rejected': 2, 'completed': 3, 'collected': 4 };
       const statusDiff = statusOrder[a.status] - statusOrder[b.status];
       
       if (statusDiff !== 0) {

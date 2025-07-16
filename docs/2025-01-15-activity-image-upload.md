@@ -188,6 +188,61 @@ async uploadImage(formData: FormData): Promise<{ imageUrl: string }>
 
 ---
 
+## 📦 物資管理系統優化 (2025-01-16)
+
+### 🔧 修正的核心問題
+1. **重複領取問題** - 已領取物資的人可以重複領取
+2. **狀態處理不一致** - 後端中文「已領取」與前端英文「collected」狀態不匹配
+3. **分發記錄追蹤缺失** - 無法追蹤哪個批次分發了哪些物資
+
+### ✅ 已完成的功能修正
+
+#### 1. 狀態標準化
+**後端修改** (`RegularSuppliesNeedController.cs`)
+- 統一狀態轉換邏輯：「已領取」→「collected」
+- 新增向後兼容：「completed」→「collected」
+- 修正分發過濾條件：排除 `collected` 和 `completed` 狀態
+
+**前端修改** (`DistributionTab.tsx`, `commonStyles.ts`)
+- 新增 `collected` 狀態的 TAG 樣式和顯示
+- 更新狀態文字對應：`collected` → `已領取`
+
+#### 2. 批次追蹤系統
+**後端新增**
+- `RegularSuppliesNeed` 模型新增 `BatchId` 欄位
+- 新增 `/collect` API 端點支援 `BatchId` 參數
+- 新增 `/batch/{batchId}/details` API 查詢批次分發詳情
+
+**前端整合**
+- 修改分發流程：先建立批次獲得 ID，再用此 ID 標記需求為已領取
+- 新增 `getBatchDistributionDetails` 服務方法
+- 實作動態載入實際配對記錄數
+
+#### 3. 分發詳情顯示
+**功能完善**
+- 修正分發批次詳情對話框：正確顯示實際配對記錄
+- 動態載入配對記錄數：展開時自動查詢實際數量
+- 快取機制：避免重複查詢同一批次
+
+### 🐛 解決的問題
+1. ✅ 防止重複領取：透過狀態檢查排除已領取的申請
+2. ✅ 狀態一致性：統一前後端狀態處理邏輯  
+3. ✅ 批次追蹤：每筆分發記錄都關聯到特定批次
+4. ✅ 詳情顯示：分發批次詳情正確顯示配對記錄
+5. ✅ 數量準確性：配對記錄數顯示實際數量而非固定值
+
+### 📁 主要修改檔案
+**後端 (NGO_WebAPI_Backend)**
+- `Models/RegularSuppliesNeed.cs` - 新增 BatchId 欄位
+- `Controllers/RegularSuppliesNeedController.cs` - 新增批次相關 API
+
+**前端 (Case-Management-System)**  
+- `services/supplyService.ts` - 新增批次詳情查詢方法
+- `components/SuppliesManagementPage/DistributionTab.tsx` - 完善分發流程和詳情顯示
+- `styles/commonStyles.ts` - 新增 collected 狀態樣式
+
+---
+
 ## 🏷️ 新增需求：活動標籤分類功能 (2025-01-15 下午)
 
 ### 📋 需求描述
