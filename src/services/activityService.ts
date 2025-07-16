@@ -1,4 +1,5 @@
 import { api } from './api';
+import { config } from '../config/env';
 
 /**
  * 活動資料介面
@@ -223,9 +224,9 @@ class ActivityService {
   async uploadImage(formData: FormData): Promise<{ imageUrl: string }> {
     try {
       // 使用原生 fetch 來處理 FormData，避免 axios 自動設定 Content-Type
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5264/api';
+      const apiBaseUrl = config.apiBaseUrl;
       const token = localStorage.getItem('authToken');
-      const uploadUrl = `${apiBaseUrl}/Activity/upload/image`;
+      const uploadUrl = `${apiBaseUrl}/api/Activity/upload/image`;
       
       console.log('🚀 開始上傳圖片');
       console.log('📡 API URL:', uploadUrl);
