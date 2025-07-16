@@ -1,11 +1,11 @@
 // 環境配置文件
 export const environments = {
   development: {
-    apiBaseUrl: 'http://localhost:5264',
+    apiBaseUrl: 'http://localhost:5264/api',
     appEnv: 'development',
   },
   production: {
-    apiBaseUrl: 'https://ngobackend-fagef3gxbsfadtct.eastasia-01.azurewebsites.net',
+    apiBaseUrl: 'https://ngobackend-fagef3gxbsfadtct.eastasia-01.azurewebsites.net/api',
     appEnv: 'production',
   }
 };
