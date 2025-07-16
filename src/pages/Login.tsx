@@ -488,8 +488,8 @@ const Login: React.FC = () => {
                 fontWeight: 500,
               }}
               onClick={() => {
-                // TODO: 實作 Azure AD SSO 登入
-                console.log('Azure SSO 登入');
+                        // 實作 Azure AD SSO 登入
+        // Azure SSO 登入功能將在後續版本中實現
               }}
             >
              使用Azure AD 登入

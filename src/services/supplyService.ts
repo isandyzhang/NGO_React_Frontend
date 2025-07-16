@@ -61,7 +61,6 @@ export interface EmergencySupplyNeed {
   category: string;
   quantity: number;
   unit: string;
-  urgency: 'low' | 'medium' | 'high';
   requestedBy: string;
   requestDate: string;
   status: 'pending' | 'approved' | 'rejected' | 'completed';

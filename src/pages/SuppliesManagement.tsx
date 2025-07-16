@@ -28,7 +28,7 @@ import InventoryTab from '../components/SuppliesManagementPage/InventoryTab';
 import RegularRequestTab from '../components/SuppliesManagementPage/RegularRequestTab';
 import EmergencyRequestTab from '../components/SuppliesManagementPage/EmergencyRequestTab';
 import DistributionTab from '../components/SuppliesManagementPage/DistributionTab';
-import PendingCaseNeedsList from '../components/SuppliesManagementPage/PendingCaseNeedsList';
+
 
 /**
  * 物資管理頁面組件
@@ -48,7 +48,7 @@ const SuppliesManagement: React.FC = () => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
   const [isEmergencySupply, setIsEmergencySupply] = useState(false);
-  const [selectedCaseId, setSelectedCaseId] = useState<string | undefined>(undefined);
+
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -58,23 +58,16 @@ const SuppliesManagement: React.FC = () => {
     setIsEmergencySupply(event.target.checked);
     // 當切換物資類型時，重置到第一個標籤頁
     setActiveTab(0);
-    // 清除選中的 CASE ID
-    setSelectedCaseId(undefined);
   };
 
-  // 處理選中個案需求
-  const handleSelectCase = (caseId: string) => {
-    setSelectedCaseId(caseId);
-    // 自動切換到新增物資需求分頁
-    setActiveTab(0);
-  };
+
 
   // 分頁配置
   const tabs = isEmergencySupply ? [
     {
       label: '新增物資需求',
       icon: <Add sx={{ fontSize: 20 }} />,
-      component: <EmergencySupplyAddTab prefilledCaseId={selectedCaseId} />
+      component: <EmergencySupplyAddTab />
     },
     {
       label: '物資申請及紀錄',
@@ -285,15 +278,7 @@ const SuppliesManagement: React.FC = () => {
             {tabs[activeTab].component}
           </Box>
           
-          {/* 右側：待填寫個案需求列表 - 只在緊急物資的新增物資需求分頁顯示 */}
-          {isEmergencySupply && activeTab === 0 && (
-            <Box sx={{ 
-              width: { xs: '100%', lg: '350px' },
-              flexShrink: 0,
-            }}>
-              <PendingCaseNeedsList onSelectCase={handleSelectCase} />
-            </Box>
-          )}
+
         </Box>
       </Box>
     </PageContainer>

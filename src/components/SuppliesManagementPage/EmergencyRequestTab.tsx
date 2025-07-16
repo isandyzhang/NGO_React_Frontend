@@ -36,7 +36,6 @@ import {
   Cancel,
   Delete,
   Warning,
-  PriorityHigh,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { 
@@ -120,24 +119,6 @@ const EmergencyRequestTab: React.FC = () => {
     }
   };
 
-  const getUrgencyLabel = (urgency: string) => {
-    switch (urgency) {
-      case 'high': return '高';
-      case 'medium': return '中';
-      case 'low': return '低';
-      default: return '未知';
-    }
-  };
-
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'high': return THEME_COLORS.ERROR;
-      case 'medium': return THEME_COLORS.WARNING;
-      case 'low': return THEME_COLORS.SUCCESS;
-      default: return THEME_COLORS.TEXT_MUTED;
-    }
-  };
-
   const handleApprove = (item: EmergencySupplyNeed) => {
     setConfirmDialog({
       open: true,
@@ -208,9 +189,8 @@ const EmergencyRequestTab: React.FC = () => {
       }
     })
     .sort((a, b) => {
-      // 按緊急程度排序：高 > 中 > 低
-      const urgencyOrder = { high: 3, medium: 2, low: 1 };
-      return urgencyOrder[b.urgency as keyof typeof urgencyOrder] - urgencyOrder[a.urgency as keyof typeof urgencyOrder];
+      // 按申請日期排序：最新的在前
+      return new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime();
     });
 
   const getActionText = (type: 'approve' | 'reject' | 'delete') => {
@@ -369,9 +349,6 @@ const EmergencyRequestTab: React.FC = () => {
                 數量
               </TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
-                緊急程度
-              </TableCell>
-              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
                 申請人
               </TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
@@ -391,14 +368,14 @@ const EmergencyRequestTab: React.FC = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
                   <CircularProgress />
                   <Typography sx={{ mt: 2 }}>載入中...</Typography>
                 </TableCell>
               </TableRow>
             ) : filteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
                   <Typography color="textSecondary">
                     暫無緊急物資需求資料
                   </Typography>
@@ -416,31 +393,15 @@ const EmergencyRequestTab: React.FC = () => {
                     onClick={() => toggleRowExpansion(row.emergencyNeedId)}
                   >
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {row.urgency === 'high' && (
-                          <PriorityHigh sx={{ color: THEME_COLORS.ERROR, fontSize: 20 }} />
-                        )}
-                        <Typography sx={{ color: THEME_COLORS.TEXT_PRIMARY, fontWeight: 500 }}>
-                          {row.itemName}
-                        </Typography>
-                      </Box>
+                      <Typography sx={{ color: THEME_COLORS.TEXT_PRIMARY, fontWeight: 500 }}>
+                        {row.itemName}
+                      </Typography>
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
                       {row.category}
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
                       {row.quantity} {row.unit}
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={getUrgencyLabel(row.urgency)}
-                        size="small"
-                        sx={{
-                          backgroundColor: getUrgencyColor(row.urgency),
-                          color: 'white',
-                          fontWeight: 500,
-                        }}
-                      />
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -511,7 +472,7 @@ const EmergencyRequestTab: React.FC = () => {
 
                   {/* 展開的詳細資訊 */}
                   <TableRow>
-                    <TableCell colSpan={9} sx={{ py: 0 }}>
+                    <TableCell colSpan={8} sx={{ py: 0 }}>
                       <Collapse 
                         in={expandedRows.includes(row.emergencyNeedId)} 
                         timeout="auto" 

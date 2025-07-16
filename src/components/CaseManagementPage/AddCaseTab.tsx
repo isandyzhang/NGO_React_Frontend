@@ -274,13 +274,7 @@ const AddCaseTab: React.FC = () => {
         profileImage: formData.profileImage,
       };
 
-      // 調試日誌：顯示發送的日期格式
-      console.log('🔍 提交數據調試：', {
-        originalDate: formData.birthDate,
-        formattedDate: submitData.birthday,
-        dateType: typeof submitData.birthday,
-        isValid: formData.birthDate?.isValid(),
-      });
+
 
       await caseService.createCase(submitData);
 

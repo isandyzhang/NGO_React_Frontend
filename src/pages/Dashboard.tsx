@@ -5,11 +5,6 @@ import {
   CardContent, 
   Typography, 
   useTheme,
-  IconButton,
-  Badge,
-  Menu,
-  MenuItem,
-  Divider,
   Chip
 } from '@mui/material';
 import { PieChart, BarChart } from '@mui/x-charts';
@@ -21,7 +16,6 @@ import { dashboardService, DashboardStats, GenderDistribution, CaseDistribution,
 import { 
   People, 
   Assignment, 
-  NotificationsNone,
   CalendarToday,
   Info,
   Dashboard as DashboardIcon,
@@ -37,16 +31,14 @@ import { formatDate as formatDateHelper, isToday, isTomorrow } from '../utils/da
  * 主要功能：
  * 1. 顯示系統總覽統計資料（個案人數、志工人數等）
  * 2. 展示各種圖表分析（性別分布、地區分析、學校分布等）
- * 3. 提供通知管理功能
- * 4. 顯示系統資訊（日期、版本）
+ * 3. 顯示系統資訊（日期、版本）
  * 
  * 這是用戶登入後看到的主要頁面，提供整個案件管理系統的概覽視圖
  */
 const Dashboard: React.FC = () => {
   const theme = useTheme();
   
-  // 通知選單的錨點元素狀態
-  const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
+
   
   // 最近行事曆活動狀態
   const [recentEvents, setRecentEvents] = useState<CalendarEvent[]>([]);
@@ -56,32 +48,7 @@ const Dashboard: React.FC = () => {
   const [regionDistributionData, setRegionDistributionData] = useState<{region: string, count: number}[]>([]);
   const [difficultyData, setDifficultyData] = useState<{difficulty: string, count: number}[]>([]);
   
-  // 模擬通知資料 - 主要為活動相關通知
-  const notifications = [
-    { id: 1, title: '【個案活動】雜貨旅遊甜點體驗營報名開始', time: '2分鐘前', type: 'info' },
-    { id: 2, title: '【志工活動】環保淨灘活動需要更多志工', time: '15分鐘前', type: 'warning' },
-    { id: 3, title: '【個案訪問】張小明個案訪問已完成', time: '1小時前', type: 'success' },
-    { id: 4, title: '【活動提醒】青少年職涯探索工作坊明日開始', time: '2小時前', type: 'warning' },
-    { id: 5, title: '【志工培訓】新志工培訓課程開放報名', time: '3小時前', type: 'info' },
-    { id: 6, title: '【個案活動】長者數位學習課程報名額滿', time: '4小時前', type: 'success' },
-    { id: 7, title: '【活動取消】因天候因素戶外活動延期', time: '5小時前', type: 'warning' },
-    { id: 8, title: '【志工活動】社區關懷訪問活動圓滿結束', time: '6小時前', type: 'success' }
-  ];
 
-  /**
-   * 處理通知鈴鐺點擊事件
-   * 顯示通知下拉選單
-   */
-  const handleNotificationClick = (event: React.MouseEvent<HTMLElement>) => {
-    setNotificationAnchor(event.currentTarget);
-  };
-
-  /**
-   * 關閉通知選單
-   */
-  const handleNotificationClose = () => {
-    setNotificationAnchor(null);
-  };
 
   // 取得今日日期
   const today = new Date();
@@ -367,118 +334,12 @@ const Dashboard: React.FC = () => {
               </Box>
             </Box>
 
-            {/* 通知鈴鐺按鈕 */}
-            <IconButton
-              onClick={handleNotificationClick}
-              sx={{ 
-                bgcolor: 'background.paper',
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 2,
-                p: { xs: 1, sm: 1.5, md: 2 }, // 平板增加內邊距
-                minWidth: { md: '48px' }, // 平板最小寬度
-                minHeight: { md: '48px' }, // 平板最小高度
-                '&:hover': {
-                  bgcolor: 'action.hover'
-                }
-              }}
-            >
-              <Badge badgeContent={notifications.length} color="error">
-                <NotificationsNone sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }} />
-              </Badge>
-            </IconButton>
+
           </Box>
         }
       />
 
-      {/* 通知選單 */}
-      <Menu
-        anchorEl={notificationAnchor}
-        open={Boolean(notificationAnchor)}
-        onClose={handleNotificationClose}
-        PaperProps={{
-          sx: {
-            width: { xs: 280, sm: 320, md: 400, lg: 380 }, // 平板增加寬度
-            maxHeight: { xs: 500, md: 600 }, // 平板增加高度
-            mt: 1,
-            borderRadius: 2,
-            boxShadow: theme.shadows[8],
-            border: '1px solid',
-            borderColor: 'divider'
-          }
-        }}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-      >
-        <Box sx={{ 
-          p: { xs: 2, sm: 2.5 }, 
-          pb: 1,
-          borderRadius: '8px 8px 0 0'
-        }}>
-          <Typography variant="h6" sx={commonStyles.cardTitle}>
-            通知
-          </Typography>
-        </Box>
-        <Divider />
-        {notifications.map((notification, index) => (
-          <MenuItem 
-            key={notification.id} 
-            onClick={handleNotificationClose}
-            sx={{ 
-              py: { xs: 1.5, sm: 2, md: 2.5 }, // 平板增加垂直內邊距
-              px: { xs: 2, sm: 2.5, md: 3 }, // 平板增加水平內邊距
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              borderRadius: 1,
-              mx: 1,
-              minHeight: { md: '70px' }, // 平板增加最小高度提升觸摸友好性
-              '&:hover': {
-                bgcolor: 'action.hover',
-                borderRadius: 1
-              }
-            }}
-          >
-            <Typography sx={{
-              ...theme.customTypography.chartLabel,
-              fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' }
-            }}>
-              {notification.title}
-            </Typography>
-            <Typography 
-              sx={{
-                ...theme.customTypography.legendLabel,
-                color: 'text.secondary',
-                mt: 0.5,
-                fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
-              }}
-            >
-              {notification.time}
-            </Typography>
-            {index < notifications.length - 1 && <Divider sx={{ width: '100%', mt: { xs: 1, sm: 1.5 } }} />}
-          </MenuItem>
-        ))}
-        <Divider />
-        <MenuItem 
-          onClick={handleNotificationClose}
-          sx={{ 
-            justifyContent: 'center',
-            color: 'primary.main',
-            py: { xs: 1.5, sm: 2 },
-            borderRadius: '0 0 8px 8px',
-            '&:hover': {
-              bgcolor: 'action.hover',
-              borderRadius: '0 0 8px 8px'
-            }
-          }}
-        >
-          <Typography sx={{
-            ...theme.customTypography.chartLabel,
-            fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' }
-          }}>
-            查看全部通知
-          </Typography>
-        </MenuItem>
-      </Menu>
+
       
       {/* 統計卡片 */}
       <Box 

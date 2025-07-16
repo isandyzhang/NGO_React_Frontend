@@ -61,7 +61,7 @@ const ActivityManagement: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await activityService.getActivities();
-      console.log('API 回應:', response);
+      
       setActivityRecords(response.activities || []);
     } catch (err) {
       console.error('載入活動失敗:', err);
@@ -121,7 +121,7 @@ const ActivityManagement: React.FC = () => {
 
   const handleSearch = () => {
     // 搜尋邏輯已經在 filteredActivities 中處理
-    console.log('執行搜尋，篩選後的結果:', filteredActivities.length);
+    
   };
 
   const toggleRowExpansion = (id: number) => {

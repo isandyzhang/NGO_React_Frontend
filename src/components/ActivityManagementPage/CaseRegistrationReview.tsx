@@ -58,24 +58,14 @@ const CaseRegistrationReview: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 開始載入個案報名資料...');
       const data = await registrationService.getCaseRegistrations();
-      console.log('📦 API回應原始資料:', data);
-      console.log('📦 資料類型:', typeof data);
-      console.log('📦 是否為陣列:', Array.isArray(data));
       
       if (Array.isArray(data)) {
-        console.log('📊 資料長度:', data.length);
-        
-        if (data.length > 0) {
-          console.log('📋 第一筆資料:', data[0]);
-          console.log('🔍 第一筆資料欄位:', Object.keys(data[0]));
-          console.log('🔍 第一筆資料值:', Object.values(data[0]));
-        }
+
         
         // 資料驗證和轉換
         const validData = data.map((item: any, index) => {
-          console.log(`🔍 處理第${index + 1}筆資料:`, item);
+
           
           // 檢查必需欄位 - 支援小寫和大寫兩種格式
           const hasRequiredFields = item && (
@@ -90,7 +80,7 @@ const CaseRegistrationReview: React.FC = () => {
           );
           
           if (!hasRequiredFields) {
-            console.warn(`⚠️ 資料項目${index + 1}缺少必要欄位:`, item);
+
             return null;
           }
           
@@ -102,27 +92,24 @@ const CaseRegistrationReview: React.FC = () => {
             Status: String(item.Status || item.status || 'Pending')
           };
           
-          console.log(`✅ 標準化後的資料項目${index + 1}:`, normalizedItem);
+          
           return normalizedItem;
         }).filter(item => item !== null) as CaseRegistration[];
         
-        console.log('✅ 有效資料筆數:', validData.length);
-        console.log('✅ 最終資料:', validData);
+        
         
         setRegistrations(validData);
         setFilteredRegistrations(validData);
         
-        if (validData.length === 0) {
-          console.log('ℹ️ 沒有有效的個案報名資料');
-        }
+        
       } else {
-        console.error('❌ API回應不是陣列格式:', data);
+
         setRegistrations([]);
         setFilteredRegistrations([]);
         setError('API回應格式不正確');
       }
     } catch (err) {
-      console.error('❌ 載入個案報名資料錯誤:', err);
+
       setError(err instanceof Error ? err.message : '載入資料時發生錯誤');
     } finally {
       setLoading(false);
@@ -261,7 +248,7 @@ const CaseRegistrationReview: React.FC = () => {
     hasData: filteredRegistrations.length > 0
   };
 
-  console.log('🎯 渲染狀態:', debugInfo);
+  
 
   return (
     <Box>
@@ -386,11 +373,7 @@ const CaseRegistrationReview: React.FC = () => {
                                         normalizedStatus === '已報名' || 
                                         normalizedStatus === 'registered';
                         
-                        console.log('🎯 按鈕邏輯判斷:', { 
-                          原始狀態: registration.Status, 
-                          標準化狀態: normalizedStatus, 
-                          是否待審核: isPending 
-                        });
+
                         
                         return isPending ? (
                           <>
