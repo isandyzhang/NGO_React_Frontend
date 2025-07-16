@@ -6,6 +6,10 @@
 
 ## 📋 工作摘要
 
+開始工作前請先codereviwe一次這兩個專案，以方便後續工作順暢
+前端專案：x\Case-Management-System
+後端專案：x\NGO_WebAPI_Backend
+儲存位置可能會因開發者不同而位置不同，但都會在這個md檔案的根目錄附近
 修復活動管理頁面的圖片上傳問題，從原本的 Base64 儲存改為 Azure Blob Storage 方案。
 
 ## 🐛 原始問題
