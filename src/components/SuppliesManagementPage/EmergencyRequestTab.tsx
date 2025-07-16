@@ -150,11 +150,8 @@ const EmergencyRequestTab: React.FC = () => {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'pending': return '待審核';
-      case 'approved': return '批准';
-      case 'rejected': return '不批准';
-      case 'completed': return '已完成';
-      case 'collected': return '已領取';
+      case 'pending': return '待媒合';
+      case 'completed': return '已完成媒合';
       default: return '未知';
     }
   };

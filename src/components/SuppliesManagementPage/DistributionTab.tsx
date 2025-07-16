@@ -1070,14 +1070,8 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
             🚀 確認啟動自動分配
           </Typography>
           <Typography variant="body2" sx={{ mb: 2, color: THEME_COLORS.TEXT_MUTED }}>
-            系統將處理所有已批准的申請，根據以下條件進行自動分配：
+            系統將處理所有已批准的申請，正在進行自動分配：
           </Typography>
-          <Box component="ul" sx={{ mb: 2, pl: 2 }}>
-            <li>庫存充足度 (40%)</li>
-            <li>物資匹配度 (30%)</li>
-            <li>地理位置 (20%)</li>
-            <li>歷史成功率 (10%)</li>
-          </Box>
           <Typography variant="body2" sx={{ mb: 3, color: THEME_COLORS.WARNING }}>
             本次自動計算將針對 {getCurrentMonth()} 的<strong>已批准申請</strong>進行物資分配
           </Typography>

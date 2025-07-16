@@ -124,7 +124,7 @@ const RegularRequestTab: React.FC = () => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'pending': return '待審核';
-      case 'approved': return '批准';
+      case 'approved': return '已批准，待發放';
       case 'rejected': return '不批准';
       case 'completed': return '已完成';
       case 'collected': return '已領取';
@@ -322,7 +322,7 @@ const RegularRequestTab: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredData.length === 0 ? (
+              {filteredData.length === 0 ? (  
                 <TableRow>
                   <TableCell colSpan={7} sx={{ textAlign: 'center', py: 3 }}>
                     <Typography variant="body2" color="textSecondary">

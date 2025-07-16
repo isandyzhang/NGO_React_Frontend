@@ -6,12 +6,11 @@ import {
   TextField,
   Paper,
   Button,
-  FormControl,
-  Select,
-  MenuItem,
   InputAdornment,
   Chip,
   Autocomplete,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import { 
   Add,
@@ -24,14 +23,14 @@ import { THEME_COLORS } from '../../styles/theme';
 import { 
   commonStyles, 
   getValidationStyle, 
-  getResponsiveSpacing,
-  getSelectValidationStyle 
+  getResponsiveSpacing
 } from '../../styles/commonStyles';
 import { caseService, CaseResponse } from '../../services/caseService';
+import { supplyService, Supply } from '../../services/supplyService';
 
 interface EmergencySupplyRequestData {
+  supplyId: string;
   itemName: string;
-  category: string;
   quantity: number;
   supplyType: 'emergency';
   caseName: string;
@@ -51,8 +50,8 @@ const EmergencySupplyAddTab: React.FC = () => {
   const theme = useTheme();
   
   const [formData, setFormData] = useState<EmergencySupplyRequestData>({
+    supplyId: '',
     itemName: '',
-    category: '緊急醫療用品',
     quantity: 1,
     supplyType: 'emergency',
     caseName: '',
@@ -61,12 +60,16 @@ const EmergencySupplyAddTab: React.FC = () => {
 
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: boolean}>({});
   const [selectedCase, setSelectedCase] = useState<CaseRecord | null>(null);
+  const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
   const [caseDatabase, setCaseDatabase] = useState<CaseRecord[]>([]);
+  const [suppliesDatabase, setSuppliesDatabase] = useState<Supply[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // 載入個案資料
   const loadCaseData = async () => {
-    setLoading(true);
     try {
       const response = await caseService.getAllCases(1, 100); // 獲取前100個個案
       const caseRecords: CaseRecord[] = response.data.map((caseItem: CaseResponse) => ({
@@ -80,15 +83,43 @@ const EmergencySupplyAddTab: React.FC = () => {
       setCaseDatabase(caseRecords);
     } catch (error) {
       console.error('載入個案資料失敗:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  // 組件載入時獲取個案資料
+  // 載入物資資料
+  const loadSuppliesData = async () => {
+    try {
+      const response = await supplyService.getSupplies();
+      setSuppliesDatabase(response);
+    } catch (error) {
+      console.error('載入物資資料失敗:', error);
+    }
+  };
+
+  // 組件載入時獲取個案和物資資料
   useEffect(() => {
-    loadCaseData();
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([loadCaseData(), loadSuppliesData()]);
+      } catch (error) {
+        console.error('載入資料失敗:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, []);
+
+  // 自動清除成功消息
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess(null);
+      }, 5000); // 5秒後清除成功消息
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
 
 
@@ -133,6 +164,32 @@ const EmergencySupplyAddTab: React.FC = () => {
     }
   };
 
+  const handleSupplySelection = (newValue: Supply | null) => {
+    setSelectedSupply(newValue);
+    if (newValue) {
+      setFormData(prev => ({
+        ...prev,
+        supplyId: newValue.supplyId.toString(),
+        itemName: newValue.name,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        supplyId: '',
+        itemName: '',
+      }));
+    }
+    
+    // 清除物資相關的錯誤狀態
+    if (fieldErrors.itemName || fieldErrors.supplyId) {
+      setFieldErrors(prev => ({
+        ...prev,
+        itemName: false,
+        supplyId: false
+      }));
+    }
+  };
+
   const handleQuantityChange = (operation: 'add' | 'subtract') => {
     setFormData(prev => ({
       ...prev,
@@ -142,11 +199,15 @@ const EmergencySupplyAddTab: React.FC = () => {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    // 清除之前的訊息
+    setError(null);
+    setSuccess(null);
+    
     // 驗證表單
     const errors: {[key: string]: boolean} = {};
     
-    if (!formData.itemName.trim()) {
+    if (!selectedSupply) {
       errors.itemName = true;
     }
     
@@ -160,26 +221,52 @@ const EmergencySupplyAddTab: React.FC = () => {
       return;
     }
 
-    // TODO: 實作物資需求提交邏輯
-    alert(`緊急物資需求已成功提交！\n綁定個案：${selectedCase?.name} (${selectedCase?.id})`);
+    setSubmitting(true);
     
-    // 重置表單
-    setFormData({
-      itemName: '',
-      category: '緊急醫療用品',
-      quantity: 1,
-      supplyType: 'emergency',
-      caseName: '',
-      caseId: '',
-    });
-    setSelectedCase(null);
-    setFieldErrors({});
+    try {
+      // 準備API請求資料
+      const requestData = {
+        caseId: selectedCase!.id,
+        caseName: selectedCase!.name,
+        itemName: formData.itemName,
+        quantity: formData.quantity,
+        unit: '個',
+        requestedBy: 'Admin', // 這裡應該從用戶登入狀態獲取
+        requestDate: new Date().toISOString().split('T')[0],
+        status: 'pending' as const,
+        estimatedCost: 0,
+        matched: false,
+        emergencyReason: '緊急需求'
+      };
+
+      // 調用API創建緊急物資需求
+      await supplyService.createEmergencySupplyNeed(requestData);
+      
+      // 成功提示
+      setSuccess(`緊急物資需求已成功提交！物品：${formData.itemName}，數量：${formData.quantity}，綁定個案：${selectedCase?.name} (${selectedCase?.id})`);
+      
+      // 重置表單
+      setFormData({
+        supplyId: '',
+        itemName: '',
+        quantity: 1,
+        supplyType: 'emergency',
+        caseName: '',
+        caseId: '',
+      });
+      setSelectedCase(null);
+      setSelectedSupply(null);
+      setFieldErrors({});
+      
+    } catch (error) {
+      console.error('提交緊急物資需求失敗:', error);
+      setError('提交失敗，請檢查網路連接或稍後再試');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const emergencyCategories = [
-    '緊急醫療用品', '防護設備', '應急食品', '通訊設備',
-    '照明設備', '救援工具', '臨時住所用品', '衛生用品', '其他緊急物資'
-  ];
+
 
   return (
     <Paper elevation={1} sx={{ 
@@ -233,6 +320,19 @@ const EmergencySupplyAddTab: React.FC = () => {
           }}
         />
       </Box>
+
+      {/* 錯誤和成功消息 */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+      
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          {success}
+        </Alert>
+      )}
 
       {/* 表單區域 */}
       <Box sx={{ 
@@ -353,50 +453,94 @@ const EmergencySupplyAddTab: React.FC = () => {
           )}
         </Box>
 
-        {/* 物品名稱 */}
+        {/* 物品選擇 */}
         <Box>
           <Typography variant="body1" sx={{ 
             ...commonStyles.formLabel,
-            mb: 2
+            mb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
           }}>
-            物品名稱 *
+            物品選擇 *
           </Typography>
-          <TextField
-            value={formData.itemName}
-            onChange={(e) => handleInputChange('itemName', e.target.value)}
-            fullWidth
-            placeholder="請輸入緊急物資名稱"
-            error={fieldErrors.itemName}
-            sx={{
-              ...commonStyles.formInput,
-              ...getValidationStyle(fieldErrors.itemName)
+          <Autocomplete
+            value={selectedSupply}
+            onChange={(event, newValue) => handleSupplySelection(newValue)}
+            options={suppliesDatabase}
+            getOptionLabel={(option) => `${option.name} - $${option.cost}`}
+            renderOption={(props, option) => (
+              <Box component="li" {...props} sx={{ p: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      {option.name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED, fontSize: '0.8rem' }}>
+                      庫存: {option.currentStock} {option.unit} | 位置: {option.location}
+                    </Typography>
+                    <Typography variant="caption" sx={{ 
+                      color: THEME_COLORS.SUCCESS,
+                      fontSize: '0.75rem'
+                    }}>
+                      成本: ${option.cost} | 供應商: {option.supplier}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="選擇物資..."
+                error={fieldErrors.itemName}
+                sx={{
+                  ...commonStyles.formInput,
+                  ...getValidationStyle(fieldErrors.itemName)
+                }}
+              />
+            )}
+            filterOptions={(options, params) => {
+              const filtered = options.filter(option => 
+                option.name.toLowerCase().includes(params.inputValue.toLowerCase())
+              );
+              return filtered;
             }}
+            noOptionsText="找不到符合的物資"
+            sx={{ width: '100%' }}
           />
+          {selectedSupply && (
+            <Box sx={{ 
+              mt: 2, 
+              p: 2, 
+              bgcolor: THEME_COLORS.SUCCESS_LIGHT, 
+              borderRadius: 2,
+              border: `1px solid ${THEME_COLORS.SUCCESS}`
+            }}>
+              <Typography variant="body2" sx={{ 
+                fontWeight: 600, 
+                color: THEME_COLORS.SUCCESS,
+                mb: 1
+              }}>
+                已選擇物資
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>名稱：</strong>{selectedSupply.name}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>成本：</strong>${selectedSupply.cost}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>庫存：</strong>{selectedSupply.currentStock} {selectedSupply.unit}
+              </Typography>
+              <Typography variant="body2">
+                <strong>位置：</strong>{selectedSupply.location}
+              </Typography>
+            </Box>
+          )}
         </Box>
 
-        {/* 物資分類 */}
-        <FormControl fullWidth>
-          <Typography variant="body1" sx={{ 
-            ...commonStyles.formLabel,
-            mb: 2
-          }}>
-            物資分類 *
-          </Typography>
-          <Select
-            value={formData.category}
-            onChange={(e) => handleInputChange('category', e.target.value)}
-            sx={{
-              ...commonStyles.formSelect,
-              ...getSelectValidationStyle(false)
-            }}
-          >
-            {emergencyCategories.map((category) => (
-              <MenuItem key={category} value={category}>
-                {category}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+
 
         {/* 數量 */}
         <Box>
@@ -482,15 +626,18 @@ const EmergencySupplyAddTab: React.FC = () => {
             variant="outlined"
             onClick={() => {
               setFormData({
+                supplyId: '',
                 itemName: '',
-                category: '緊急醫療用品',
                 quantity: 1,
                 supplyType: 'emergency',
                 caseName: '',
                 caseId: '',
               });
-              setSelectedCase(null);
-              setFieldErrors({});
+                    setSelectedCase(null);
+      setSelectedSupply(null);
+      setFieldErrors({});
+      setError(null);
+      setSuccess(null);
             }}
             sx={{
               px: 4,
@@ -508,16 +655,27 @@ const EmergencySupplyAddTab: React.FC = () => {
           <Button
             variant="contained"
             onClick={handleSubmit}
+            disabled={submitting}
             sx={{
               px: 4,
               py: 1.5,
               bgcolor: THEME_COLORS.ERROR,
               '&:hover': {
                 bgcolor: THEME_COLORS.ERROR_DARK,
+              },
+              '&:disabled': {
+                bgcolor: THEME_COLORS.DISABLED_BG,
               }
             }}
           >
-            提交需求
+            {submitting ? (
+              <>
+                <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
+                提交中...
+              </>
+            ) : (
+              '提交需求'
+            )}
           </Button>
         </Box>
       </Box>
