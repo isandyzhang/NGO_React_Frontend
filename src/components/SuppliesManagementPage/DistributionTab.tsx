@@ -34,7 +34,6 @@ import {
   Warning,
   GetApp,
   Assignment,
-  Inventory,
   Visibility,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
@@ -44,7 +43,6 @@ import {
 } from '../../styles/commonStyles';
 import { 
   supplyService, 
-  RegularSuppliesNeed, 
   RegularSupplyMatch,
   distributionBatchService,
   CreateDistributionBatchRequest,
