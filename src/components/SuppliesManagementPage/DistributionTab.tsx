@@ -92,6 +92,8 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   const [matchingResults, setMatchingResults] = useState<MatchingResult[]>([]);
   const [distributionModalOpen, setDistributionModalOpen] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingDialogOpen, setProcessingDialogOpen] = useState(false);
   const [batchHistoryRefresh, setBatchHistoryRefresh] = useState(0);
   
   // 媒合記錄資料
@@ -323,6 +325,15 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   };
 
   const handleConfirmOrder = async () => {
+    // 防止重複點擊
+    if (isProcessing) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setOrderConfirmationOpen(false);
+    setProcessingDialogOpen(true);
+
     const results = {
       matchCreated: 0,
       stockUpdated: 0,
@@ -446,13 +457,15 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
       `;
       
       alert(message);
-      setOrderConfirmationOpen(false);
       
       // 刷新分發批次歷史記錄
       setBatchHistoryRefresh(prev => prev + 1);
     } catch (error) {
       console.error('確認訂單失敗:', error);
       alert('確認訂單失敗，請稍後重試');
+    } finally {
+      setIsProcessing(false);
+      setProcessingDialogOpen(false);
     }
   };
 
@@ -1106,9 +1119,11 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
             onClick={handleConfirmOrder}
             variant="contained"
             color="primary"
-            startIcon={<CheckCircle />}
+            startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+            disabled={isProcessing}
+            sx={{ textTransform: 'none' }}
           >
-            確認訂單
+            {isProcessing ? '處理中...' : '確認訂單'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1196,6 +1211,68 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
             關閉
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* 處理中對話框 */}
+      <Dialog
+        open={processingDialogOpen}
+        disableEscapeKeyDown
+        disableBackdropClick
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: 3
+          }}>
+            <CircularProgress size={60} sx={{ color: THEME_COLORS.SUCCESS }} />
+            <Typography variant="h6" sx={{ 
+              color: THEME_COLORS.PRIMARY, 
+              fontWeight: 600,
+              mb: 1
+            }}>
+              🔄 系統正在分配中...
+            </Typography>
+            <Typography variant="body1" sx={{ 
+              color: THEME_COLORS.TEXT_MUTED,
+              mb: 2,
+              lineHeight: 1.6
+            }}>
+              正在處理物資分配，請耐心等候
+            </Typography>
+            <Alert severity="warning" sx={{ width: '100%' }}>
+              <strong>重要提醒：</strong>系統正在執行複雜的分配計算，期間請勿關閉頁面或重複操作。
+            </Alert>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 1,
+              width: '100%',
+              bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+              p: 2,
+              borderRadius: 1
+            }}>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                📝 處理進度：
+              </Typography>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                • 創建配對記錄
+              </Typography>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                • 更新物資庫存
+              </Typography>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                • 更新申請狀態
+              </Typography>
+              <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                • 創建分發批次記錄
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
       </Dialog>
     </Box>
   );

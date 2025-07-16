@@ -199,7 +199,7 @@ class SupplyService {
    */
   async updateSupply(id: number, supplyData: Partial<Supply>): Promise<void> {
     try {
-      // 轉換前端字段名到後端字段名
+      // 轉換前端字段名到後端字段名，與後端 UpdateSupplyRequest 一致
       const updateData: any = {};
       
       if (supplyData.name !== undefined) updateData.Name = supplyData.name;

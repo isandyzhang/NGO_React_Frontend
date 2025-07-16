@@ -364,4 +364,84 @@ public static readonly Dictionary<string, string> Categories = new Dictionary<st
 
 ---
 
-**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能，以及 2025-07-16 的API連線問題排除。
+## 🔄 物資分發頁面優化 (2025-07-16 晚間)
+
+### 📋 問題描述
+每月物資發放的自動分配功能因為運算量較大會運行較久，用戶誤以為系統沒有反應而重複點擊「確認訂單」按鈕，導致重複分配物資的問題。
+
+### ✅ 解決方案實作
+
+#### 防止重複點擊機制
+**檔案**: `D:\GitHub\Case-Management-System\src\components\SuppliesManagementPage\DistributionTab.tsx`
+
+1. **新增狀態變數**:
+   ```typescript
+   const [isProcessing, setIsProcessing] = useState(false);
+   const [processingDialogOpen, setProcessingDialogOpen] = useState(false);
+   ```
+
+2. **修改確認訂單函數**:
+   ```typescript
+   const handleConfirmOrder = async () => {
+     // 防止重複點擊
+     if (isProcessing) {
+       return;
+     }
+
+     setIsProcessing(true);
+     setOrderConfirmationOpen(false);
+     setProcessingDialogOpen(true);
+     
+     // ... 原有處理邏輯
+     
+     } finally {
+       setIsProcessing(false);
+       setProcessingDialogOpen(false);
+     }
+   };
+   ```
+
+3. **確認訂單按鈕改進**:
+   ```typescript
+   <Button
+     onClick={handleConfirmOrder}
+     variant="contained"
+     color="primary"
+     startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+     disabled={isProcessing}
+     sx={{ textTransform: 'none' }}
+   >
+     {isProcessing ? '處理中...' : '確認訂單'}
+   </Button>
+   ```
+
+4. **處理中對話框**:
+   - 不可通過 ESC 或點擊背景關閉
+   - 顯示處理進度和重要提醒
+   - 包含載入動畫和處理步驟說明
+
+### 🛡️ 新增的安全機制
+
+1. **狀態檢查**: 函數開始時檢查 `isProcessing` 狀態
+2. **按鈕禁用**: 處理期間按鈕被禁用且顯示載入狀態
+3. **對話框鎖定**: 處理中對話框無法被關閉
+4. **視覺回饋**: 清楚的載入動畫和進度提示
+5. **警告訊息**: 提醒用戶不要關閉頁面
+
+### 💡 用戶體驗改進
+
+**修改前流程**:
+1. 點擊確認訂單 → 2. 長時間等待（可能重複點擊） → 3. 顯示結果
+
+**修改後流程**:
+1. 點擊確認訂單 → 2. 立即顯示處理中對話框 → 3. 背景執行分配 → 4. 完成後顯示結果
+
+### 🎯 解決效果
+- ✅ 完全防止重複點擊造成的重複分配
+- ✅ 清楚的處理進度視覺回饋
+- ✅ 用戶友好的等待體驗
+- ✅ 系統穩定性提升
+
+---
+
+**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能，2025-07-16 的API連線問題排除，以及物資分發頁面防重複點擊優化。
