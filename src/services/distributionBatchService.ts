@@ -6,7 +6,7 @@ export interface DistributionBatch {
   distributionDate: string;
   caseCount: number;
   totalSupplyItems: number;
-  status: 'pending' | 'completed';
+  status: 'pending' | 'approved' | 'completed' | 'rejected';
   createdAt: string;
   approvedAt?: string;
   notes?: string;
@@ -43,6 +43,11 @@ export interface ApproveDistributionBatchRequest {
   approvedByWorkerId: number;
 }
 
+export interface RejectDistributionBatchRequest {
+  rejectedByWorkerId: number;
+  rejectReason?: string;
+}
+
 const distributionBatchService = {
   // 获取所有分发批次
   async getDistributionBatches(): Promise<DistributionBatch[]> {
@@ -65,6 +70,12 @@ const distributionBatchService = {
   // 批准分发批次
   async approveDistributionBatch(id: number, data: ApproveDistributionBatchRequest): Promise<{ message: string }> {
     const response = await api.post<{ message: string }>(`/RegularDistributionBatch/${id}/approve`, data);
+    return response;
+  },
+
+  // 拒絕分發批次
+  async rejectDistributionBatch(id: number, data: RejectDistributionBatchRequest): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(`/RegularDistributionBatch/${id}/reject`, data);
     return response;
   },
 

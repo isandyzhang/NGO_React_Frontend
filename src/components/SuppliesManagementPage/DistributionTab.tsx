@@ -31,6 +31,7 @@ import {
   ExpandLess,
   Calculate,
   CheckCircle,
+  Cancel,
   Warning,
   GetApp,
   Assignment,
@@ -85,6 +86,10 @@ interface MatchingRecord {
 const DistributionTab: React.FC<DistributionTabProps> = ({ 
   isEmergencySupply = false 
 }) => {
+  // 角色權限控制 - 未來從認證系統獲取
+  const [userRole, setUserRole] = useState<'staff' | 'supervisor' | 'admin'>('staff');
+  const [currentUser] = useState('系統管理員');
+  
   const [searchType, setSearchType] = useState('');
   const [searchContent, setSearchContent] = useState('');
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
@@ -119,7 +124,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   useEffect(() => {
     loadRealData();
     loadBatches();
-  }, []);
+  }, [userRole]); // 當角色切換時重新載入資料
 
   // 載入分發批次歷史記錄
   const loadBatches = async () => {
@@ -273,11 +278,49 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
     document.body.removeChild(link);
   };
 
+  // 處理批次批准
+  const handleApproveBatch = async (batchId: number) => {
+    try {
+      await distributionBatchService.approveDistributionBatch(batchId, {
+        approvedByWorkerId: 1 // 暫時使用固定 ID
+      });
+      
+      // 刷新批次列表
+      await loadBatches();
+      alert('批次批准成功！');
+    } catch (error) {
+      console.error('批准批次失敗:', error);
+      alert('批准批次失敗，請稍後重試');
+    }
+  };
+
+  // 處理批次拒絕
+  const handleRejectBatch = async (batchId: number) => {
+    const reason = prompt('請輸入拒絕原因：');
+    if (reason === null) return; // 用戶取消
+    
+    try {
+      await distributionBatchService.rejectDistributionBatch(batchId, {
+        rejectedByWorkerId: 1, // 暫時使用固定 ID
+        rejectReason: reason
+      });
+      
+      // 刷新批次列表
+      await loadBatches();
+      alert('批次已拒絕！');
+    } catch (error) {
+      console.error('拒絕批次失敗:', error);
+      alert('拒絕批次失敗，請稍後重試');
+    }
+  };
+
   // 獲取批次狀態樣式
   const getBatchStatusChip = (status: string) => {
     const statusConfig = {
-      pending: { label: '等待批准', color: 'warning' as const },
-      completed: { label: '已完成', color: 'success' as const },
+      pending: { label: '等待主管審核', color: 'warning' as const },
+      approved: { label: '主管已批准', color: 'success' as const },
+      completed: { label: '已發放完成', color: 'info' as const },
+      rejected: { label: '主管拒絕', color: 'error' as const },
     };
     
     const config = statusConfig[status as keyof typeof statusConfig] || 
@@ -463,10 +506,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
         const batchResult = await distributionBatchService.createDistributionBatch(createBatchRequest);
         batchId = batchResult.id; // 保存批次ID
         
-        await distributionBatchService.approveDistributionBatch(batchResult.id, {
-          approvedByWorkerId: 1
-        });
-        
+        // 不自動批准批次，需要主管手動審核
         results.batchCreated = true;
       } catch (error) {
         console.error('創建分發批次記錄失敗:', error);
@@ -506,7 +546,11 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
 • 配對記錄創建：${results.matchCreated} 筆
 • 庫存更新：${results.stockUpdated} 筆
 • 需求狀態更新：${results.needStatusUpdated} 筆
-• 分發批次記錄：${results.batchCreated ? '成功' : '失敗'}
+• 分發批次記錄：${results.batchCreated ? '已創建，等待主管審核' : '失敗'}
+
+⚠️  重要提醒：
+分發批次已創建完成，但需要主管手動批准後才會正式發放物資。
+請在「物資發放」頁面的歷史記錄中查看並處理待審核的批次。
 
 ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''}
       `;
@@ -578,6 +622,33 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
         </Box>
       ) : (
         <>
+          {/* 角色切換區域 (測試用) */}
+          <Paper elevation={1} sx={{ 
+            p: 2,
+            mb: 2,
+            bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
+            border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
+          }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                模擬角色：
+              </Typography>
+              <Select
+                value={userRole}
+                onChange={(e) => setUserRole(e.target.value as 'staff' | 'supervisor' | 'admin')}
+                size="small"
+                sx={{ minWidth: 120 }}
+              >
+                <MenuItem value="staff">員工 (Staff)</MenuItem>
+                <MenuItem value="supervisor">主管 (Supervisor)</MenuItem>
+                <MenuItem value="admin">管理員 (Admin)</MenuItem>
+              </Select>
+              <Typography variant="body2" color="textSecondary">
+                當前用戶: {currentUser}
+              </Typography>
+            </Box>
+          </Paper>
+
           {/* 分配操作區域 */}
           <Paper elevation={1} sx={{ 
             p: getResponsiveSpacing('md'),
@@ -985,7 +1056,46 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                               {new Date(batch.createdAt).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                                {/* 主管權限：審核 pending 狀態的批次 */}
+                                {(userRole === 'supervisor' || userRole === 'admin') && batch.status === 'pending' && (
+                                  <>
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      startIcon={<CheckCircle />}
+                                      sx={{
+                                        bgcolor: THEME_COLORS.SUCCESS,
+                                        fontSize: '0.75rem',
+                                        px: 1.5,
+                                        '&:hover': {
+                                          bgcolor: THEME_COLORS.SUCCESS,
+                                        }
+                                      }}
+                                      onClick={() => handleApproveBatch(batch.distributionBatchId)}
+                                    >
+                                      批准
+                                    </Button>
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      startIcon={<Cancel />}
+                                      sx={{
+                                        bgcolor: THEME_COLORS.ERROR,
+                                        fontSize: '0.75rem',
+                                        px: 1.5,
+                                        '&:hover': {
+                                          bgcolor: THEME_COLORS.ERROR,
+                                        }
+                                      }}
+                                      onClick={() => handleRejectBatch(batch.distributionBatchId)}
+                                    >
+                                      拒絕
+                                    </Button>
+                                  </>
+                                )}
+                                
+                                {/* 通用操作按鈕 */}
                         <IconButton
                           size="small"
                                   onClick={() => handleViewBatchDetail(batch.distributionBatchId)}

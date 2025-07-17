@@ -45,7 +45,7 @@ export interface RegularSuppliesNeed {
   unit: string;
   requestedBy: string;
   requestDate: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'collected' | 'pending_super';
   estimatedCost: number;
   deliveryMethod?: '自取' | '宅配';
   pickupDate?: string;
@@ -63,7 +63,7 @@ export interface EmergencySupplyNeed {
   unit: string;
   requestedBy: string;
   requestDate: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'collected' | 'pending_super';
   estimatedCost: number;
   caseName: string;
   caseId: string;
@@ -308,6 +308,42 @@ class SupplyService {
       await api.post<void>(`/RegularSuppliesNeed/${id}/reject`);
     } catch (error) {
       console.error(`拒絕常駐物資需求 ${id} 失敗:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 員工確認常駐物資需求 (三級權限)
+   */
+  async confirmRegularSuppliesNeed(id: number): Promise<void> {
+    try {
+      await api.post<void>(`/RegularSuppliesNeed/${id}/confirm`);
+    } catch (error) {
+      console.error(`確認常駐物資需求 ${id} 失敗:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 主管批准常駐物資需求 (三級權限)
+   */
+  async supervisorApproveRegularSuppliesNeed(id: number): Promise<void> {
+    try {
+      await api.post<void>(`/RegularSuppliesNeed/${id}/supervisor-approve`);
+    } catch (error) {
+      console.error(`主管批准常駐物資需求 ${id} 失敗:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 主管拒絕常駐物資需求 (三級權限)
+   */
+  async supervisorRejectRegularSuppliesNeed(id: number): Promise<void> {
+    try {
+      await api.post<void>(`/RegularSuppliesNeed/${id}/supervisor-reject`);
+    } catch (error) {
+      console.error(`主管拒絕常駐物資需求 ${id} 失敗:`, error);
       throw error;
     }
   }

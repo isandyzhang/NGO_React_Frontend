@@ -285,6 +285,10 @@ export const commonStyles = {
       bg: '#e8f5e8', 
       color: '#2e7d32' 
     },
+    pending_super: { 
+      bg: '#fff3e0', 
+      color: '#f57c00' 
+    },
     upcoming: { 
       bg: '#e3f2fd', 
       color: '#1976d2' 
