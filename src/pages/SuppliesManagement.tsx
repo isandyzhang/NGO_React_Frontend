@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Tabs, 
@@ -28,6 +28,7 @@ import InventoryTab from '../components/SuppliesManagementPage/InventoryTab';
 import RegularRequestTab from '../components/SuppliesManagementPage/RegularRequestTab';
 import EmergencyRequestTab from '../components/SuppliesManagementPage/EmergencyRequestTab';
 import DistributionTab from '../components/SuppliesManagementPage/DistributionTab';
+import { permissionService } from '../services/permissionService';
 
 
 /**
@@ -49,6 +50,18 @@ const SuppliesManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [isEmergencySupply, setIsEmergencySupply] = useState(false);
 
+  // 初始化權限服務
+  useEffect(() => {
+    const initializePermissions = async () => {
+      try {
+        await permissionService.initialize();
+      } catch (error) {
+        console.error('權限服務初始化失敗:', error);
+      }
+    };
+
+    initializePermissions();
+  }, []);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);

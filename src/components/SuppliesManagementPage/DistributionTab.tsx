@@ -42,6 +42,7 @@ import {
   getStatusStyle,
   getResponsiveSpacing
 } from '../../styles/commonStyles';
+import { permissionService, UserRole, checkPermission, filterByPermission } from '../../services/permissionService';
 import { 
   supplyService, 
   RegularSupplyMatch,
@@ -86,9 +87,10 @@ interface MatchingRecord {
 const DistributionTab: React.FC<DistributionTabProps> = ({ 
   isEmergencySupply = false 
 }) => {
-  // 角色權限控制 - 未來從認證系統獲取
-  const [userRole, setUserRole] = useState<'staff' | 'supervisor' | 'admin'>('staff');
+  // 權限相關狀態
+  const [userRole, setUserRole] = useState<UserRole>('staff');
   const [currentUser] = useState('系統管理員');
+  const [permissionInitialized, setPermissionInitialized] = useState(false);
   
   const [searchType, setSearchType] = useState('');
   const [searchContent, setSearchContent] = useState('');

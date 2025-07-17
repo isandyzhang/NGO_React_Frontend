@@ -11,12 +11,14 @@ export interface WorkerInfo {
   workerId: number;
   email: string;
   name: string;
+  role: string; // 新增角色欄位
 }
 
 // 登入回應介面
 export interface LoginResponse {
   success: boolean;
   message: string;
+  token?: string; // 新增 JWT token
   worker?: WorkerInfo;
 }
 
@@ -33,29 +35,43 @@ export const authService = {
    */
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      // 模擬 API 延遲
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 調用後端登入 API
+      const response = await api.post<LoginResponse>('/Auth/login', {
+        email,
+        password
+      });
       
-      // 模擬登入成功，創建測試工作人員資訊
-      const mockWorker: WorkerInfo = {
-        workerId: 1,
-        email: email || 'worker@ngo.org',
-        name: '測試工作人員'
-      };
-      
-      // 儲存工作人員資訊到本地儲存
-      localStorage.setItem('workerInfo', JSON.stringify(mockWorker));
+      if (response.success && response.token && response.worker) {
+        // 儲存 JWT token
+        localStorage.setItem('authToken', response.token);
+        
+        // 儲存工作人員資訊
+        localStorage.setItem('workerInfo', JSON.stringify(response.worker));
         localStorage.setItem('isAuthenticated', 'true');
-      
-      return {
-        success: true,
-        message: '登入成功',
-        worker: mockWorker
-      };
+        
+        return {
+          success: true,
+          message: '登入成功',
+          token: response.token,
+          worker: response.worker
+        };
+      } else {
+        return {
+          success: false,
+          message: response.message || '登入失敗'
+        };
+      }
     } catch (error: any) {
       console.error('登入失敗:', error);
       
-      // 回傳錯誤訊息
+      // 處理 API 錯誤響應
+      if (error.response?.data?.message) {
+        return {
+          success: false,
+          message: error.response.data.message
+        };
+      }
+      
       return {
         success: false,
         message: '登入失敗，請稍後再試'
@@ -71,6 +87,9 @@ export const authService = {
     localStorage.removeItem('workerInfo');
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('authToken');
+    
+    // 重新導向到登入頁面
+    window.location.href = '/login';
   },
 
   /**

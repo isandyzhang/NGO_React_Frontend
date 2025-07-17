@@ -39,6 +39,7 @@ import {
   getResponsiveSpacing
 } from '../../styles/commonStyles';
 import { supplyService, RegularSuppliesNeed } from '../../services';
+import { permissionService, UserRole, checkPermission, filterByPermission } from '../../services/permissionService';
 
 interface RegularSupplyRequest {
   id: number;
@@ -57,9 +58,10 @@ interface RegularSupplyRequest {
 }
 
 const RegularRequestTab: React.FC = () => {
-  // 角色模擬 - 未來從認證系統獲取
-  const [userRole, setUserRole] = useState<'staff' | 'supervisor' | 'admin'>('supervisor');
+  // 權限相關狀態
+  const [userRole, setUserRole] = useState<UserRole>('supervisor');
   const [currentUser] = useState('張雅婷'); // 模擬當前用戶
+  const [permissionInitialized, setPermissionInitialized] = useState(false);
   
   const [searchType, setSearchType] = useState('物品名稱');
   const [searchContent, setSearchContent] = useState('');
@@ -88,10 +90,29 @@ const RegularRequestTab: React.FC = () => {
     item: null
   });
 
-  // 載入資料 - 當角色切換時重新載入
+  // 初始化權限和載入資料
   useEffect(() => {
-    loadData();
+    const initialize = async () => {
+      await initializePermissions();
+      await loadData();
+    };
+    initialize();
   }, [userRole]); // 當 userRole 改變時重新載入資料
+
+  // 初始化權限服務
+  const initializePermissions = async () => {
+    try {
+      await permissionService.initialize();
+      const currentRole = permissionService.getCurrentUserRole();
+      if (currentRole) {
+        setUserRole(currentRole);
+      }
+      setPermissionInitialized(true);
+    } catch (error) {
+      console.error('初始化權限服務失敗:', error);
+      setPermissionInitialized(true); // 即使失敗也繼續運行
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -103,7 +124,9 @@ const RegularRequestTab: React.FC = () => {
         supplyService.getRegularSuppliesNeedStats()
       ]);
       
-      setRequestData(requests);
+      // 使用權限服務過濾資料
+      const filteredRequests = filterByPermission(requests);
+      setRequestData(filteredRequests);
       setStats(requestStats);
     } catch (err) {
       console.error('載入常駐物資需求失敗:', err);
@@ -138,6 +161,13 @@ const RegularRequestTab: React.FC = () => {
   };
 
   const handleApprove = (item: RegularSuppliesNeed) => {
+    // 檢查權限
+    const permissionCheck = checkPermission('approve', item.caseId);
+    if (!permissionCheck.allowed) {
+      setError(`批准失敗：${permissionCheck.reason}`);
+      return;
+    }
+    
     setConfirmDialog({
       open: true,
       type: 'approve',
@@ -146,6 +176,13 @@ const RegularRequestTab: React.FC = () => {
   };
 
   const handleReject = (item: RegularSuppliesNeed) => {
+    // 檢查權限
+    const permissionCheck = checkPermission('reject', item.caseId);
+    if (!permissionCheck.allowed) {
+      setError(`拒絕失敗：${permissionCheck.reason}`);
+      return;
+    }
+    
     setConfirmDialog({
       open: true,
       type: 'reject',
@@ -154,6 +191,13 @@ const RegularRequestTab: React.FC = () => {
   };
 
   const handleConfirm = (item: RegularSuppliesNeed) => {
+    // 檢查權限
+    const permissionCheck = checkPermission('approve', item.caseId);
+    if (!permissionCheck.allowed) {
+      setError(`確認失敗：${permissionCheck.reason}`);
+      return;
+    }
+    
     setConfirmDialog({
       open: true,
       type: 'confirm',
@@ -162,6 +206,13 @@ const RegularRequestTab: React.FC = () => {
   };
 
   const handleSupervisorApprove = (item: RegularSuppliesNeed) => {
+    // 檢查權限
+    const permissionCheck = checkPermission('supervise', item.caseId);
+    if (!permissionCheck.allowed) {
+      setError(`主管批准失敗：${permissionCheck.reason}`);
+      return;
+    }
+    
     setConfirmDialog({
       open: true,
       type: 'supervisor-approve',
@@ -170,6 +221,13 @@ const RegularRequestTab: React.FC = () => {
   };
 
   const handleSupervisorReject = (item: RegularSuppliesNeed) => {
+    // 檢查權限
+    const permissionCheck = checkPermission('supervise', item.caseId);
+    if (!permissionCheck.allowed) {
+      setError(`主管拒絕失敗：${permissionCheck.reason}`);
+      return;
+    }
+    
     setConfirmDialog({
       open: true,
       type: 'supervisor-reject',
@@ -178,6 +236,13 @@ const RegularRequestTab: React.FC = () => {
   };
 
   const handleDelete = (item: RegularSuppliesNeed) => {
+    // 檢查權限
+    const permissionCheck = checkPermission('approve', item.caseId); // 刪除需要至少与批准相同的權限
+    if (!permissionCheck.allowed) {
+      setError(`刪除失敗：${permissionCheck.reason}`);
+      return;
+    }
+    
     setConfirmDialog({
       open: true,
       type: 'delete',
