@@ -48,7 +48,7 @@ interface RegularSupplyRequest {
   unit: string;
   requestedBy: string;
   requestDate: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'collected' | 'pending_super';
   estimatedCost: number;
   caseName?: string;
   caseId?: string;
@@ -57,6 +57,10 @@ interface RegularSupplyRequest {
 }
 
 const RegularRequestTab: React.FC = () => {
+  // 角色模擬 - 未來從認證系統獲取
+  const [userRole, setUserRole] = useState<'staff' | 'supervisor' | 'admin'>('supervisor');
+  const [currentUser] = useState('張雅婷'); // 模擬當前用戶
+  
   const [searchType, setSearchType] = useState('物品名稱');
   const [searchContent, setSearchContent] = useState('');
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
@@ -76,7 +80,7 @@ const RegularRequestTab: React.FC = () => {
   // 確認對話框狀態
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
-    type: 'approve' | 'reject' | 'delete';
+    type: 'approve' | 'reject' | 'delete' | 'confirm' | 'supervisor-approve' | 'supervisor-reject';
     item: RegularSuppliesNeed | null;
   }>({
     open: false,
@@ -84,10 +88,10 @@ const RegularRequestTab: React.FC = () => {
     item: null
   });
 
-  // 載入資料
+  // 載入資料 - 當角色切換時重新載入
   useEffect(() => {
     loadData();
-  }, []);
+  }, [userRole]); // 當 userRole 改變時重新載入資料
 
   const loadData = async () => {
     try {
@@ -124,7 +128,8 @@ const RegularRequestTab: React.FC = () => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'pending': return '待審核';
-      case 'approved': return '已批准，待發放';
+      case 'approved': return '已批准，待確認';
+      case 'pending_super': return '等待主管審核';
       case 'rejected': return '不批准';
       case 'completed': return '已完成';
       case 'collected': return '已領取';
@@ -148,6 +153,30 @@ const RegularRequestTab: React.FC = () => {
     });
   };
 
+  const handleConfirm = (item: RegularSuppliesNeed) => {
+    setConfirmDialog({
+      open: true,
+      type: 'confirm',
+      item: item
+    });
+  };
+
+  const handleSupervisorApprove = (item: RegularSuppliesNeed) => {
+    setConfirmDialog({
+      open: true,
+      type: 'supervisor-approve',
+      item: item
+    });
+  };
+
+  const handleSupervisorReject = (item: RegularSuppliesNeed) => {
+    setConfirmDialog({
+      open: true,
+      type: 'supervisor-reject',
+      item: item
+    });
+  };
+
   const handleDelete = (item: RegularSuppliesNeed) => {
     setConfirmDialog({
       open: true,
@@ -167,6 +196,15 @@ const RegularRequestTab: React.FC = () => {
         case 'reject':
           await supplyService.rejectRegularSuppliesNeed(confirmDialog.item.needId);
           break;
+        case 'confirm':
+          await supplyService.confirmRegularSuppliesNeed(confirmDialog.item.needId);
+          break;
+        case 'supervisor-approve':
+          await supplyService.supervisorApproveRegularSuppliesNeed(confirmDialog.item.needId);
+          break;
+        case 'supervisor-reject':
+          await supplyService.supervisorRejectRegularSuppliesNeed(confirmDialog.item.needId);
+          break;
         case 'delete':
           await supplyService.deleteRegularSuppliesNeed(confirmDialog.item.needId);
           break;
@@ -184,7 +222,22 @@ const RegularRequestTab: React.FC = () => {
   };
 
   // 篩選和排序資料
-  const filteredData = requestData
+  // 根據角色過濾數據
+  const getFilteredDataByRole = () => {
+    let roleFilteredData = requestData;
+    
+    if (userRole === 'staff') {
+      // 員工只能看自己的申請
+      roleFilteredData = requestData.filter(item => item.requestedBy === currentUser);
+    } else if (userRole === 'supervisor' || userRole === 'admin') {
+      // 主管和管理員看所有申請
+      roleFilteredData = requestData;
+    }
+    
+    return roleFilteredData;
+  };
+
+  const filteredData = getFilteredDataByRole()
     .filter(item => {
       if (!searchContent) return true;
       
@@ -200,8 +253,15 @@ const RegularRequestTab: React.FC = () => {
       }
     })
     .sort((a, b) => {
-      // 先按狀態排序，pending 優先
-      const statusOrder = { 'pending': 0, 'approved': 1, 'rejected': 2, 'completed': 3, 'collected': 4 };
+      // 先按狀態排序，優先顯示需要操作的項目
+      const statusOrder = { 
+        'pending': 0, 
+        'approved': 1, 
+        'pending_super': 2, 
+        'rejected': 3, 
+        'completed': 4, 
+        'collected': 5 
+      };
       const statusDiff = statusOrder[a.status] - statusOrder[b.status];
       
       if (statusDiff !== 0) {
@@ -214,6 +274,33 @@ const RegularRequestTab: React.FC = () => {
 
   return (
     <Box sx={{ width: '100%' }}>
+      {/* 角色切換區域 (測試用) */}
+      <Paper elevation={1} sx={{ 
+        p: 2,
+        mb: 2,
+        bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
+        border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
+      }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            模擬角色：
+          </Typography>
+          <Select
+            value={userRole}
+            onChange={(e) => setUserRole(e.target.value as 'staff' | 'supervisor' | 'admin')}
+            size="small"
+            sx={{ minWidth: 120 }}
+          >
+            <MenuItem value="staff">員工 (Staff)</MenuItem>
+            <MenuItem value="supervisor">主管 (Supervisor)</MenuItem>
+            <MenuItem value="admin">管理員 (Admin)</MenuItem>
+          </Select>
+          <Typography variant="body2" color="textSecondary">
+            當前用戶: {currentUser}
+          </Typography>
+        </Box>
+      </Paper>
+
       {/* 搜尋區域 */}
       <Paper elevation={1} sx={{ 
         p: getResponsiveSpacing('md'),
@@ -360,44 +447,172 @@ const RegularRequestTab: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' } }}>
-                      {request.status === 'pending' && (
+                      {/* 員工權限：處理自己的申請 */}
+                      {userRole === 'staff' && (
                         <>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<CheckCircle />}
-                            sx={{
-                              color: THEME_COLORS.SUCCESS,
-                              borderColor: THEME_COLORS.SUCCESS,
-                              fontSize: '0.75rem',
-                              px: 1.5,
-                              '&:hover': {
-                                bgcolor: `${THEME_COLORS.SUCCESS}14`,
-                                borderColor: THEME_COLORS.SUCCESS,
-                              }
-                            }}
-                            onClick={() => handleApprove(request)}
-                          >
-                            批准
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<Cancel />}
-                            sx={{
-                              color: THEME_COLORS.ERROR,
-                              borderColor: THEME_COLORS.ERROR,
-                              fontSize: '0.75rem',
-                              px: 1.5,
-                              '&:hover': {
-                                bgcolor: `${THEME_COLORS.ERROR}14`,
-                                borderColor: THEME_COLORS.ERROR,
-                              }
-                            }}
-                            onClick={() => handleReject(request)}
-                          >
-                            拒絕
-                          </Button>
+                          {/* 員工可以批准和拒絕待審核的申請 */}
+                          {request.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<CheckCircle />}
+                                sx={{
+                                  color: THEME_COLORS.SUCCESS,
+                                  borderColor: THEME_COLORS.SUCCESS,
+                                  fontSize: '0.75rem',
+                                  px: 1.5,
+                                  '&:hover': {
+                                    bgcolor: `${THEME_COLORS.SUCCESS}14`,
+                                    borderColor: THEME_COLORS.SUCCESS,
+                                  }
+                                }}
+                                onClick={() => handleApprove(request)}
+                              >
+                                批准
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<Cancel />}
+                                sx={{
+                                  color: THEME_COLORS.ERROR,
+                                  borderColor: THEME_COLORS.ERROR,
+                                  fontSize: '0.75rem',
+                                  px: 1.5,
+                                  '&:hover': {
+                                    bgcolor: `${THEME_COLORS.ERROR}14`,
+                                    borderColor: THEME_COLORS.ERROR,
+                                  }
+                                }}
+                                onClick={() => handleReject(request)}
+                              >
+                                拒絕
+                              </Button>
+                            </>
+                          )}
+                          {/* 員工可以確認已批准的申請 */}
+                          {request.status === 'approved' && (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              startIcon={<CheckCircle />}
+                              sx={{
+                                bgcolor: THEME_COLORS.PRIMARY,
+                                fontSize: '0.75rem',
+                                px: 2,
+                                '&:hover': {
+                                  bgcolor: THEME_COLORS.PRIMARY_DARK,
+                                }
+                              }}
+                              onClick={() => handleConfirm(request)}
+                            >
+                              確認訂單
+                            </Button>
+                          )}
+                        </>
+                      )}
+
+                      {/* 主管權限：審核所有待審核的申請 */}
+                      {(userRole === 'supervisor' || userRole === 'admin') && (
+                        <>
+                          {/* 主管可以批准和拒絕待審核的申請 (所有狀態) */}
+                          {request.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<CheckCircle />}
+                                sx={{
+                                  color: THEME_COLORS.SUCCESS,
+                                  borderColor: THEME_COLORS.SUCCESS,
+                                  fontSize: '0.75rem',
+                                  px: 1.5,
+                                  '&:hover': {
+                                    bgcolor: `${THEME_COLORS.SUCCESS}14`,
+                                    borderColor: THEME_COLORS.SUCCESS,
+                                  }
+                                }}
+                                onClick={() => handleApprove(request)}
+                              >
+                                批准
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<Cancel />}
+                                sx={{
+                                  color: THEME_COLORS.ERROR,
+                                  borderColor: THEME_COLORS.ERROR,
+                                  fontSize: '0.75rem',
+                                  px: 1.5,
+                                  '&:hover': {
+                                    bgcolor: `${THEME_COLORS.ERROR}14`,
+                                    borderColor: THEME_COLORS.ERROR,
+                                  }
+                                }}
+                                onClick={() => handleReject(request)}
+                              >
+                                拒絕
+                              </Button>
+                            </>
+                          )}
+                          {/* 主管可以確認已批准的申請 */}
+                          {request.status === 'approved' && (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              startIcon={<CheckCircle />}
+                              sx={{
+                                bgcolor: THEME_COLORS.PRIMARY,
+                                fontSize: '0.75rem',
+                                px: 2,
+                                '&:hover': {
+                                  bgcolor: THEME_COLORS.PRIMARY_DARK,
+                                }
+                              }}
+                              onClick={() => handleConfirm(request)}
+                            >
+                              確認訂單
+                            </Button>
+                          )}
+                          {/* 主管可以批准和拒絕等待主管審核的申請 */}
+                          {request.status === 'pending_super' && (
+                            <>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={<CheckCircle />}
+                                sx={{
+                                  bgcolor: THEME_COLORS.SUCCESS,
+                                  fontSize: '0.75rem',
+                                  px: 1.5,
+                                  '&:hover': {
+                                    bgcolor: THEME_COLORS.SUCCESS,
+                                  }
+                                }}
+                                onClick={() => handleSupervisorApprove(request)}
+                              >
+                                批准
+                              </Button>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={<Cancel />}
+                                sx={{
+                                  bgcolor: THEME_COLORS.ERROR,
+                                  fontSize: '0.75rem',
+                                  px: 1.5,
+                                  '&:hover': {
+                                    bgcolor: THEME_COLORS.ERROR,
+                                  }
+                                }}
+                                onClick={() => handleSupervisorReject(request)}
+                              >
+                                不批准
+                              </Button>
+                            </>
+                          )}
                         </>
                       )}
                       <IconButton
@@ -449,12 +664,18 @@ const RegularRequestTab: React.FC = () => {
         <DialogTitle>
           {confirmDialog.type === 'approve' && '確認批准'}
           {confirmDialog.type === 'reject' && '確認拒絕'}
+          {confirmDialog.type === 'confirm' && '確認訂單'}
+          {confirmDialog.type === 'supervisor-approve' && '主管批准'}
+          {confirmDialog.type === 'supervisor-reject' && '主管拒絕'}
           {confirmDialog.type === 'delete' && '確認刪除'}
         </DialogTitle>
         <DialogContent>
           <Typography>
             {confirmDialog.type === 'approve' && `確定要批准「${confirmDialog.item?.itemName}」的申請嗎？`}
             {confirmDialog.type === 'reject' && `確定要拒絕「${confirmDialog.item?.itemName}」的申請嗎？`}
+            {confirmDialog.type === 'confirm' && `確定要確認「${confirmDialog.item?.itemName}」的訂單並提交給主管審核嗎？`}
+            {confirmDialog.type === 'supervisor-approve' && `確定要批准「${confirmDialog.item?.itemName}」的申請並發放物資嗎？`}
+            {confirmDialog.type === 'supervisor-reject' && `確定要拒絕「${confirmDialog.item?.itemName}」的申請嗎？`}
             {confirmDialog.type === 'delete' && `確定要刪除「${confirmDialog.item?.itemName}」的申請嗎？此操作無法復原。`}
           </Typography>
         </DialogContent>
