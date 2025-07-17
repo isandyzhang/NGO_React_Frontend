@@ -50,6 +50,7 @@ import {
   DistributionBatch,
   DistributionBatchDetail
 } from '../../services';
+import { useAuth } from '../../hooks/useAuth';
 
 interface DistributionTabProps {
   isEmergencySupply?: boolean;
@@ -86,9 +87,8 @@ interface MatchingRecord {
 const DistributionTab: React.FC<DistributionTabProps> = ({ 
   isEmergencySupply = false 
 }) => {
-  // 角色權限控制 - 未來從認證系統獲取
-  const [userRole, setUserRole] = useState<'staff' | 'supervisor' | 'admin'>('staff');
-  const [currentUser] = useState('系統管理員');
+  // 獲取當前用戶資訊
+  const { worker } = useAuth();
   
   const [searchType, setSearchType] = useState('');
   const [searchContent, setSearchContent] = useState('');
@@ -124,7 +124,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   useEffect(() => {
     loadRealData();
     loadBatches();
-  }, [userRole]); // 當角色切換時重新載入資料
+  }, [worker]); // 當用戶切換時重新載入資料
 
   // 載入分發批次歷史記錄
   const loadBatches = async () => {
@@ -217,7 +217,8 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
       ]);
       
       // 將實際的配對記錄放入批次詳情中
-      const actualMatches = distributionDetails && Array.isArray(distributionDetails) ? distributionDetails.map(record => ({
+      const actualMatches = distributionDetails && Array.isArray(distributionDetails) ? distributionDetails.map((record, index) => ({
+        regularMatchId: index + 1,
         caseName: record['申請人'],
         supplyName: record['物品名稱'],
         requestedQuantity: record['申請數量'],
@@ -237,7 +238,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
       console.log('Distribution details:', distributionDetails);
       console.log('Detail with matches:', detailWithActualMatches);
       
-      setSelectedBatch(detailWithActualMatches);
+      setSelectedBatch(detailWithActualMatches as DistributionBatchDetail);
       setDetailDialogOpen(true);
     } catch (err) {
       console.error('載入分發批次詳情失敗:', err);
@@ -355,9 +356,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
     try {
       const allNeeds = await supplyService.getRegularSuppliesNeeds();
       const approvedRequests = allNeeds.filter(need => 
-        need.status === 'approved' && 
-        need.status !== 'collected' && 
-        need.status !== 'completed'
+        need.status === 'approved'
       );
       
       if (approvedRequests.length === 0) {
@@ -631,20 +630,10 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
           }}>
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                模擬角色：
+                當前用戶：
               </Typography>
-              <Select
-                value={userRole}
-                onChange={(e) => setUserRole(e.target.value as 'staff' | 'supervisor' | 'admin')}
-                size="small"
-                sx={{ minWidth: 120 }}
-              >
-                <MenuItem value="staff">員工 (Staff)</MenuItem>
-                <MenuItem value="supervisor">主管 (Supervisor)</MenuItem>
-                <MenuItem value="admin">管理員 (Admin)</MenuItem>
-              </Select>
               <Typography variant="body2" color="textSecondary">
-                當前用戶: {currentUser}
+                {worker?.name || '未登入'}
               </Typography>
             </Box>
           </Paper>
@@ -934,32 +923,41 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                       </TableCell>
                       <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
-                              size="small"
-                                variant="contained"
-                                color="success"
-                              onClick={() => handleMatchingDecision(matching.id, 'approved')}
-                              sx={{
-                                  minWidth: 60,
-                                  textTransform: 'none',
-                                fontSize: '0.75rem'
-                              }}
-                            >
-                              批准
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                                color="error"
-                              onClick={() => handleMatchingDecision(matching.id, 'rejected')}
-                              sx={{
-                                  minWidth: 60,
-                                  textTransform: 'none',
-                                fontSize: '0.75rem'
-                              }}
-                            >
-                              拒絕
-                            </Button>
+                            {worker?.role === 'supervisor' && (
+                              <>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="success"
+                                  onClick={() => handleMatchingDecision(matching.id, 'approved')}
+                                  sx={{
+                                    minWidth: 60,
+                                    textTransform: 'none',
+                                    fontSize: '0.75rem'
+                                  }}
+                                >
+                                  批准
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  onClick={() => handleMatchingDecision(matching.id, 'rejected')}
+                                  sx={{
+                                    minWidth: 60,
+                                    textTransform: 'none',
+                                    fontSize: '0.75rem'
+                                  }}
+                                >
+                                  拒絕
+                                </Button>
+                              </>
+                            )}
+                            {worker?.role !== 'supervisor' && (
+                              <Typography variant="body2" color="text.secondary">
+                                僅 supervisor 可操作
+                              </Typography>
+                            )}
                           <IconButton
                             size="small"
                             onClick={() => toggleRowExpansion(matching.id)}
@@ -1058,7 +1056,7 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                             <TableCell>
                               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                                 {/* 主管權限：審核 pending 狀態的批次 */}
-                                {(userRole === 'supervisor' || userRole === 'admin') && batch.status === 'pending' && (
+                                {(worker?.role === 'supervisor' || worker?.role === 'admin') && batch.status === 'pending' && (
                                   <>
                                     <Button
                                       variant="contained"
@@ -1377,7 +1375,6 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
       <Dialog
         open={processingDialogOpen}
         disableEscapeKeyDown
-        disableBackdropClick
         maxWidth="sm"
         fullWidth
       >

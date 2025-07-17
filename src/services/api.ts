@@ -73,8 +73,8 @@ export const api = {
     apiClient.get(url, { params }).then((response: any) => response.data),
   
   // POST 請求 - 創建新資料
-  post: <T>(url: string, data?: any) => 
-    apiClient.post(url, data).then((response: any) => response.data),
+  post: <T>(url: string, data?: any, config?: any) => 
+    apiClient.post(url, data, config).then((response: any) => response.data),
   
   // PUT 請求 - 完整更新資料
   put: <T>(url: string, data?: any) => 

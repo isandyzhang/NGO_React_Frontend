@@ -16,6 +16,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { theme, THEME_COLORS } from '../styles/theme';
 import { commonStyles } from '../styles/commonStyles';
 import { useAuth } from '../hooks/useAuth';
+import { authService } from '../services/authService';
 
 /**
  * 登入頁面組件
@@ -67,7 +68,7 @@ const Login: React.FC = () => {
   
   /**
    * 驗證帳號（Email）
-   * 這裡可以加入真實的 API 驗證
+   * 調用真實的 API 驗證 Email 是否存在
    */
   const handleEmailVerification = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -88,16 +89,19 @@ const Login: React.FC = () => {
     setError('');
     
     try {
-      // 模擬 API 驗證延遲
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 呼叫真實的 Email 驗證 API
+      const response = await authService.verifyEmail(username);
       
-      // 這裡可以加入真實的帳號驗證 API
-      // const response = await api.post('/auth/verify-email', { email: username });
-      
-      // 模擬驗證成功，進入密碼步驟
-      setStep('password');
+      if (response.success) {
+        // 驗證成功，進入密碼步驟
+        setStep('password');
+      } else {
+        // 驗證失敗，顯示錯誤訊息
+        setError(response.message);
+      }
     } catch (error) {
-      setError('帳號驗證失敗，請檢查帳號是否正確');
+      console.error('Email驗證錯誤:', error);
+      setError('驗證過程中發生錯誤，請稍後再試');
     } finally {
       setEmailVerifying(false);
     }

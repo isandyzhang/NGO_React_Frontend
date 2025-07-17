@@ -69,6 +69,26 @@ export interface EmergencySupplyNeed {
   caseId: string;
   matched: boolean;
   emergencyReason: string;
+  
+  // 個案聯絡資訊
+  casePhone?: string;
+  caseCity?: string;
+  caseDistrict?: string;
+  caseDetailAddress?: string;
+  caseFullAddress?: string;
+  deliveryMethod?: string;
+}
+
+/**
+ * 創建緊急物資需求請求介面
+ */
+export interface CreateEmergencySupplyNeedRequest {
+  caseId: number;
+  supplyId: number;
+  workerId: number;
+  quantity: number;
+  status?: 'pending' | 'approved' | 'rejected' | 'completed';
+  requestDate?: string;
 }
 
 /**
@@ -391,10 +411,47 @@ class SupplyService {
   /**
    * 取得緊急物資需求
    */
-  async getEmergencySupplyNeeds(): Promise<EmergencySupplyNeed[]> {
+  async getEmergencySupplyNeeds(
+    page: number = 1,
+    pageSize: number = 10,
+    searchTerm?: string,
+    status?: string
+  ): Promise<{
+    data: EmergencySupplyNeed[];
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  }> {
     try {
-      const response = await api.get<EmergencySupplyNeed[]>('/EmergencySupplyNeed');
-      return response;
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString()
+      });
+
+      if (searchTerm) {
+        params.append('searchTerm', searchTerm);
+      }
+
+      if (status) {
+        params.append('status', status);
+      }
+
+      const response = await api.get<{
+        data: EmergencySupplyNeed[];
+        page: number;
+        pageSize: number;
+        totalCount: number;
+        totalPages: number;
+      }>(`/EmergencySupplyNeed?${params.toString()}`);
+
+      return {
+        data: response.data,
+        page: response.page,
+        pageSize: response.pageSize,
+        total: response.totalCount,
+        totalPages: response.totalPages
+      };
     } catch (error) {
       console.error('取得緊急物資需求失敗:', error);
       throw error;
@@ -466,7 +523,7 @@ class SupplyService {
   /**
    * 新增緊急物資需求
    */
-  async createEmergencySupplyNeed(needData: Partial<EmergencySupplyNeed>): Promise<EmergencySupplyNeed> {
+  async createEmergencySupplyNeed(needData: CreateEmergencySupplyNeedRequest): Promise<EmergencySupplyNeed> {
     try {
       const response = await api.post<EmergencySupplyNeed>('/EmergencySupplyNeed', needData);
       return response;

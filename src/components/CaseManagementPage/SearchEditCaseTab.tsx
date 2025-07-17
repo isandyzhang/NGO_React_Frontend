@@ -75,11 +75,6 @@ const SearchEditCaseTab: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  // 筛选条件状态
-  const [ageRange, setAgeRange] = useState<{min: number | null, max: number | null}>({min: null, max: null});
-  const [selectedCity, setSelectedCity] = useState<string>('');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
-
   // 載入案例資料
   const loadCases = async (page: number = 1) => {
     try {
@@ -110,16 +105,17 @@ const SearchEditCaseTab: React.FC = () => {
         workerName: item.workerName
       }));
       
-      // 应用筛选条件
-      const filteredData = filterCases(transformedData);
-      setCaseRecords(filteredData);
-      setTotalCount(filteredData.length);
-      setTotalPages(Math.ceil(filteredData.length / pageSize));
+      setCaseRecords(transformedData);
+      setTotalCount(response.totalCount);
+      setTotalPages(response.totalPages);
       setCurrentPage(response.page);
     } catch (err) {
       setError(err instanceof Error ? err.message : '載入資料時發生錯誤');
       console.error('載入案例資料錯誤:', err);
-      setCaseRecords([]); // 確保在錯誤時設置為空陣列
+      setCaseRecords([]);
+      setTotalCount(0);
+      setTotalPages(1);
+      setCurrentPage(1);
     } finally {
       setLoading(false);
     }
@@ -129,44 +125,6 @@ const SearchEditCaseTab: React.FC = () => {
   useEffect(() => {
     loadCases();
   }, []);
-
-  // 当筛选条件改变时重新筛选
-  useEffect(() => {
-    if (caseRecords.length > 0) {
-      handleSearch();
-    }
-  }, [ageRange, selectedCity, selectedDifficulty]);
-
-  // 筛选函数
-  const filterCases = (cases: CaseRecord[]) => {
-    return cases.filter(caseRecord => {
-      // 年龄筛选
-      if (ageRange.min !== null || ageRange.max !== null) {
-        if (caseRecord.birthday) {
-          const birthDate = new Date(caseRecord.birthday);
-          const today = new Date();
-          const age = today.getFullYear() - birthDate.getFullYear();
-          const monthDiff = today.getMonth() - birthDate.getMonth();
-          const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
-          
-          if (ageRange.min !== null && actualAge < ageRange.min) return false;
-          if (ageRange.max !== null && actualAge > ageRange.max) return false;
-        }
-      }
-
-      // 城市筛选
-      if (selectedCity && caseRecord.city !== selectedCity) {
-        return false;
-      }
-
-      // 困难类型筛选 (假设困难类型存储在description中)
-      if (selectedDifficulty && !caseRecord.description.includes(selectedDifficulty)) {
-        return false;
-      }
-
-      return true;
-    });
-  };
 
   const handleSearch = async () => {
     if (!searchContent.trim()) {
@@ -204,16 +162,17 @@ const SearchEditCaseTab: React.FC = () => {
         workerName: item.workerName
       }));
       
-      // 应用筛选条件
-      const filteredData = filterCases(transformedData);
-      setCaseRecords(filteredData);
-      setTotalCount(filteredData.length);
-      setTotalPages(Math.ceil(filteredData.length / pageSize));
-      setCurrentPage(1);
+      setCaseRecords(transformedData);
+      setTotalCount(response.total);
+      setTotalPages(response.totalPages);
+      setCurrentPage(response.page);
     } catch (err) {
       setError(err instanceof Error ? err.message : '搜尋時發生錯誤');
       console.error('搜尋錯誤:', err);
-      setCaseRecords([]); // 確保在錯誤時設置為空陣列
+      setCaseRecords([]);
+      setTotalCount(0);
+      setTotalPages(1);
+      setCurrentPage(1);
     } finally {
       setLoading(false);
     }
@@ -271,6 +230,9 @@ const SearchEditCaseTab: React.FC = () => {
       setError(err instanceof Error ? err.message : '搜尋分頁時發生錯誤');
       console.error('搜尋分頁錯誤:', err);
       setCaseRecords([]);
+      setTotalCount(0);
+      setTotalPages(1);
+      setCurrentPage(1);
     } finally {
       setLoading(false);
     }
@@ -444,10 +406,9 @@ const SearchEditCaseTab: React.FC = () => {
 
       {/* 搜尋區域 */}
       <Paper sx={{ p: 2, mb: 3, bgcolor: THEME_COLORS.BACKGROUND_CARD }}>
-        {/* 第一行：关键字搜索 */}
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <TextField
-            placeholder={`請輸入關鍵字`}
+            placeholder={`請輸入關鍵字搜尋個案`}
             value={searchContent}
             onChange={(e) => setSearchContent(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -469,83 +430,12 @@ const SearchEditCaseTab: React.FC = () => {
           >
             {loading ? '搜尋中...' : '查詢'}
           </Button>
-        </Box>
-
-        {/* 第二行：筛选条件 */}
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* 年龄范围 */}
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, minWidth: 60 }}>
-              年齡範圍:
-            </Typography>
-            <TextField
-              type="number"
-              placeholder="最小"
-              value={ageRange.min || ''}
-              onChange={(e) => setAgeRange(prev => ({...prev, min: e.target.value ? parseInt(e.target.value) : null}))}
-              size="small"
-              sx={{ width: 80 }}
-            />
-            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>-</Typography>
-            <TextField
-              type="number"
-              placeholder="最大"
-              value={ageRange.max || ''}
-              onChange={(e) => setAgeRange(prev => ({...prev, max: e.target.value ? parseInt(e.target.value) : null}))}
-              size="small"
-              sx={{ width: 80 }}
-            />
-          </Box>
-
-          {/* 居住城市 */}
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>居住城市</InputLabel>
-            <Select
-              value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              label="居住城市"
-            >
-              <MenuItem value="">全部城市</MenuItem>
-              {Object.keys(districtOptions).map(city => (
-                <MenuItem key={city} value={city}>{city}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* 困难类型 */}
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>困難類型</InputLabel>
-            <Select
-              value={selectedDifficulty}
-              onChange={(e) => setSelectedDifficulty(e.target.value)}
-              label="困難類型"
-            >
-              <MenuItem value="">全部類型</MenuItem>
-              {difficultyOptions.map(difficulty => (
-                <MenuItem key={difficulty} value={difficulty}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box 
-                      sx={{ 
-                        width: 12, 
-                        height: 12, 
-                        borderRadius: '50%',
-                        backgroundColor: getDifficultyColor(difficulty)
-                      }} 
-                    />
-                    {difficulty}
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* 清除筛选按钮 */}
+          
+          {/* 清除搜尋按鈕 */}
           <Button
             variant="outlined"
             onClick={() => {
-              setAgeRange({min: null, max: null});
-              setSelectedCity('');
-              setSelectedDifficulty('');
+              setSearchContent('');
               loadCases(1);
             }}
             sx={{ 
@@ -558,7 +448,7 @@ const SearchEditCaseTab: React.FC = () => {
               }
             }}
           >
-            清除篩選
+            清除
           </Button>
         </Box>
       </Paper>
@@ -608,12 +498,47 @@ const SearchEditCaseTab: React.FC = () => {
                   >
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar 
-                          src={record.profileImage || undefined} 
-                          sx={{ width: 40, height: 40, bgcolor: THEME_COLORS.PRIMARY }}
-                        >
-                          {!record.profileImage && record.name.charAt(0)}
-                        </Avatar>
+                        {record.profileImage ? (
+                          <Box sx={{ 
+                            width: 40, 
+                            height: 40, 
+                            borderRadius: '50%',
+                            overflow: 'hidden',
+                            border: `2px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                            bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                          }}>
+                            <img
+                              src={record.profileImage}
+                              alt={`${record.name}的照片`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                display: 'block',
+                              }}
+                              onError={(e) => {
+                                // 圖片加載失敗時，隱藏圖片並顯示默認頭像
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = `<div style="width: 100%; height: 100%; background-color: ${THEME_COLORS.PRIMARY}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px;">${record.name.charAt(0)}</div>`;
+                                }
+                              }}
+                            />
+                          </Box>
+                        ) : (
+                          <Avatar 
+                            sx={{ 
+                              width: 40, 
+                              height: 40, 
+                              bgcolor: record.gender === 'Male' ? THEME_COLORS.MALE_AVATAR : THEME_COLORS.FEMALE_AVATAR,
+                              border: `2px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                            }}
+                          >
+                            {record.name.charAt(0)}
+                          </Avatar>
+                        )}
                         <Typography sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
                           {record.name}
                         </Typography>
@@ -911,20 +836,21 @@ const SearchEditCaseTab: React.FC = () => {
 
       {/* 分頁控制 */}
       {totalPages > 1 && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-          <Stack spacing={2}>
-            <Pagination
-              count={totalPages}
-              page={currentPage}
-              onChange={handlePageChange}
-              color="primary"
-              size="large"
-              showFirstButton
-              showLastButton
-              disabled={loading}
-            />
-          </Stack>
-        </Box>
+        <Stack spacing={2} alignItems="center" sx={{ mt: 3 }}>
+          <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+            顯示第 {(currentPage - 1) * pageSize + 1} 到 {Math.min(currentPage * pageSize, totalCount)} 項，共 {totalCount} 項
+          </Typography>
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={handlePageChange}
+            color="primary"
+            size="large"
+            showFirstButton
+            showLastButton
+            disabled={loading}
+          />
+        </Stack>
       )}
     </Box>
   );

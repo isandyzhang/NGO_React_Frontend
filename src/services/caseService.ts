@@ -1,4 +1,5 @@
 import { api } from './api';
+import { config } from '../config/env';
 
 // 個案相關的 API 接口
 export interface CaseFormData {
@@ -146,6 +147,78 @@ export const caseService = {
     } catch (error) {
       console.error('搜尋案例失敗:', error);
       throw error;
+    }
+  },
+
+  /**
+   * 上傳個案圖片到 Azure Blob Storage
+   */
+  uploadProfileImage: async (formData: FormData): Promise<{ imageUrl: string }> => {
+    try {
+      const apiBaseUrl = config.apiBaseUrl;
+      const token = localStorage.getItem('authToken');
+      const uploadUrl = `${apiBaseUrl}/Case/upload/profile-image`;
+      
+      console.log('🚀 開始上傳個案圖片');
+      console.log('📡 API URL:', uploadUrl);
+      console.log('🔐 Token exists:', !!token);
+      console.log('📦 FormData keys:', Array.from(formData.keys()));
+      
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: formData
+      });
+
+      console.log('📈 Response status:', response.status);
+      console.log('📊 Response ok:', response.ok);
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        try {
+          // 先讀取為文本，再嘗試解析為 JSON
+          const responseText = await response.text();
+          console.log('❌ Response text:', responseText);
+          
+          if (responseText) {
+            try {
+              const errorData = JSON.parse(responseText);
+              console.log('❌ Error data:', errorData);
+              errorMessage = errorData.message || errorData.title || errorMessage;
+            } catch (jsonError) {
+              console.log('❌ 無法解析為 JSON，使用原始文本:', jsonError);
+              errorMessage = responseText || errorMessage;
+            }
+          }
+        } catch (readError) {
+          console.log('❌ 無法讀取錯誤回應:', readError);
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      try {
+        const responseText = await response.text();
+        console.log('✅ Response text:', responseText);
+        
+        const result = JSON.parse(responseText);
+        console.log('✅ 個案圖片上傳成功:', result);
+        return result;
+      } catch (parseError) {
+        console.error('💥 無法解析成功響應為 JSON:', parseError);
+        throw new Error('伺服器回應格式錯誤');
+      }
+    } catch (error: any) {
+      console.error('💥 上傳個案圖片失敗:', error);
+      console.error('💥 Error type:', typeof error);
+      console.error('💥 Error message:', error.message);
+      console.error('💥 Error stack:', error.stack);
+      
+      // 重新拋出錯誤，但確保有有意義的訊息
+      throw new Error(error.message || '個案圖片上傳失敗：網路錯誤或伺服器無回應');
     }
   },
 
