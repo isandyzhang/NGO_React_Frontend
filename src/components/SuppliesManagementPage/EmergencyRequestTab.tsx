@@ -44,11 +44,16 @@ import {
   getResponsiveSpacing
 } from '../../styles/commonStyles';
 import { supplyService, EmergencySupplyNeed, authService, caseService } from '../../services';
+import { WorkerInfo } from '../../services/authService';
 
 const EmergencyRequestTab: React.FC = () => {
   const [searchType, setSearchType] = useState('物品名稱');
   const [searchContent, setSearchContent] = useState('');
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
+  
+  // 權限控制狀態
+  const [currentWorker, setCurrentWorker] = useState<WorkerInfo | null>(null);
+  const [userRole, setUserRole] = useState<'staff' | 'supervisor' | 'admin'>('staff');
   
   // 資料狀態
   const [requestData, setRequestData] = useState<EmergencySupplyNeed[]>([]);
@@ -57,7 +62,11 @@ const EmergencyRequestTab: React.FC = () => {
     pendingRequests: 0,
     approvedRequests: 0,
     rejectedRequests: 0,
-    totalEstimatedCost: 0
+    totalEstimatedCost: 0,
+    completedRequests: 0,
+    highPriorityRequests: 0,
+    totalQuantity: 0,
+    collectedQuantity: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,9 +104,20 @@ const EmergencyRequestTab: React.FC = () => {
 
   // 載入資料
   useEffect(() => {
+    initializeUser();
     loadData();
     loadDropdownData();
   }, []);
+
+  // 初始化用戶資訊
+  const initializeUser = () => {
+    const worker = authService.getCurrentWorker();
+    if (worker) {
+      setCurrentWorker(worker);
+      setUserRole(worker.role as 'staff' | 'supervisor' | 'admin');
+      console.log('當前用戶:', worker);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -109,8 +129,23 @@ const EmergencyRequestTab: React.FC = () => {
         supplyService.getEmergencySupplyNeedStats()
       ]);
       
-      setRequestData(requests);
+      // 根據用戶角色過濾資料
+      let filteredRequests = requests;
+      if (currentWorker && userRole === 'staff') {
+        // 員工只能看到自己負責的案例資料
+        filteredRequests = requests.filter(request => {
+          // 這裡需要根據 caseId 來判斷是否是該員工負責的案例
+          // 假設後端API已經返回了正確的資料，包含 assignedWorkerId
+          return request.caseId === currentWorker.workerId.toString() || 
+                 request.requestedBy === currentWorker.name;
+        });
+      }
+      // 主管和管理員可以看到所有資料
+      
+      setRequestData(filteredRequests);
       setStats(requestStats);
+      
+      console.log(`載入緊急物資需求: ${filteredRequests.length} 筆資料 (角色: ${userRole})`);
     } catch (err) {
       console.error('載入緊急物資需求失敗:', err);
       setError('載入資料失敗，請稍後再試');
@@ -339,10 +374,34 @@ const EmergencyRequestTab: React.FC = () => {
           </Box>
           <Box>
             <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
-              總預估成本
+              已完成
+            </Typography>
+            <Typography variant="h4" sx={{ color: THEME_COLORS.SUCCESS }}>
+              {stats.completedRequests}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+              高優先級
+            </Typography>
+            <Typography variant="h4" sx={{ color: THEME_COLORS.ERROR }}>
+              {stats.highPriorityRequests}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+              總數量
             </Typography>
             <Typography variant="h4" sx={{ color: THEME_COLORS.INFO }}>
-              ${stats.totalEstimatedCost.toLocaleString()}
+              {stats.totalQuantity}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+              已領取
+            </Typography>
+            <Typography variant="h4" sx={{ color: THEME_COLORS.SUCCESS }}>
+              {stats.collectedQuantity}
             </Typography>
           </Box>
         </Box>
@@ -445,6 +504,9 @@ const EmergencyRequestTab: React.FC = () => {
                 數量
               </TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
+                優先級
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
                 申請人
               </TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
@@ -464,14 +526,14 @@ const EmergencyRequestTab: React.FC = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
                   <CircularProgress />
                   <Typography sx={{ mt: 2 }}>載入中...</Typography>
                 </TableCell>
               </TableRow>
             ) : filteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
                   <Typography color="textSecondary">
                     暫無緊急物資需求資料
                   </Typography>
@@ -498,6 +560,25 @@ const EmergencyRequestTab: React.FC = () => {
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
                       {row.quantity} {row.unit}
+                      {row.collectedQuantity > 0 && (
+                        <Typography variant="caption" sx={{ color: THEME_COLORS.SUCCESS, ml: 1 }}>
+                          (已領取: {row.collectedQuantity})
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={row.priority || 'medium'}
+                        size="small"
+                        sx={{
+                          backgroundColor: row.priority === 'high' ? THEME_COLORS.ERROR : 
+                                         row.priority === 'urgent' ? '#FF4444' :
+                                         row.priority === 'low' ? THEME_COLORS.SUCCESS : 
+                                         THEME_COLORS.WARNING,
+                          color: 'white',
+                          fontWeight: 600
+                        }}
+                      />
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -568,7 +649,7 @@ const EmergencyRequestTab: React.FC = () => {
 
                   {/* 展開的詳細資訊 */}
                   <TableRow>
-                    <TableCell colSpan={8} sx={{ py: 0 }}>
+                    <TableCell colSpan={9} sx={{ py: 0 }}>
                       <Collapse 
                         in={expandedRows.includes(row.emergencyNeedId)} 
                         timeout="auto" 
@@ -591,12 +672,47 @@ const EmergencyRequestTab: React.FC = () => {
                           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2 }}>
                             <Box>
                               <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
+                                需求描述
+                              </Typography>
+                              <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
+                                {row.description || '無'}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
                                 緊急原因
                               </Typography>
                               <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
                                 {row.emergencyReason || '無'}
                               </Typography>
                             </Box>
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
+                                進度
+                              </Typography>
+                              <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
+                                已領取: {row.collectedQuantity || 0} / {row.quantity || 0}
+                              </Typography>
+                            </Box>
+                            {row.imageUrl && (
+                              <Box>
+                                <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
+                                  相關圖片
+                                </Typography>
+                                <Box sx={{ mt: 1 }}>
+                                  <img 
+                                    src={row.imageUrl} 
+                                    alt="緊急物資需求圖片" 
+                                    style={{ 
+                                      maxWidth: '200px', 
+                                      maxHeight: '150px', 
+                                      objectFit: 'cover',
+                                      borderRadius: '8px'
+                                    }}
+                                  />
+                                </Box>
+                              </Box>
+                            )}
                             <Box>
                               <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
                                 預估成本

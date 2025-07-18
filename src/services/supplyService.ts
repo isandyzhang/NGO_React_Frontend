@@ -61,11 +61,14 @@ export interface EmergencySupplyNeed {
   itemName: string;
   category: string;
   quantity: number;
+  collectedQuantity: number;
   unit: string;
   requestedBy: string;
   requestDate: string;
   status: 'pending' | 'approved' | 'rejected' | 'completed' | 'collected' | 'pending_super';
-  estimatedCost: number;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  description: string;
+  imageUrl: string;
   caseName: string;
   caseId: string;
   matched: boolean;
