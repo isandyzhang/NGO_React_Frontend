@@ -11,6 +11,7 @@ export interface WorkerInfo {
   workerId: number;
   email: string;
   name: string;
+  role: string; // 員工角色：staff, supervisor, admin
 }
 
 // 登入回應介面
@@ -26,40 +27,68 @@ export interface LoginResponse {
  */
 export const authService = {
   /**
-   * 工作人員登入 (測試模式 - 不需要真實後端)
+   * 工作人員登入 - 透過後端API驗證
    * @param email 電子郵件
    * @param password 密碼
    * @returns 登入結果
    */
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      // 模擬 API 延遲
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 呼叫後端登入API
+      const response = await api.post('/Worker/login', {
+        email,
+        password
+      });
       
-      // 模擬登入成功，創建測試工作人員資訊
-      const mockWorker: WorkerInfo = {
-        workerId: 1,
-        email: email || 'worker@ngo.org',
-        name: '測試工作人員'
-      };
-      
-      // 儲存工作人員資訊到本地儲存
-      localStorage.setItem('workerInfo', JSON.stringify(mockWorker));
+      if (response.success) {
+        // 儲存工作人員資訊到本地儲存
+        localStorage.setItem('workerInfo', JSON.stringify(response.worker));
         localStorage.setItem('isAuthenticated', 'true');
-      
-      return {
-        success: true,
-        message: '登入成功',
-        worker: mockWorker
-      };
+        
+        console.log('登入成功，工作人員資訊:', response.worker);
+        
+        return {
+          success: true,
+          message: response.message,
+          worker: response.worker
+        };
+      } else {
+        return {
+          success: false,
+          message: response.message
+        };
+      }
     } catch (error: any) {
       console.error('登入失敗:', error);
+      
+      // 處理API錯誤
+      if (error.response && error.response.data) {
+        return {
+          success: false,
+          message: error.response.data.message || '登入失敗，請稍後再試'
+        };
+      }
       
       // 回傳錯誤訊息
       return {
         success: false,
         message: '登入失敗，請稍後再試'
       };
+    }
+  },
+
+  /**
+   * 根據email查詢工作人員資訊 (透過API)
+   * @param email 電子郵件
+   * @returns 工作人員資訊或null
+   */
+  async getWorkerByEmail(email: string): Promise<WorkerInfo | null> {
+    try {
+      const response = await api.get(`/Worker/by-email/${encodeURIComponent(email)}`);
+      return response as WorkerInfo;
+    } catch (error) {
+      console.error('查詢工作人員資訊失敗:', error);
+      return null;
     }
   },
 
@@ -71,6 +100,11 @@ export const authService = {
     localStorage.removeItem('workerInfo');
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('authToken');
+    
+    // 強制清除所有可能的殘留資料
+    localStorage.clear();
+    
+    console.log('登出完成，已清除所有本地儲存資料');
   },
 
   /**
@@ -91,12 +125,12 @@ export const authService = {
   },
 
   /**
-   * 取得所有工作人員列表（測試用）
+   * 取得所有工作人員列表
    * @returns 工作人員列表
    */
   async getWorkers(): Promise<WorkerInfo[]> {
     try {
-      return await api.get<WorkerInfo[]>('/Auth/workers');
+      return await api.get<WorkerInfo[]>('/Worker');
     } catch (error: any) {
       console.error('取得工作人員列表失敗:', error);
       throw error;

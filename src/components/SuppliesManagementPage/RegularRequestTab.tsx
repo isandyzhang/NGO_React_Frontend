@@ -39,6 +39,7 @@ import {
   getResponsiveSpacing
 } from '../../styles/commonStyles';
 import { supplyService, RegularSuppliesNeed } from '../../services';
+import { useAuth } from '../../hooks/useAuth';
 
 interface RegularSupplyRequest {
   id: number;
@@ -57,9 +58,14 @@ interface RegularSupplyRequest {
 }
 
 const RegularRequestTab: React.FC = () => {
-  // 角色模擬 - 未來從認證系統獲取
-  const [userRole, setUserRole] = useState<'staff' | 'supervisor' | 'admin'>('supervisor');
-  const [currentUser] = useState('張雅婷'); // 模擬當前用戶
+  // 從認證系統獲取用戶資訊
+  const { worker } = useAuth();
+  
+  // 根據用戶角色設定權限
+  const userRole = worker?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
+  const currentUser = worker?.name || '未知用戶';
+  const currentStaffId = worker?.workerId || 1;
+  
   
   const [searchType, setSearchType] = useState('物品名稱');
   const [searchContent, setSearchContent] = useState('');
@@ -98,12 +104,18 @@ const RegularRequestTab: React.FC = () => {
       setLoading(true);
       setError(null);
       
+      // 根據員工權限決定是否傳遞workerId
+      const workerId = (userRole === 'staff' && worker?.workerId) ? worker.workerId : undefined;
+      
       const [requests, requestStats] = await Promise.all([
-        supplyService.getRegularSuppliesNeeds(),
-        supplyService.getRegularSuppliesNeedStats()
+        supplyService.getRegularSuppliesNeeds(workerId),
+        supplyService.getRegularSuppliesNeedStats(workerId)
       ]);
       
-      setRequestData(requests);
+      // 直接使用API返回的已過濾資料
+      const filteredRequests = requests;
+      
+      setRequestData(filteredRequests);
       setStats(requestStats);
     } catch (err) {
       console.error('載入常駐物資需求失敗:', err);
@@ -222,19 +234,10 @@ const RegularRequestTab: React.FC = () => {
   };
 
   // 篩選和排序資料
-  // 根據角色過濾數據
+  // 根據角色過濾數據 - 已由API層面處理，不需要前端再次過濾
   const getFilteredDataByRole = () => {
-    let roleFilteredData = requestData;
-    
-    if (userRole === 'staff') {
-      // 員工只能看自己的申請
-      roleFilteredData = requestData.filter(item => item.requestedBy === currentUser);
-    } else if (userRole === 'supervisor' || userRole === 'admin') {
-      // 主管和管理員看所有申請
-      roleFilteredData = requestData;
-    }
-    
-    return roleFilteredData;
+    // API已經根據workerId過濾了資料，直接返回
+    return requestData;
   };
 
   const filteredData = getFilteredDataByRole()
@@ -282,19 +285,6 @@ const RegularRequestTab: React.FC = () => {
         border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
       }}>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            模擬角色：
-          </Typography>
-          <Select
-            value={userRole}
-            onChange={(e) => setUserRole(e.target.value as 'staff' | 'supervisor' | 'admin')}
-            size="small"
-            sx={{ minWidth: 120 }}
-          >
-            <MenuItem value="staff">員工 (Staff)</MenuItem>
-            <MenuItem value="supervisor">主管 (Supervisor)</MenuItem>
-            <MenuItem value="admin">管理員 (Admin)</MenuItem>
-          </Select>
           <Typography variant="body2" color="textSecondary">
             當前用戶: {currentUser}
           </Typography>

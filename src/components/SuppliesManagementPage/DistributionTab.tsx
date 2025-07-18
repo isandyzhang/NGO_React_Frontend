@@ -50,6 +50,7 @@ import {
   DistributionBatch,
   DistributionBatchDetail
 } from '../../services';
+import { useAuth } from '../../hooks/useAuth';
 
 interface DistributionTabProps {
   isEmergencySupply?: boolean;
@@ -86,9 +87,14 @@ interface MatchingRecord {
 const DistributionTab: React.FC<DistributionTabProps> = ({ 
   isEmergencySupply = false 
 }) => {
-  // 角色權限控制 - 未來從認證系統獲取
-  const [userRole, setUserRole] = useState<'staff' | 'supervisor' | 'admin'>('staff');
-  const [currentUser] = useState('系統管理員');
+  // 從認證系統獲取用戶資訊
+  const { worker } = useAuth();
+  
+  // 根據用戶角色設定權限
+  const userRole = worker?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
+  const currentUser = worker?.name || '未知用戶';
+  const currentStaffId = worker?.workerId || 1;
+  
   
   const [searchType, setSearchType] = useState('');
   const [searchContent, setSearchContent] = useState('');
@@ -124,14 +130,18 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   useEffect(() => {
     loadRealData();
     loadBatches();
-  }, [userRole]); // 當角色切換時重新載入資料
+  }, []); // 初始化時載入資料
 
   // 載入分發批次歷史記錄
   const loadBatches = async () => {
     try {
       setBatchLoading(true);
       setBatchError(null);
-      const data = await distributionBatchService.getDistributionBatches();
+      
+      // 根據員工權限決定是否傳遞workerId
+      const workerId = (userRole === 'staff' && worker?.workerId) ? worker.workerId : undefined;
+      
+      const data = await distributionBatchService.getDistributionBatches(workerId);
       setBatches(data);
     } catch (err) {
       console.error('載入分發批次列表失敗:', err);
@@ -151,9 +161,15 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   // 載入真實資料
   const loadRealData = async () => {
     try {
-      const needs = await supplyService.getRegularSuppliesNeeds();
+      // 根據員工權限決定是否傳遞workerId
+      const workerId = (userRole === 'staff' && worker?.workerId) ? worker.workerId : undefined;
       
-      const matchingRecordsData = needs.map((need) => ({
+      const needs = await supplyService.getRegularSuppliesNeeds(workerId);
+      
+      // 直接使用API返回的已過濾資料
+      const filteredNeeds = needs;
+      
+      const matchingRecordsData = filteredNeeds.map((need) => ({
         id: need.needId,
         emergencyRequestId: `REQ${need.needId.toString().padStart(3, '0')}`,
         caseName: need.caseName || '未知個案',
@@ -353,12 +369,19 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
     setDistributionModalOpen(false);
     
     try {
-      const allNeeds = await supplyService.getRegularSuppliesNeeds();
+      // 根據員工權限決定是否傳遞workerId
+      const workerId = (userRole === 'staff' && worker?.workerId) ? worker.workerId : undefined;
+      
+      const allNeeds = await supplyService.getRegularSuppliesNeeds(workerId);
+      
+      // 過濾已批准但尚未領取的申請
       const approvedRequests = allNeeds.filter(need => 
         need.status === 'approved' && 
         need.status !== 'collected' && 
         need.status !== 'completed'
       );
+      
+      // API已經根據權限過濾了資料，不需要再次過濾
       
       if (approvedRequests.length === 0) {
         alert('目前沒有已批准的申請可供分配');
@@ -630,21 +653,9 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
             border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
           }}>
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                模擬角色：
-              </Typography>
-              <Select
-                value={userRole}
-                onChange={(e) => setUserRole(e.target.value as 'staff' | 'supervisor' | 'admin')}
-                size="small"
-                sx={{ minWidth: 120 }}
-              >
-                <MenuItem value="staff">員工 (Staff)</MenuItem>
-                <MenuItem value="supervisor">主管 (Supervisor)</MenuItem>
-                <MenuItem value="admin">管理員 (Admin)</MenuItem>
-              </Select>
               <Typography variant="body2" color="textSecondary">
-                當前用戶: {currentUser}
+                當前用戶: {currentUser} ({userRole === 'supervisor' ? '主管' : userRole === 'admin' ? '管理員' : '員工'}) | 
+                權限: {userRole === 'supervisor' || userRole === 'admin' ? '可管理所有案例' : '僅管理自己負責的案例'}
               </Typography>
             </Box>
           </Paper>

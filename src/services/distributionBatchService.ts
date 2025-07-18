@@ -49,9 +49,12 @@ export interface RejectDistributionBatchRequest {
 }
 
 const distributionBatchService = {
-  // 获取所有分发批次
-  async getDistributionBatches(): Promise<DistributionBatch[]> {
-    const response = await api.get<DistributionBatch[]>('/RegularDistributionBatch');
+  // 获取所有分发批次 (根據權限過濾)
+  async getDistributionBatches(workerId?: number): Promise<DistributionBatch[]> {
+    const url = workerId 
+      ? `/RegularDistributionBatch?workerId=${workerId}`
+      : '/RegularDistributionBatch';
+    const response = await api.get<DistributionBatch[]>(url);
     return response;
   },
 
