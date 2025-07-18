@@ -137,7 +137,11 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
     try {
       setBatchLoading(true);
       setBatchError(null);
-      const data = await distributionBatchService.getDistributionBatches();
+      
+      // 根據員工權限決定是否傳遞workerId
+      const workerId = (userRole === 'staff' && worker?.workerId) ? worker.workerId : undefined;
+      
+      const data = await distributionBatchService.getDistributionBatches(workerId);
       setBatches(data);
     } catch (err) {
       console.error('載入分發批次列表失敗:', err);

@@ -270,7 +270,7 @@ class SupplyService {
   /**
    * 取得常駐物資需求統計
    */
-  async getRegularSuppliesNeedStats(): Promise<{
+  async getRegularSuppliesNeedStats(workerId?: number): Promise<{
     totalRequests: number;
     pendingRequests: number;
     approvedRequests: number;
@@ -278,13 +278,16 @@ class SupplyService {
     totalEstimatedCost: number;
   }> {
     try {
+      const url = workerId 
+        ? `/RegularSuppliesNeed/stats?workerId=${workerId}`
+        : '/RegularSuppliesNeed/stats';
       const response = await api.get<{
         totalRequests: number;
         pendingRequests: number;
         approvedRequests: number;
         rejectedRequests: number;
         totalEstimatedCost: number;
-      }>('/RegularSuppliesNeed/stats');
+      }>(url);
       return response;
     } catch (error) {
       console.error('取得常駐物資需求統計失敗:', error);

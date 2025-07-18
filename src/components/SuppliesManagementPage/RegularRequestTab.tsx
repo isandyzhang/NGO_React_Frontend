@@ -109,7 +109,7 @@ const RegularRequestTab: React.FC = () => {
       
       const [requests, requestStats] = await Promise.all([
         supplyService.getRegularSuppliesNeeds(workerId),
-        supplyService.getRegularSuppliesNeedStats()
+        supplyService.getRegularSuppliesNeedStats(workerId)
       ]);
       
       // 直接使用API返回的已過濾資料
