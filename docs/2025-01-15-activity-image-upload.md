@@ -115,6 +115,80 @@ const getFilteredDataByRole = () => {
 - 案例資料顯示邏輯
 - 資料庫查詢效能（新增JOIN查詢）
 
+---
+
+## 🔄 批次審核邏輯優化 (2025-01-18)
+
+### 問題描述
+批次審核機制存在「一個老鼠屎壞了一鍋粥」的問題：
+- 主管拒絕整個批次時，所有申請都被拒絕
+- 無法重新處理被拒絕的申請
+- 好的申請被壞的申請拖累
+
+### 解決方案實施
+
+#### 1. 批次拒絕邏輯改善
+**檔案**: `D:\GitHub\NGO_WebAPI_Backend\Controllers\RegularDistributionBatchController.cs`
+
+**修正前**：
+```csharp
+// 只拒絕批次，不處理內部申請
+batch.Status = "rejected";
+```
+
+**修正後**：
+```csharp
+// 拒絕批次並重新處理內部申請
+batch.Status = "rejected";
+
+// 將批次內的所有物資需求重新設回 "approved" 狀態
+var needsInBatch = await _context.RegularSuppliesNeeds
+    .Where(n => n.BatchId == id)
+    .ToListAsync();
+
+foreach (var need in needsInBatch)
+{
+    need.Status = "approved"; // 重新設回已批准狀態
+    need.BatchId = null;      // 清除批次關聯，讓它們可以重新分配
+}
+```
+
+#### 2. 業務流程改善
+**原始流程**：
+1. 員工申請 → 主管審核 → 員工確認 → 建立批次 → 主管批次審核
+2. 批次拒絕 → 所有申請變為拒絕狀態 ❌
+
+**改善後流程**：
+1. 員工申請 → 主管審核 → 員工確認 → 建立批次 → 主管批次審核
+2. 批次拒絕 → 申請回到「已批准」狀態，可重新處理 ✅
+
+#### 3. 系統回應訊息
+```json
+{
+  "message": "分發批次已拒絕",
+  "affectedRequests": 5,
+  "detail": "批次內的 5 個物資需求已重新設為等待處理狀態"
+}
+```
+
+### 技術實現
+- 使用事務確保資料一致性
+- 批次內申請狀態重置為 `approved`
+- 清除 `BatchId` 關聯，允許重新分配
+- 提供處理結果統計
+
+### 優點
+- ✅ 避免一個問題影響整批申請
+- ✅ 讓員工有機會重新處理申請
+- ✅ 保持審核流程的彈性
+- ✅ 提供明確的處理結果反饋
+
+### 影響範圍
+- 分發批次審核邏輯
+- 物資需求狀態管理
+- 主管審核工作流程
+- 系統使用者體驗改善
+
 ## 🐛 原始問題
 
 1. **新增活動時無法儲存** - 時間格式不匹配（DateOnly vs DateTime）
