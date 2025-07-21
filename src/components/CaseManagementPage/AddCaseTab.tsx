@@ -29,6 +29,7 @@ import 'dayjs/locale/zh-tw';
 import { commonStyles, getValidationStyle, getSelectValidationStyle, getDatePickerValidationStyle } from '../../styles/commonStyles';
 import { THEME_COLORS } from '../../styles/theme';
 import { caseService } from '../../services/caseService';
+import { authService } from '../../services/authService';
 import { validateIdNumber, validatePhone, validateEmail, validateRequired } from '../../utils/validation';
 
 // 設置 dayjs 為中文
@@ -258,23 +259,31 @@ const AddCaseTab: React.FC = () => {
     setSubmitMessage(null);
 
     try {
-      // 準備提交的資料
+      // 獲取當前用戶資訊
+      const currentWorker = authService.getCurrentWorker();
+      if (!currentWorker) {
+        setSubmitMessage({
+          type: 'error',
+          text: '未找到登入工作人員資訊，請重新登入'
+        });
+        return;
+      }
+      
+      // 準備提交的資料（注意：欄位名稱需符合後端 CreateCaseRequest 格式）
       const submitData = {
-        name: formData.name,
-        gender: formData.gender,
-        birthday: formData.birthDate?.format('YYYY-MM-DD'),
-        identityNumber: formData.idNumber,
-        phone: formData.phone,
-        city: formData.city,
-        district: formData.district,
-        address: `${formData.city}${formData.district}${formData.address}`,
-        detailAddress: formData.address,
-        email: formData.email,
-        description: formData.difficulty,
-        profileImage: formData.profileImage,
+        Name: formData.name,
+        Gender: formData.gender,
+        Birthday: formData.birthDate ? formData.birthDate.toDate() : null,
+        IdentityNumber: formData.idNumber,
+        Phone: formData.phone,
+        WorkerId: currentWorker.workerId,  // 使用當前登入用戶的WorkerId
+        City: formData.city,
+        District: formData.district,
+        DetailAddress: formData.address,  // 後端只需要 DetailAddress，不需要完整的 address
+        Email: formData.email,
+        Description: formData.difficulty || "其他困難",
+        ProfileImage: formData.profileImage || null,  // 確保空字串轉為 null
       };
-
-
 
       await caseService.createCase(submitData);
 

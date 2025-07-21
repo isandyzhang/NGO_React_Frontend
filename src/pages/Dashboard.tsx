@@ -10,7 +10,7 @@ import {
 import { PieChart, BarChart } from '@mui/x-charts';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
-import { CalendarEvent } from '../services/scheduleService';
+import { CalendarEvent, scheduleService } from '../services/scheduleService';
 import { calendarService, caseService, activityService, authService } from '../services';
 import { dashboardService, DashboardStats, GenderDistribution, CaseDistribution, DifficultyAnalysis } from '../services/dashboardService';
 import { 
@@ -114,7 +114,19 @@ const Dashboard: React.FC = () => {
    */
   const loadRecentEvents = async () => {
     try {
-      const allEvents = await calendarService.getAllEvents();
+      // 從登入狀態獲取當前工作人員資訊
+      const currentWorker = authService.getCurrentWorker();
+      if (!currentWorker) {
+        console.warn('未找到登入工作人員資訊');
+        return;
+      }
+      
+      const workerId = currentWorker.workerId;
+      const userRole = currentWorker.role;
+      
+      // 近期活動：每個人都只看自己的活動（包括主管）
+      const schedules = await scheduleService.getSchedulesByWorker(workerId);
+      const allEvents = schedules.map(schedule => scheduleService.convertToCalendarEvent(schedule));
       const now = new Date();
       
       // 篩選未來7天內的活動，並按日期排序
@@ -137,8 +149,29 @@ const Dashboard: React.FC = () => {
   // 載入統計資料
   const loadStatistics = async () => {
     try {
-      // 使用新的dashboardService載入統計資料
-      const stats = await dashboardService.getStats();
+      // 獲取當前用戶資訊
+      const currentWorker = authService.getCurrentWorker();
+      if (!currentWorker) {
+        console.warn('未找到登入工作人員資訊');
+        return;
+      }
+      
+      const workerId = currentWorker.workerId;
+      const userRole = currentWorker.role;
+      
+      console.log(`載入統計資料 - 用戶: ${currentWorker.name}, 角色: ${userRole}`);
+      
+      // 根據角色決定載入範圍
+      let stats;
+      if (userRole === 'supervisor' || userRole === 'admin') {
+        // 主管和管理員看全系統統計
+        console.log('主管權限：載入全系統統計');
+        stats = await dashboardService.getStats();
+      } else {
+        // 員工只看自己的統計 - 暫時使用全系統統計，等後端API完成後修改
+        console.log(`員工權限：只載入自己的統計 (WorkerId: ${workerId})`);
+        stats = await dashboardService.getStats(); // TODO: 改為 getStatsForWorker(workerId)
+      }
       
       // 更新統計卡片
       setStatsCards([

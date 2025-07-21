@@ -39,20 +39,20 @@ export interface CaseFormData {
   profileImage?: string;
 }
 
-// 後端 API 對應的介面
+// 後端 API 對應的介面（注意：欄位名稱需符合 C# PascalCase 格式）
 export interface CreateCaseRequest {
-  name: string;
-  phone: string;
-  identityNumber: string;
-  birthday?: string;
-  address: string;
-  description: string;
-  email: string;
-  gender: string;
-  profileImage?: string;
-  city: string;
-  district: string;
-  detailAddress: string;
+  Name: string;
+  Phone: string;
+  IdentityNumber: string;
+  Birthday?: Date;
+  WorkerId?: number;
+  Description: string;
+  Email: string;
+  Gender: string;
+  ProfileImage?: string;
+  City: string;
+  District: string;
+  DetailAddress: string;
 }
 
 export interface CaseResponse {
@@ -95,6 +95,7 @@ export interface CaseSearchParams {
   query?: string;
   page?: number;
   pageSize?: number;
+  workerId?: number;
 }
 
 export interface CaseListResponse {
@@ -116,10 +117,14 @@ export interface PagedResponse<T> {
 
 // 個案管理 API 服務
 export const caseService = {
-  // 獲取所有個案（支援分頁）
-  getAllCases: async (page: number = 1, pageSize: number = 10): Promise<PagedResponse<CaseResponse>> => {
+  // 獲取所有個案（支援分頁和WorkerId過濾）
+  getAllCases: async (page: number = 1, pageSize: number = 10, workerId?: number): Promise<PagedResponse<CaseResponse>> => {
     try {
-      const response = await api.get<PagedResponse<CaseResponse>>('/Case', { page, pageSize });
+      const params: any = { page, pageSize };
+      if (workerId) {
+        params.workerId = workerId;
+      }
+      const response = await api.get<PagedResponse<CaseResponse>>('/Case', params);
       return response;
     } catch (error) {
       console.error('獲取案例列表失敗:', error);
