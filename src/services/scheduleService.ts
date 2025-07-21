@@ -70,6 +70,19 @@ export interface ScheduleDto {
  */
 class ScheduleService {
   /**
+   * 取得所有排程（主管權限）
+   */
+  async getAllSchedules(): Promise<Schedule[]> {
+    try {
+      const response = await api.get<Schedule[]>('/schedule');
+      return response;
+    } catch (error) {
+      console.error('取得所有排程失敗:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 根據工作者ID取得排程
    */
   async getSchedulesByWorker(workerId: number): Promise<Schedule[]> {
