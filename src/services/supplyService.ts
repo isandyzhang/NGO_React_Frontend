@@ -54,25 +54,25 @@ export interface RegularSuppliesNeed {
 }
 
 /**
- * 緊急物資需求介面
+ * 緊急物資需求介面 - 匹配後端 EmergencySupplyNeedResponse
  */
 export interface EmergencySupplyNeed {
-  emergencyNeedId: number;
-  itemName: string;
-  category: string;
-  quantity: number;
-  collectedQuantity: number;
-  unit: string;
-  requestedBy: string;
-  requestDate: string;
+  emergencyNeedId: number;      // 對應後端 EmergencyNeedId
+  itemName: string;             // 對應後端 ItemName
+  category: string;             // 對應後端 Category
+  quantity: number;             // 對應後端 Quantity
+  collectedQuantity: number;    // 對應後端 CollectedQuantity
+  unit: string;                 // 對應後端 Unit
+  requestedBy: string;          // 對應後端 RequestedBy
+  requestDate: string;          // 對應後端 RequestDate (DateTime -> string)
   status: 'pending' | 'approved' | 'rejected' | 'completed' | 'collected' | 'pending_super';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  description: string;
-  imageUrl: string;
-  caseName: string;
-  caseId: string;
-  matched: boolean;
-  emergencyReason: string;
+  description: string;          // 對應後端 Description
+  imageUrl: string;             // 對應後端 ImageUrl
+  caseName: string;             // 對應後端 CaseName
+  caseId: string;               // 對應後端 CaseId
+  matched: boolean;             // 對應後端 Matched
+  emergencyReason: string;      // 對應後端 EmergencyReason
 }
 
 /**
@@ -403,8 +403,19 @@ class SupplyService {
    */
   async getEmergencySupplyNeeds(): Promise<EmergencySupplyNeed[]> {
     try {
+      console.log('正在請求緊急物資需求資料...');
       const response = await api.get<EmergencySupplyNeed[]>('/EmergencySupplyNeed');
-      return response;
+      console.log('緊急物資需求 API 回應:', response);
+      
+      // 處理日期格式轉換
+      const processedResponse = response.map(item => ({
+        ...item,
+        requestDate: typeof item.requestDate === 'string' 
+          ? item.requestDate 
+          : new Date(item.requestDate).toISOString()
+      }));
+      
+      return processedResponse;
     } catch (error) {
       console.error('取得緊急物資需求失敗:', error);
       throw error;
@@ -412,27 +423,35 @@ class SupplyService {
   }
 
   /**
-   * 取得緊急物資需求統計
+   * 取得緊急物資需求統計 - 匹配後端 EmergencySupplyNeedStatistics
    */
   async getEmergencySupplyNeedStats(): Promise<{
     totalRequests: number;
     pendingRequests: number;
     approvedRequests: number;
     rejectedRequests: number;
-    totalEstimatedCost: number;
+    completedRequests: number;
+    highPriorityRequests: number;
+    totalQuantity: number;
+    collectedQuantity: number;
   }> {
     try {
+      console.log('正在請求緊急物資需求統計...');
       const response = await api.get('/EmergencySupplyNeed/statistics');
+      console.log('緊急物資需求統計 API 回應:', response);
       return response;
     } catch (error) {
       console.error('取得緊急物資需求統計失敗:', error);
-      // 返回預設值
+      // 返回預設值，匹配後端結構
       return {
         totalRequests: 0,
         pendingRequests: 0,
         approvedRequests: 0,
         rejectedRequests: 0,
-        totalEstimatedCost: 0
+        completedRequests: 0,
+        highPriorityRequests: 0,
+        totalQuantity: 0,
+        collectedQuantity: 0
       };
     }
   }

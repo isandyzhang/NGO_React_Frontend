@@ -592,7 +592,7 @@ const EmergencyRequestTab: React.FC = () => {
                       {row.caseName}
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
-                      {new Date(row.requestDate).toLocaleDateString()}
+                      {row.requestDate ? new Date(row.requestDate).toLocaleDateString() : '未知日期'}
                     </TableCell>
                     <TableCell>
                       <Chip 
@@ -715,10 +715,10 @@ const EmergencyRequestTab: React.FC = () => {
                             )}
                             <Box>
                               <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
-                                預估成本
+                                需求數量
                               </Typography>
                               <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
-                                ${row.estimatedCost.toLocaleString()}
+                                {row.quantity} {row.unit}
                               </Typography>
                             </Box>
                             <Box>

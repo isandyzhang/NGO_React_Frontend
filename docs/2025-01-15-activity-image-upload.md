@@ -814,7 +814,100 @@ public static readonly Dictionary<string, string> Categories = new Dictionary<st
 
 ---
 
-**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能，2025-07-16 的API連線問題排除，物資分發頁面防重複點擊優化，以及 2025-07-17 的三級權限審核系統實作。
+---
+
+## 🚨 緊急物資需求系統API問題交接 (2025-07-21 上午)
+
+### ⚡ 立即需要做的事情
+**重啟電腦後的第一步**：
+1. 啟動後端：`cd D:\GitHub\NGO_WebAPI_Backend && dotnet run`
+2. 啟動前端：`cd D:\GitHub\Case-Management-System && npm run dev`
+3. 測試API：`curl http://localhost:5264/api/EmergencySupplyNeed/statistics`
+
+### 🎯 核心問題
+**緊急物資需求API一直回傳錯誤**：`{"message":"獲取緊急物資需求失敗","error":"Invalid column name 'SupplyId'."}`
+
+### 🔍 問題狀況詳析
+
+#### 1. 資料庫結構 (✅ 已確認正確)
+從隊友週末更新的ERD圖確認：
+- `EmergencySupplyNeeds` 表有 `SupplyName` (nvarchar(200)) ✅
+- **沒有** `SupplyId` 外鍵 ✅
+- 有 `Priority`, `Description`, `ImageUrl`, `CollectedQuantity` 等新欄位 ✅
+
+#### 2. 前端已修復 (✅ 已完成)
+**檔案**：`D:\GitHub\Case-Management-System\src\services\supplyService.ts`
+- 更新了 `EmergencySupplyNeed` 介面匹配後端回應
+- 修正統計方法回傳欄位 (加入 `completedRequests`, `highPriorityRequests` 等)
+- 加入除錯日誌和錯誤處理
+
+#### 3. 後端已嘗試修復 (⚠️ 需要驗證)
+**檔案**：`D:\GitHub\NGO_WebAPI_Backend\Controllers\EmergencySupplyNeedController.cs`
+**修改內容**：
+- 第30-33行：移除 `.Include(e => e.Case).Include(e => e.Worker)` 
+- 改為手動載入關聯 (第35-43行)
+- 統計查詢加入 `.AsNoTracking()` (第75行)
+
+### 🚨 懷疑原因
+1. **EF Core 緩存問題** - 可能還在使用舊的模型結構
+2. **進程鎖定** - 無法正常重新編譯 (PID 10908 被鎖定)
+3. **隱藏的關聯查詢** - 其他地方可能還在引用 SupplyId
+
+### 📋 重啟電腦後的檢查清單
+1. **重新啟動服務**
+   ```bash
+   # 後端
+   cd D:\GitHub\NGO_WebAPI_Backend
+   dotnet clean
+   dotnet build
+   dotnet run
+   
+   # 前端 (另一個終端)
+   cd D:\GitHub\Case-Management-System
+   npm run dev
+   ```
+
+2. **立即測試API**
+   ```bash
+   # 測試統計API
+   curl http://localhost:5264/api/EmergencySupplyNeed/statistics
+   
+   # 測試主要API
+   curl http://localhost:5264/api/EmergencySupplyNeed
+   
+   # 如果還是失敗，檢查錯誤詳情
+   ```
+
+3. **如果API仍然失敗**
+   - 檢查 `D:\GitHub\NGO_WebAPI_Backend\Models\NgoplatformDbContext.cs` 第194-208行的 EmergencySupplyMatch 配置
+   - 搜尋整個後端專案是否還有 SupplyId 引用：
+     ```bash
+     grep -r "SupplyId" D:\GitHub\NGO_WebAPI_Backend --include="*.cs"
+     ```
+
+4. **驗證前端緊急物資頁面**
+   - 打開 `http://localhost:5173` 
+   - 進入物資管理 > 緊急物資需求
+   - 檢查是否正常載入資料，不再顯示「載入資料失敗」
+
+### 🔧 備用修復方案
+如果重啟後問題仍存在：
+1. **檢查隊友更新**：可能週末有其他相關變更需要同步
+2. **資料庫重新生成**：考慮重新生成 DbContext 模型
+3. **直接SQL查詢**：確認資料庫實際結構與ERD一致
+
+### 📊 已修改的檔案
+- `D:\GitHub\Case-Management-System\src\services\supplyService.ts` (前端介面)
+- `D:\GitHub\NGO_WebAPI_Backend\Controllers\EmergencySupplyNeedController.cs` (後端查詢邏輯)
+
+### 🎯 成功標準
+✅ API回傳正常JSON而非錯誤訊息
+✅ 前端緊急物資頁面顯示統計資料和需求列表  
+✅ 可以正常新增/編輯/刪除緊急物資需求
+
+---
+
+**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能，2025-07-16 的API連線問題排除，物資分發頁面防重複點擊優化，2025-07-17 的三級權限審核系統實作，以及 2025-07-21 的緊急物資API問題排查。
 
 ## 工程師備註 7/17
 由於token消耗完畢，因此暫停，目前三級權限的部分已經完成，但有使用者用戶流程需要優化
