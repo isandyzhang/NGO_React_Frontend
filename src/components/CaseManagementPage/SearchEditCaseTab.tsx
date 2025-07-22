@@ -37,6 +37,7 @@ import {
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { caseService, CaseResponse } from '../../services/caseService';
+import { authService } from '../../services/authService';
 import { formatDate } from '../../utils/dateHelper';
 
 interface CaseRecord {
@@ -81,8 +82,27 @@ const SearchEditCaseTab: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('開始載入案例資料，頁碼:', page);
-      const response = await caseService.getAllCases(page, pageSize);
+      // 獲取當前用戶資訊
+      const currentWorker = authService.getCurrentWorker();
+      if (!currentWorker) {
+        setError('未找到登入工作人員資訊，請重新登入');
+        return;
+      }
+      
+      const workerId = currentWorker.workerId;
+      const userRole = currentWorker.role;
+      
+      console.log('開始載入案例資料，頁碼:', page, '用戶:', currentWorker.name, '角色:', userRole);
+      
+      // 根據角色決定是否過濾WorkerId
+      let response;
+      if (userRole === 'supervisor' || userRole === 'admin') {
+        // 主管和管理員可以看到所有個案
+        response = await caseService.getAllCases(page, pageSize);
+      } else {
+        // 一般員工只能看到自己負責的個案
+        response = await caseService.getAllCases(page, pageSize, workerId);
+      }
       console.log('API 回應:', response);
       
       // 處理 PagedResponse<CaseResponse> 格式
@@ -136,11 +156,29 @@ const SearchEditCaseTab: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const response = await caseService.searchCases({ 
+      // 獲取當前用戶資訊
+      const currentWorker = authService.getCurrentWorker();
+      if (!currentWorker) {
+        setError('未找到登入工作人員資訊，請重新登入');
+        return;
+      }
+      
+      const workerId = currentWorker.workerId;
+      const userRole = currentWorker.role;
+      
+      // 根據角色決定搜尋參數
+      const searchParams: any = { 
         query: searchContent, 
         page: 1, 
         pageSize 
-      });
+      };
+      
+      if (userRole !== 'supervisor' && userRole !== 'admin') {
+        // 一般員工只能搜尋自己負責的個案
+        searchParams.workerId = workerId;
+      }
+      
+      const response = await caseService.searchCases(searchParams);
       
       // 轉換搜尋結果為 CaseRecord[] 格式
       const transformedData: CaseRecord[] = response.data.map(item => ({
@@ -195,12 +233,31 @@ const SearchEditCaseTab: React.FC = () => {
       setLoading(true);
       setError(null);
       
+      // 獲取當前用戶資訊
+      const currentWorker = authService.getCurrentWorker();
+      if (!currentWorker) {
+        setError('未找到登入工作人員資訊，請重新登入');
+        return;
+      }
+      
+      const workerId = currentWorker.workerId;
+      const userRole = currentWorker.role;
+      
       console.log('開始搜尋分頁，關鍵字:', searchContent, '頁碼:', page);
-      const response = await caseService.searchCases({ 
+      
+      // 根據角色決定搜尋參數
+      const searchParams: any = { 
         query: searchContent, 
         page, 
         pageSize 
-      });
+      };
+      
+      if (userRole !== 'supervisor' && userRole !== 'admin') {
+        // 一般員工只能搜尋自己負責的個案
+        searchParams.workerId = workerId;
+      }
+      
+      const response = await caseService.searchCases(searchParams);
       
       // 轉換搜尋結果為 CaseRecord[] 格式
       const transformedData: CaseRecord[] = response.data.map(item => ({

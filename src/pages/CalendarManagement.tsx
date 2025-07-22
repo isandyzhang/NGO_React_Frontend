@@ -5,6 +5,7 @@ import PageHeader from "../components/shared/PageHeader";
 import PageContainer from "../components/shared/PageContainer";
 import CalendarComponent from "../components/CalendarPage";
 import { scheduleService, CalendarEvent } from "../services/scheduleService";
+import { authService } from "../services/authService";
 
 /**
  * 行事曆管理頁面組件
@@ -46,9 +47,28 @@ const CalendarManagement: React.FC = () => {
    */
   const loadEventsFromDatabase = async () => {
     try {
-      // 載入所有排程
-      const workerId = 1; // 這裡可以從用戶狀態中獲取
-      const schedules = await scheduleService.getSchedulesByWorker(workerId);
+      // 從登入狀態獲取當前工作人員ID
+      const currentWorker = authService.getCurrentWorker();
+      if (!currentWorker) {
+        showSnackbar("未找到登入工作人員資訊，請重新登入", "error");
+        return;
+      }
+      
+      const workerId = currentWorker.workerId;
+      const userRole = currentWorker.role;
+      console.log(`載入工作人員 ${currentWorker.name} (ID: ${workerId}, 角色: ${userRole}) 的行程資料`);
+      
+      // 根據角色決定載入範圍
+      let schedules;
+      if (userRole === 'supervisor' || userRole === 'admin') {
+        // 主管和管理員可以看到所有行程
+        console.log('主管權限：載入所有工作人員的行程');
+        schedules = await scheduleService.getAllSchedules();
+      } else {
+        // 一般員工只能看到自己的行程
+        console.log(`員工權限：只載入自己的行程 (WorkerId: ${workerId})`);
+        schedules = await scheduleService.getSchedulesByWorker(workerId);
+      }
       const calendarEvents = schedules.map((schedule) =>
         scheduleService.convertToCalendarEvent(schedule)
       );
@@ -79,7 +99,12 @@ const CalendarManagement: React.FC = () => {
    */
   const handleEventCreate = async (eventData: Omit<CalendarEvent, "id">) => {
     try {
-      const workerId = 1; // 這裡可以從用戶狀態中獲取
+      const currentWorker = authService.getCurrentWorker();
+      if (!currentWorker) {
+        showSnackbar("未找到登入工作人員資訊，請重新登入", "error");
+        return;
+      }
+      const workerId = currentWorker.workerId;
       const createRequest = scheduleService.convertToCreateRequest(
         eventData as CalendarEvent,
         workerId
