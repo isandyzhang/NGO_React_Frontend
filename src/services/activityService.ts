@@ -219,60 +219,96 @@ class ActivityService {
   }
 
   /**
-   * 上傳圖片到 Azure Blob Storage
+   * 上傳圖片到 Azure Blob Storage (帶重試機制)
    */
-  async uploadImage(formData: FormData): Promise<{ imageUrl: string }> {
-    try {
-      // 使用原生 fetch 來處理 FormData，避免 axios 自動設定 Content-Type
-      const apiBaseUrl = config.apiBaseUrl;
-      const token = localStorage.getItem('authToken');
-      const uploadUrl = `${apiBaseUrl}/api/Activity/upload/image`;
-      
-      console.log('🚀 開始上傳圖片');
-      console.log('📡 API URL:', uploadUrl);
-      console.log('🔐 Token exists:', !!token);
-      console.log('📦 FormData keys:', Array.from(formData.keys()));
-      
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        },
-        body: formData
-      });
-
-      console.log('📈 Response status:', response.status);
-      console.log('📊 Response ok:', response.ok);
-
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+  async uploadImage(formData: FormData, maxRetries: number = 2): Promise<{ imageUrl: string }> {
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        console.log(`🚀 開始上傳圖片 (嘗試 ${attempt}/${maxRetries + 1})`);
         
-        try {
-          const errorData = await response.json();
-          console.log('❌ Error data:', errorData);
-          errorMessage = errorData.message || errorData.title || errorMessage;
-        } catch (parseError) {
-          console.log('❌ 無法解析錯誤回應為 JSON:', parseError);
-          const textError = await response.text();
-          console.log('❌ Error text:', textError);
-          errorMessage = textError || errorMessage;
+        // 使用原生 fetch 來處理 FormData，避免 axios 自動設定 Content-Type
+        const apiBaseUrl = config.apiBaseUrl;
+        const token = localStorage.getItem('authToken');
+        const uploadUrl = `${apiBaseUrl}/Activity/upload/image`;
+        
+        console.log('📡 API URL:', uploadUrl);
+        console.log('🔐 Token exists:', !!token);
+        console.log('📦 FormData keys:', Array.from(formData.keys()));
+        
+        // 為每次重試創建新的 AbortController
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 秒超時
+        
+        const response = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          },
+          body: formData,
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        console.log('📈 Response status:', response.status);
+        console.log('📊 Response ok:', response.ok);
+
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          
+          try {
+            // 先讀取為文本，然後嘗試解析為 JSON，避免多次讀取 body
+            const responseText = await response.text();
+            console.log('❌ Response text:', responseText);
+            
+            if (responseText) {
+              try {
+                const errorData = JSON.parse(responseText);
+                console.log('❌ Error data:', errorData);
+                errorMessage = errorData.message || errorData.title || errorMessage;
+              } catch (jsonError) {
+                console.log('❌ 無法解析為 JSON，使用原始文本:', jsonError);
+                errorMessage = responseText || errorMessage;
+              }
+            }
+          } catch (readError) {
+            console.log('❌ 無法讀取錯誤回應:', readError);
+          }
+          
+          throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+        console.log('✅ 上傳成功:', result);
+        return result;
+        
+      } catch (error: any) {
+        console.error(`💥 上傳圖片失敗 (嘗試 ${attempt}/${maxRetries + 1}):`, error);
+        
+        const isLastAttempt = attempt === maxRetries + 1;
+        const isRetryableError = 
+          error.name === 'AbortError' ||
+          error.message?.includes('Body is disturbed') ||
+          error.message?.includes('network') ||
+          error.message?.includes('fetch');
+        
+        if (!isLastAttempt && isRetryableError) {
+          console.log('⏳ 等待重試...');
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          continue;
         }
         
-        throw new Error(errorMessage);
+        // 最後一次嘗試失敗，拋出錯誤
+        console.error('💥 Error type:', typeof error);
+        console.error('💥 Error message:', error.message);
+        console.error('💥 Error stack:', error.stack);
+        
+        throw new Error(error.message || '圖片上傳失敗：網路錯誤或伺服器無回應');
       }
-
-      const result = await response.json();
-      console.log('✅ 上傳成功:', result);
-      return result;
-    } catch (error: any) {
-      console.error('💥 上傳圖片失敗:', error);
-      console.error('💥 Error type:', typeof error);
-      console.error('💥 Error message:', error.message);
-      console.error('💥 Error stack:', error.stack);
-      
-      // 重新拋出錯誤，但確保有有意義的訊息
-      throw new Error(error.message || '圖片上傳失敗：網路錯誤或伺服器無回應');
     }
+    
+    // 理論上不會執行到這裡
+    throw new Error('圖片上傳失敗：未知錯誤');
   }
 
   /**

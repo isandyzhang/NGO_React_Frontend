@@ -73,10 +73,21 @@ const CalendarManagement: React.FC = () => {
         scheduleService.convertToCalendarEvent(schedule)
       );
       setEvents(calendarEvents);
-      showSnackbar("已載入行事曆資料", "success");
+      
+      if (schedules.length === 0) {
+        showSnackbar("目前沒有行程資料", "info");
+      } else {
+        showSnackbar(`已載入 ${schedules.length} 筆行事曆資料`, "success");
+      }
     } catch (error) {
       console.error("載入事件失敗:", error);
-      showSnackbar("載入事件失敗，請稍後再試", "error");
+      // 如果是 404 錯誤，表示該使用者沒有行程資料
+      if (error instanceof Error && error.message.includes('404')) {
+        setEvents([]);
+        showSnackbar("目前沒有行程資料", "info");
+      } else {
+        showSnackbar("載入事件失敗，請稍後再試", "error");
+      }
     }
   };
 

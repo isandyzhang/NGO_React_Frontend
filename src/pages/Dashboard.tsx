@@ -5,7 +5,8 @@ import {
   CardContent, 
   Typography, 
   useTheme,
-  Chip
+  Chip,
+  Skeleton
 } from '@mui/material';
 import { PieChart, BarChart } from '@mui/x-charts';
 import PageHeader from '../components/shared/PageHeader';
@@ -70,31 +71,35 @@ const Dashboard: React.FC = () => {
   // 系統版本資訊
   const systemVersion = 'v1.2.3';
 
-  // 統計卡片資料 - 使用真實資料
+  // 統計卡片資料 - 使用載入動畫取代初始的 0
   const [statsCards, setStatsCards] = useState([
     {
       title: '個案人數',
-      value: '0',
+      value: '載入中...',
       icon: <Assignment />,
-      color: THEME_COLORS.PINK_500
+      color: THEME_COLORS.PINK_500,
+      loading: true
     },
     {
       title: '志工人數',
-      value: '0',
+      value: '載入中...',
       icon: <People />,
-      color: THEME_COLORS.BLUE_500
+      color: THEME_COLORS.BLUE_500,
+      loading: true
     },
     {
       title: '活動總數',
-      value: '0',
+      value: '載入中...',
       icon: <CalendarToday />,
-      color: THEME_COLORS.TEAL_500
+      color: THEME_COLORS.TEAL_500,
+      loading: true
     },
     {
       title: '本月完成活動',
-      value: '0',
+      value: '載入中...',
       icon: <TrendingUp />,
-      color: THEME_COLORS.PURPLE_500
+      color: THEME_COLORS.PURPLE_500,
+      loading: true
     }
   ]);
 
@@ -124,7 +129,9 @@ const Dashboard: React.FC = () => {
       const workerId = currentWorker.workerId;
       const userRole = currentWorker.role;
       
-      // 近期活動：每個人都只看自己的活動（包括主管）
+      console.log(`載入行事曆活動 - 用戶: ${currentWorker.name}, 角色: ${userRole}, WorkerId: ${workerId}`);
+      
+      // Dashboard 顯示個人近期活動（包括主管）
       const schedules = await scheduleService.getSchedulesByWorker(workerId);
       const allEvents = schedules.map(schedule => scheduleService.convertToCalendarEvent(schedule));
       const now = new Date();
@@ -143,6 +150,8 @@ const Dashboard: React.FC = () => {
       setRecentEvents(upcomingEvents);
     } catch (error) {
       console.error('載入行事曆活動失敗:', error);
+      // 如果載入失敗（例如 404），設置空陣列避免一直重試
+      setRecentEvents([]);
     }
   };
 
@@ -179,25 +188,29 @@ const Dashboard: React.FC = () => {
           title: '個案人數',
           value: stats.totalCases.toString(),
           icon: <Assignment />,
-          color: THEME_COLORS.PINK_500
+          color: THEME_COLORS.PINK_500,
+          loading: false
         },
         {
           title: '用戶人數',
           value: stats.totalUsers.toString(),
           icon: <People />,
-          color: THEME_COLORS.BLUE_500
+          color: THEME_COLORS.BLUE_500,
+          loading: false
         },
         {
           title: '活動總數',
           value: stats.totalActivities.toString(),
           icon: <CalendarToday />,
-          color: THEME_COLORS.TEAL_500
+          color: THEME_COLORS.TEAL_500,
+          loading: false
         },
         {
           title: '本月完成活動',
           value: stats.monthlyCompletedActivities.toString(),
           icon: <TrendingUp />,
-          color: THEME_COLORS.PURPLE_500
+          color: THEME_COLORS.PURPLE_500,
+          loading: false
         }
       ]);
     } catch (error) {
@@ -428,18 +441,30 @@ const Dashboard: React.FC = () => {
                     >
                       {card.title}
                     </Typography>
-                    <Typography 
-                      component="div"
-                      sx={{ 
-                        ...theme.customTypography.cardValue,
-                        fontSize: { xs: '1.75rem', sm: '2rem', md: '2.1rem', lg: '2.25rem' }, // 平板優化
-                        fontWeight: 700,
-                        lineHeight: 1.1,
-                        letterSpacing: '-0.02em'
-                      }}
-                    >
-                      {card.value}
-                    </Typography>
+                    {card.loading ? (
+                      <Skeleton 
+                        variant="text" 
+                        width="80%" 
+                        height={50}
+                        sx={{
+                          fontSize: { xs: '1.75rem', sm: '2rem', md: '2.1rem', lg: '2.25rem' },
+                          transform: 'none'
+                        }}
+                      />
+                    ) : (
+                      <Typography 
+                        component="div"
+                        sx={{ 
+                          ...theme.customTypography.cardValue,
+                          fontSize: { xs: '1.75rem', sm: '2rem', md: '2.1rem', lg: '2.25rem' }, // 平板優化
+                          fontWeight: 700,
+                          lineHeight: 1.1,
+                          letterSpacing: '-0.02em'
+                        }}
+                      >
+                        {card.value}
+                      </Typography>
+                    )}
                   </Box>
                   <Box 
                     sx={{ 

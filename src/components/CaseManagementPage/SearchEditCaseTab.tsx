@@ -329,7 +329,22 @@ const SearchEditCaseTab: React.FC = () => {
     try {
       setLoading(true);
       
-      await caseService.updateCase(editFormData.caseId, editFormData);
+      // 轉換為 CreateCaseRequest 格式
+      const updateData: Partial<import('../../services/caseService').CreateCaseRequest> = {
+        Name: editFormData.name,
+        Phone: editFormData.phone,
+        Email: editFormData.email,
+        IdentityNumber: editFormData.identityNumber,
+        Gender: editFormData.gender,
+        City: editFormData.city,
+        District: editFormData.district,
+        DetailAddress: editFormData.address,
+        Description: editFormData.description,
+        Birthday: editFormData.birthday ? new Date(editFormData.birthday) : undefined,
+        ProfileImage: editFormData.profileImage
+      };
+      
+      await caseService.updateCase(editFormData.caseId, updateData);
 
       setCaseRecords(prev => 
         prev.map(record => 

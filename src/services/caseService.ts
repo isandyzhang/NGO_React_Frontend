@@ -205,17 +205,9 @@ export const caseService = {
         throw new Error(errorMessage);
       }
 
-      try {
-        const responseText = await response.text();
-        console.log('✅ Response text:', responseText);
-        
-        const result = JSON.parse(responseText);
-        console.log('✅ 個案圖片上傳成功:', result);
-        return result;
-      } catch (parseError) {
-        console.error('💥 無法解析成功響應為 JSON:', parseError);
-        throw new Error('伺服器回應格式錯誤');
-      }
+      const result = await response.json();
+      console.log('✅ 個案圖片上傳成功:', result);
+      return result;
     } catch (error: any) {
       console.error('💥 上傳個案圖片失敗:', error);
       console.error('💥 Error type:', typeof error);
