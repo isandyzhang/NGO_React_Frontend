@@ -59,12 +59,12 @@ interface RegularSupplyRequest {
 
 const RegularRequestTab: React.FC = () => {
   // 從認證系統獲取用戶資訊
-  const { worker } = useAuth();
+  const { user } = useAuth();
   
   // 根據用戶角色設定權限
-  const userRole = worker?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
-  const currentUser = worker?.name || '未知用戶';
-  const currentStaffId = worker?.workerId || 1;
+  const userRole = user?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
+  const currentUser = user?.name || '未知用戶';
+  const currentStaffId = user?.workerId || 1;
   
   
   const [searchType, setSearchType] = useState('物品名稱');
@@ -105,7 +105,7 @@ const RegularRequestTab: React.FC = () => {
       setError(null);
       
       // 根據員工權限決定是否傳遞workerId
-      const workerId = (userRole === 'staff' && worker?.workerId) ? worker.workerId : undefined;
+      const workerId = (userRole === 'staff' && user?.workerId) ? user.workerId : undefined;
       
       const [requests, requestStats] = await Promise.all([
         supplyService.getRegularSuppliesNeeds(workerId),

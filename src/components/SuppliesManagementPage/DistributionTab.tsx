@@ -88,12 +88,12 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   isEmergencySupply = false 
 }) => {
   // 從認證系統獲取用戶資訊
-  const { worker } = useAuth();
+  const { user } = useAuth();
   
   // 根據用戶角色設定權限
-  const userRole = worker?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
-  const currentUser = worker?.name || '未知用戶';
-  const currentStaffId = worker?.workerId || 1;
+  const userRole = user?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
+  const currentUser = user?.name || '未知用戶';
+  const currentStaffId = user?.workerId || 1;
   
   
   const [searchType, setSearchType] = useState('');
@@ -139,7 +139,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
       setBatchError(null);
       
       // 根據員工權限決定是否傳遞workerId
-      const workerId = (userRole === 'staff' && worker?.workerId) ? worker.workerId : undefined;
+      const workerId = (userRole === 'staff' && user?.workerId) ? user.workerId : undefined;
       
       const data = await distributionBatchService.getDistributionBatches(workerId);
       setBatches(data);
@@ -162,7 +162,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
   const loadRealData = async () => {
     try {
       // 根據員工權限決定是否傳遞workerId
-      const workerId = (userRole === 'staff' && worker?.workerId) ? worker.workerId : undefined;
+      const workerId = (userRole === 'staff' && user?.workerId) ? user.workerId : undefined;
       
       const needs = await supplyService.getRegularSuppliesNeeds(workerId);
       
@@ -370,7 +370,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
     
     try {
       // 根據員工權限決定是否傳遞workerId
-      const workerId = (userRole === 'staff' && worker?.workerId) ? worker.workerId : undefined;
+      const workerId = (userRole === 'staff' && user?.workerId) ? user.workerId : undefined;
       
       const allNeeds = await supplyService.getRegularSuppliesNeeds(workerId);
       
