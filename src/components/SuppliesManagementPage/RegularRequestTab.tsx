@@ -41,6 +41,18 @@ import {
 import { supplyService, RegularSuppliesNeed } from '../../services';
 import { useAuth } from '../../hooks/useAuth';
 
+// 輔助函數：獲取用戶名稱
+const getUserName = (user: any): string => {
+  if (!user) return '未登入';
+  return user.loginSource === 'azure' ? (user.displayName || user.email) : (user.name || user.email);
+};
+
+// 輔助函數：獲取用戶角色
+const getUserRole = (user: any): string => {
+  if (!user) return '未知角色';
+  return user.role || '使用者';
+};
+
 interface RegularSupplyRequest {
   id: number;
   itemName: string;
@@ -59,7 +71,7 @@ interface RegularSupplyRequest {
 
 const RegularRequestTab: React.FC = () => {
   // 獲取當前用戶資訊
-  const { worker } = useAuth();
+  const { user } = useAuth();
   
   const [searchType, setSearchType] = useState('物品名稱');
   const [searchContent, setSearchContent] = useState('');
@@ -91,7 +103,7 @@ const RegularRequestTab: React.FC = () => {
   // 載入資料 - 當用戶切換時重新載入
   useEffect(() => {
     loadData();
-  }, [worker]); // 當用戶改變時重新載入資料
+  }, [user]); // 當用戶改變時重新載入資料
 
   const loadData = async () => {
     try {
@@ -226,10 +238,13 @@ const RegularRequestTab: React.FC = () => {
   const getFilteredDataByRole = () => {
     let roleFilteredData = requestData;
     
-    if (worker?.role === 'staff') {
+    const userRole = getUserRole(user);
+    const userName = getUserName(user);
+    
+    if (userRole === 'staff') {
       // 員工只能看自己的申請
-      roleFilteredData = requestData.filter(item => item.requestedBy === worker.name);
-    } else if (worker?.role === 'supervisor' || worker?.role === 'admin') {
+      roleFilteredData = requestData.filter(item => item.requestedBy === userName);
+    } else if (userRole === 'supervisor' || userRole === 'admin') {
       // 主管和管理員看所有申請
       roleFilteredData = requestData;
     }
@@ -286,7 +301,7 @@ const RegularRequestTab: React.FC = () => {
             當前用戶：
           </Typography>
           <Typography variant="body2" color="textSecondary">
-            {worker?.name || '未登入'} ({worker?.role || '未知角色'})
+            {getUserName(user)} ({getUserRole(user)})
           </Typography>
         </Box>
       </Paper>
@@ -438,7 +453,7 @@ const RegularRequestTab: React.FC = () => {
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' } }}>
                       {/* 主管權限：審核待審核的申請 */}
-                      {request.status === 'pending' && (worker?.role === 'supervisor' || worker?.role === 'admin') && (
+                      {request.status === 'pending' && (getUserRole(user) === 'supervisor' || getUserRole(user) === 'admin') && (
                         <>
                           <Button
                             variant="outlined"
@@ -500,7 +515,7 @@ const RegularRequestTab: React.FC = () => {
                       )}
                       
                       {/* 主管可以批准和拒絕等待主管審核的申請 */}
-                      {request.status === 'pending_super' && (worker?.role === 'supervisor' || worker?.role === 'admin') && (
+                      {request.status === 'pending_super' && (getUserRole(user) === 'supervisor' || getUserRole(user) === 'admin') && (
                         <>
                           <Button
                             variant="contained"
@@ -537,7 +552,7 @@ const RegularRequestTab: React.FC = () => {
                         </>
                       )}
                       
-                      {request.status === 'pending' && worker?.role !== 'supervisor' && worker?.role !== 'admin' && (
+                      {request.status === 'pending' && getUserRole(user) !== 'supervisor' && getUserRole(user) !== 'admin' && (
                         <Typography variant="body2" color="text.secondary">
                           僅主管可操作
                         </Typography>

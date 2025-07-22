@@ -1,58 +1,142 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { authService, WorkerInfo } from '../services/authService';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { AuthContextType, UnifiedUser, LoginResult, LoginMethod } from '../types/userTypes';
+import { authService } from '../services/authService';
+import { azureService } from '../services/azureService';
 
-// 身份驗證上下文類型定義
-interface AuthContextType {
-  isAuthenticated: boolean; // 是否已登入
-  worker: WorkerInfo | null; // 當前工作人員資訊
-  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>; // 登入功能
-  logout: () => void; // 登出功能
-  loading: boolean; // 載入狀態
-}
-
-// 創建身份驗證上下文
+/**
+ * 混合模式身份驗證上下文
+ * 同時支援 Azure AD 和資料庫登入
+ */
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /**
- * 身份驗證提供者組件
+ * 混合模式身份驗證提供者
  * 
- * 主要功能：
- * 1. 管理登入狀態 - 追蹤工作人員是否已登入
- * 2. 工作人員資訊管理 - 儲存和管理當前工作人員資料
- * 3. 登入功能 - 提供真實的API登入
- * 4. 登出功能 - 清除工作人員資訊和登入狀態
+ * 功能：
+ * 1. 支援 Azure AD SSO 登入
+ * 2. 支援資料庫帳號密碼登入
+ * 3. 統一的登入狀態管理
+ * 4. 自動檢測已存在的登入狀態
  */
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // 身份驗證狀態
-  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
-  
-  // 當前工作人員資訊
-  const [worker, setWorker] = useState<WorkerInfo | null>(authService.getCurrentWorker());
-  
-  // 載入狀態
-  const [loading, setLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UnifiedUser | null>(null);
+  const [loading, setLoading] = useState(true); // 初始為 true，等待檢查登入狀態
+  const [error, setError] = useState<string | null>(null);
+  const [loginMethod, setLoginMethod] = useState<LoginMethod | undefined>(undefined);
 
   /**
-   * 工作人員登入功能
-   * @param email - 工作人員電子郵件
-   * @param password - 工作人員密碼
+   * 檢查現有登入狀態
    */
-  const login = async (email: string, password: string) => {
-    setLoading(true);
+  const checkExistingAuth = async (): Promise<void> => {
     try {
-      const result = await authService.login(email, password);
-      
-      if (result.success && result.worker) {
-        setWorker(result.worker);
-        setIsAuthenticated(true);
+      setLoading(true);
+      setError(null);
+
+      // 優先檢查 Azure AD 重導向結果（不管 localStorage 狀態）
+      if (azureService.isEnabled()) {
+        const redirectResult = await azureService.handleRedirectResult();
+        if (redirectResult) {
+          if (redirectResult.success && redirectResult.user) {
+            setUser(redirectResult.user);
+            setIsAuthenticated(true);
+            setLoginMethod(LoginMethod.AZURE_AD);
+            return; // Azure AD 登入成功，結束檢查
+          } else if (!redirectResult.success) {
+            // 只有在非 hash_empty_error 時才設定錯誤
+            if (!redirectResult.message.includes('重導向處理錯誤')) {
+              setError(redirectResult.message);
+            }
+          }
+        }
       }
-      
+
+      // 檢查 localStorage 中的登入方式
+      const storedLoginMethod = localStorage.getItem('loginMethod') as LoginMethod;
+      const isAuth = localStorage.getItem('isAuthenticated') === 'true';
+
+      if (!isAuth || !storedLoginMethod) {
+        // 沒有登入狀態
+        setIsAuthenticated(false);
+        setUser(null);
+        setLoginMethod(undefined);
+        return;
+      }
+
+      if (storedLoginMethod === LoginMethod.DATABASE) {
+        // 資料庫登入
+        const worker = authService.getCurrentWorker();
+        if (worker && authService.isDatabaseAuthenticated()) {
+          setUser(worker);
+          setIsAuthenticated(true);
+          setLoginMethod(LoginMethod.DATABASE);
+        } else {
+          // 清理無效的登入狀態
+          authService.logoutDatabase();
+          setIsAuthenticated(false);
+          setUser(null);
+          setLoginMethod(undefined);
+        }
+      } else if (storedLoginMethod === LoginMethod.AZURE_AD) {
+        // Azure AD 登入
+        if (azureService.isEnabled()) {
+          const azureUser = azureService.getStoredAzureUser();
+          if (azureUser && azureService.isAuthenticated()) {
+            setUser(azureUser);
+            setIsAuthenticated(true);
+            setLoginMethod(LoginMethod.AZURE_AD);
+          } else {
+            // 清理無效的登入狀態
+            await azureService.logout();
+            setIsAuthenticated(false);
+            setUser(null);
+            setLoginMethod(undefined);
+          }
+        } else {
+          // Azure AD 已停用，清理狀態
+          setIsAuthenticated(false);
+          setUser(null);
+          setLoginMethod(undefined);
+        }
+      }
+    } catch (error: any) {
+      console.error('檢查登入狀態時發生錯誤:', error);
+      setError('檢查登入狀態時發生錯誤');
+      setIsAuthenticated(false);
+      setUser(null);
+      setLoginMethod(undefined);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * 資料庫登入
+   */
+  const loginWithDatabase = async (email: string, password: string): Promise<LoginResult> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await authService.loginWithDatabase(email, password);
+
+      if (result.success && result.user) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        setLoginMethod(LoginMethod.DATABASE);
+      } else {
+        setError(result.message);
+      }
+
       return result;
-    } catch (error) {
-      console.error('登入錯誤:', error);
+    } catch (error: any) {
+      const errorMessage = '登入失敗，請稍後再試';
+      setError(errorMessage);
       return {
         success: false,
-        message: '登入過程中發生錯誤'
+        message: errorMessage,
+        method: LoginMethod.DATABASE,
       };
     } finally {
       setLoading(false);
@@ -60,20 +144,123 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
-   * 登出功能
-   * 清除工作人員資訊和身份驗證狀態
+   * Azure AD 登入
    */
-  const logout = () => {
-    authService.logout();
-    setWorker(null);
-    setIsAuthenticated(false);
+  const loginWithAzure = async (): Promise<LoginResult> => {
+    if (!azureService.isEnabled()) {
+      const errorMessage = 'Azure AD 登入功能未啟用';
+      setError(errorMessage);
+      return {
+        success: false,
+        message: errorMessage,
+        method: LoginMethod.AZURE_AD,
+      };
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await azureService.login();
+
+      if (result.success && result.user) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        setLoginMethod(LoginMethod.AZURE_AD);
+      } else {
+        setError(result.message);
+      }
+
+      return result;
+    } catch (error: any) {
+      const errorMessage = 'Azure AD 登入失敗，請稍後再試';
+      setError(errorMessage);
+      return {
+        success: false,
+        message: errorMessage,
+        method: LoginMethod.AZURE_AD,
+      };
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, worker, login, logout, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  /**
+   * 通用登出
+   */
+  const logout = async (): Promise<void> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (loginMethod === LoginMethod.DATABASE) {
+        authService.logoutDatabase();
+      } else if (loginMethod === LoginMethod.AZURE_AD && azureService.isEnabled()) {
+        await azureService.logout();
+      }
+
+      // 清除狀態
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoginMethod(undefined);
+    } catch (error: any) {
+      console.error('登出時發生錯誤:', error);
+      setError('登出時發生錯誤');
+      
+      // 即使有錯誤也清除本地狀態
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoginMethod(undefined);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * 獲取存取令牌
+   */
+  const getAccessToken = async (): Promise<string | null> => {
+    try {
+      if (loginMethod === LoginMethod.AZURE_AD && azureService.isEnabled()) {
+        return await azureService.getAccessToken();
+      }
+      
+      // 資料庫登入目前不提供令牌
+      return null;
+    } catch (error: any) {
+      console.error('獲取存取令牌失敗:', error);
+      return null;
+    }
+  };
+
+  /**
+   * 檢查是否支援 Azure AD 登入
+   */
+  const isAzureEnabled = (): boolean => {
+    return azureService.isEnabled();
+  };
+
+  /**
+   * 組件掛載時檢查登入狀態
+   */
+  useEffect(() => {
+    checkExistingAuth();
+  }, []);
+
+  const value: AuthContextType = {
+    isAuthenticated,
+    user,
+    loading,
+    error,
+    loginMethod,
+    loginWithDatabase,
+    loginWithAzure,
+    logout,
+    getAccessToken,
+    isAzureEnabled,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 /**
@@ -87,7 +274,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
  * 
  * 使用範例：
  * ```jsx
- * const { isAuthenticated, user, login, logout } = useAuth();
+ * const { isAuthenticated, user, loginWithDatabase, loginWithAzure, logout } = useAuth();
  * ```
  */
 export const useAuth = () => {
@@ -96,4 +283,4 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+};

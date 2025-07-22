@@ -1,17 +1,10 @@
 import { api } from './api';
+import { WorkerInfo, LoginResult, LoginMethod } from '../types/userTypes';
 
 // 登入請求介面
 export interface LoginRequest {
   email: string;
   password: string;
-}
-
-// 工作人員資訊介面
-export interface WorkerInfo {
-  workerId: number;
-  email: string;
-  name: string;
-  role: string;
 }
 
 // 登入回應介面
@@ -68,7 +61,7 @@ export const authService = {
    * @param password 密碼
    * @returns 登入結果
    */
-  async login(email: string, password: string): Promise<LoginResponse> {
+  async loginWithDatabase(email: string, password: string): Promise<LoginResult> {
     try {
       // 準備登入請求資料
       const loginRequest: LoginRequest = {
@@ -81,60 +74,80 @@ export const authService = {
       
       // 檢查登入結果
       if (response.success && response.worker) {
-        // 儲存工作人員資訊到本地儲存
-        localStorage.setItem('workerInfo', JSON.stringify(response.worker));
-        localStorage.setItem('isAuthenticated', 'true');
+        // 標記為資料庫登入
+        const worker: WorkerInfo = {
+          ...response.worker,
+          loginSource: 'database',
+        };
         
-        console.log('登入成功:', response.worker);
+        // 儲存工作人員資訊到本地儲存
+        localStorage.setItem('workerInfo', JSON.stringify(worker));
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('loginMethod', 'database');
+        
+        console.log('資料庫登入成功:', worker);
         
         return {
           success: true,
           message: response.message,
-          worker: response.worker
+          user: worker,
+          method: LoginMethod.DATABASE,
         };
       } else {
         // 登入失敗
         return {
           success: false,
-          message: response.message || '登入失敗'
+          message: response.message || '登入失敗',
+          method: LoginMethod.DATABASE,
         };
       }
     } catch (error: any) {
-      console.error('登入失敗:', error);
+      console.error('資料庫登入失敗:', error);
       
       // 回傳錯誤訊息
       return {
         success: false,
-        message: '登入失敗，請檢查網路連接或稍後再試'
+        message: '登入失敗，請檢查網路連接或稍後再試',
+        method: LoginMethod.DATABASE,
       };
     }
   },
 
   /**
-   * 登出
+   * 登出（僅清除資料庫相關資訊）
    */
-  logout(): void {
-    // 清除本地儲存的認證資訊
-    localStorage.removeItem('workerInfo');
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('authToken');
+  logoutDatabase(): void {
+    const loginMethod = localStorage.getItem('loginMethod');
+    if (loginMethod === 'database') {
+      localStorage.removeItem('workerInfo');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('loginMethod');
+      localStorage.removeItem('authToken');
+    }
   },
 
   /**
-   * 取得當前登入的工作人員資訊
+   * 取得當前登入的工作人員資訊（僅資料庫登入）
    * @returns 工作人員資訊或null
    */
   getCurrentWorker(): WorkerInfo | null {
+    const loginMethod = localStorage.getItem('loginMethod');
+    if (loginMethod !== 'database') {
+      return null;
+    }
+    
     const workerInfo = localStorage.getItem('workerInfo');
     return workerInfo ? JSON.parse(workerInfo) : null;
   },
 
   /**
-   * 檢查是否已登入
+   * 檢查是否已透過資料庫登入
    * @returns 是否已登入
    */
-  isAuthenticated(): boolean {
-    return localStorage.getItem('isAuthenticated') === 'true';
+  isDatabaseAuthenticated(): boolean {
+    const loginMethod = localStorage.getItem('loginMethod');
+    const isAuth = localStorage.getItem('isAuthenticated');
+    return loginMethod === 'database' && isAuth === 'true';
   },
 
   /**

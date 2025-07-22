@@ -52,8 +52,8 @@ const Login: React.FC = () => {
   // 載入狀態
   const [emailVerifying, setEmailVerifying] = useState(false);
   
-  // 從身份驗證 hook 獲取登入功能
-  const { login, loading } = useAuth();
+  // 從身份驗證 hook 獲取混合模式登入功能
+  const { loginWithDatabase, loginWithAzure, loading, isAzureEnabled, isAuthenticated } = useAuth();
 
   /**
    * 組件掛載時的初始化效果
@@ -65,6 +65,16 @@ const Login: React.FC = () => {
     }, 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  /**
+   * 檢查使用者是否已登入，如果是則自動跳轉到 Dashboard
+   */
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      console.log('使用者已登入，自動跳轉到 Dashboard');
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, loading, navigate]);
   
   /**
    * 驗證帳號（Email）
@@ -119,7 +129,7 @@ const Login: React.FC = () => {
     }
     
     try {
-      const result = await login(username, password);
+      const result = await loginWithDatabase(username, password);
       if (result.success) {
         navigate('/dashboard');
       } else {
@@ -137,6 +147,29 @@ const Login: React.FC = () => {
     setStep('email');
     setPassword('');
     setError('');
+  };
+
+  /**
+   * 處理 Azure AD 登入
+   */
+  const handleAzureLogin = async () => {
+    if (!isAzureEnabled()) {
+      setError('Azure AD 登入功能未啟用，請聯絡系統管理員');
+      return;
+    }
+
+    try {
+      setError('');
+      const result = await loginWithAzure();
+      
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.message);
+      }
+    } catch (error: any) {
+      setError('Azure AD 登入失敗，請稍後再試');
+    }
   };
 
 
@@ -466,38 +499,71 @@ const Login: React.FC = () => {
               </Typography>
             </Box>
 
-            {/* Azure SSO 登入按鈕 */}
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={
-                <Box
-                  component="img"
-                  src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjEiIGhlaWdodD0iMjEiIHZpZXdCb3g9IjAgMCAyMSAyMSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSIjRjI1MDIyIi8+CiAgPHJlY3QgeD0iMTEiIHk9IjEiIHdpZHRoPSI5IiBoZWlnaHQ9IjkiIGZpbGw9IiM3RkJBMDAiLz4KICA8cmVjdCB4PSIxIiB5PSIxMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0iIzAwQTRFRiIvPgogIDxyZWN0IHg9IjExIiB5PSIxMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0iI0ZGQjkwMCIvPgo8L3N2Zz4K"
-                  alt="Microsoft"
-                  sx={{ width: 20, height: 20 }}
-                />
-              }
-              sx={{
-                py: 1.5,
-                borderColor: THEME_COLORS.BORDER_DEFAULT,
-                color: THEME_COLORS.TEXT_PRIMARY,
-                backgroundColor: THEME_COLORS.BACKGROUND_CARD,
-                '&:hover': {
-                  borderColor: THEME_COLORS.PRIMARY,
-                  backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
-                },
-                textTransform: 'none',
-                fontSize: '0.95rem',
-                fontWeight: 500,
-              }}
-              onClick={() => {
-                        // 實作 Azure AD SSO 登入
-        // Azure SSO 登入功能將在後續版本中實現
-              }}
-            >
-             使用Azure AD 登入
-            </Button>
+            {/* Azure SSO 登入按鈕 - 根據配置顯示/隱藏 */}
+            {isAzureEnabled() && (
+              <Button
+                fullWidth
+                variant="outlined"
+                disabled={loading}
+                startIcon={
+                  <Box
+                    component="img"
+                    src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjEiIGhlaWdodD0iMjEiIHZpZXdCb3g9IjAgMCAyMSAyMSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSIjRjI1MDIyIi8+CiAgPHJlY3QgeD0iMTEiIHk9IjEiIHdpZHRoPSI5IiBoZWlnaHQ9IjkiIGZpbGw9IiM3RkJBMDAiLz4KICA8cmVjdCB4PSIxIiB5PSIxMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0iIzAwQTRFRiIvPgogIDxyZWN0IHg9IjExIiB5PSIxMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0iI0ZGQjkwMCIvPgo8L3N2Zz4K"
+                    alt="Microsoft"
+                    sx={{ width: 20, height: 20 }}
+                  />
+                }
+                sx={{
+                  py: 1.5,
+                  borderColor: THEME_COLORS.BORDER_DEFAULT,
+                  color: THEME_COLORS.TEXT_PRIMARY,
+                  backgroundColor: THEME_COLORS.BACKGROUND_CARD,
+                  '&:hover': {
+                    borderColor: THEME_COLORS.PRIMARY,
+                    backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
+                  },
+                  '&:disabled': {
+                    borderColor: THEME_COLORS.BORDER_LIGHT,
+                    color: THEME_COLORS.DISABLED_TEXT,
+                    backgroundColor: THEME_COLORS.DISABLED_BG,
+                  },
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 500,
+                }}
+                onClick={handleAzureLogin}
+              >
+                {loading ? '登入中...' : '使用 Azure AD 登入'}
+              </Button>
+            )}
+
+            {/* Azure 未啟用時的提示 */}
+            {!isAzureEnabled() && (
+              <Button
+                fullWidth
+                variant="outlined"
+                disabled
+                startIcon={
+                  <Box
+                    component="img"
+                    src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjEiIGhlaWdodD0iMjEiIHZpZXdCb3g9IjAgMCAyMSAyMSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSIjRjI1MDIyIi8+CiAgPHJlY3QgeD0iMTEiIHk9IjEiIHdpZHRoPSI5IiBoZWlnaHQ9IjkiIGZpbGw9IiM3RkJBMDAiLz4KICA8cmVjdCB4PSIxIiB5PSIxMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0iIzAwQTRFRiIvPgogIDxyZWN0IHg9IjExIiB5PSIxMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0iI0ZGQjkwMCIvPgo8L3N2Zz4K"
+                    alt="Microsoft"
+                    sx={{ width: 20, height: 20, opacity: 0.5 }}
+                  />
+                }
+                sx={{
+                  py: 1.5,
+                  borderColor: THEME_COLORS.BORDER_LIGHT,
+                  color: THEME_COLORS.DISABLED_TEXT,
+                  backgroundColor: THEME_COLORS.DISABLED_BG,
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 500,
+                }}
+              >
+                Azure AD 登入（未配置）
+              </Button>
+            )}
 
             {/* 版權資訊 */}
             <Typography 

@@ -170,13 +170,18 @@ const EmergencySupplyNeedAddTab: React.FC = () => {
     try {
       setLoading(true);
 
+      let finalImageUrl = formData.imageUrl;
+
       // 如果有圖片，先上傳圖片
       if (imageFile && !formData.imageUrl) {
-        await handleImageUpload();
+        finalImageUrl = await handleImageUpload();
       }
 
-      // 建立緊急物資需求
-      await emergencySupplyNeedService.create(formData);
+      // 建立緊急物資需求，使用正確的圖片URL
+      await emergencySupplyNeedService.create({
+        ...formData,
+        imageUrl: finalImageUrl
+      });
       
       showAlert('緊急物資需求建立成功', 'success');
       

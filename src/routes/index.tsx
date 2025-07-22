@@ -77,7 +77,11 @@ const router = createBrowserRouter([
     path: '/login',
     element: <PageWithSuspense><Login /></PageWithSuspense>,
   },
-]);
+], {
+  future: {
+    v7_startTransition: true,
+  },
+});
 
 /**
  * 路由提供者組件
