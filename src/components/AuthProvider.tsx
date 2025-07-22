@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AuthContextType, User } from '../types/userTypes';
+import { AuthContextType, User, LoginMethod } from '../types/userTypes';
 
 // 創建身份驗證上下文，初始值為 null
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -104,14 +104,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // 組織所有身份驗證相關的狀態和功能
-  const value = {
+  const value: AuthContextType = {
     isAuthenticated,    // 是否已登入
     user,              // 用戶資訊
     loading,           // 載入狀態
     error,             // 錯誤訊息
-    login,             // 登入功能
+    loginMethod: LoginMethod.DATABASE, // 預設登入方式
+    loginWithDatabase: async (email: string, password: string) => {
+      // TODO: 實作資料庫登入
+      await login();
+      return { success: true, message: '登入成功', method: LoginMethod.DATABASE };
+    },
+    loginWithAzure: async () => {
+      // TODO: 實作 Azure AD 登入
+      await login();
+      return { success: true, message: 'Azure 登入成功', method: LoginMethod.AZURE_AD };
+    },
     logout,            // 登出功能
     getAccessToken,    // 獲取令牌功能
+    isAzureEnabled: () => false, // 暫時停用 Azure AD
   };
 
   // 提供身份驗證上下文給所有子組件

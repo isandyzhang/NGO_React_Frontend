@@ -12,6 +12,7 @@ export interface WorkerInfo {
   email: string;
   name: string;
   role: string; // 員工角色：staff, supervisor, admin
+  loginSource: 'database'; // 資料庫登入來源
 }
 
 // 登入回應介面
@@ -46,7 +47,10 @@ export const authService = {
         return {
           success: true,
           message: "帳號驗證成功",
-          worker: response as WorkerInfo
+          worker: {
+            ...response,
+            loginSource: 'database' as const
+          } as WorkerInfo
         };
       } else {
         return {
@@ -95,18 +99,24 @@ export const authService = {
       });
       
       if (response.success) {
+        // 為 worker 資料加入 loginSource 屬性
+        const workerWithSource = {
+          ...response.worker,
+          loginSource: 'database' as const
+        } as WorkerInfo;
+        
         // 儲存工作人員資訊到本地儲存
-        localStorage.setItem('workerInfo', JSON.stringify(response.worker));
+        localStorage.setItem('workerInfo', JSON.stringify(workerWithSource));
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('loginMethod', 'database');
         
-        console.log('登入成功，工作人員資訊:', response.worker);
-        console.log('用戶角色:', response.worker?.role);
+        console.log('登入成功，工作人員資訊:', workerWithSource);
+        console.log('用戶角色:', workerWithSource?.role);
         
         return {
           success: true,
           message: response.message,
-          worker: response.worker
+          worker: workerWithSource
         };
       } else {
         return {
@@ -187,7 +197,13 @@ export const authService = {
   async getWorkerByEmail(email: string): Promise<WorkerInfo | null> {
     try {
       const response = await api.get(`/Worker/by-email/${encodeURIComponent(email)}`);
-      return response as WorkerInfo;
+      if (response) {
+        return {
+          ...response,
+          loginSource: 'database' as const
+        } as WorkerInfo;
+      }
+      return null;
     } catch (error) {
       console.error('查詢工作人員資訊失敗:', error);
       return null;
@@ -251,7 +267,12 @@ export const authService = {
    */
   async getWorkers(): Promise<WorkerInfo[]> {
     try {
-      return await api.get<WorkerInfo[]>('/Worker');
+      const workers = await api.get<WorkerInfo[]>('/Worker');
+      // 為每個 worker 加入 loginSource 屬性
+      return workers.map(worker => ({
+        ...worker,
+        loginSource: 'database' as const
+      })) as WorkerInfo[];
     } catch (error: any) {
       console.error('取得工作人員列表失敗:', error);
       throw error;

@@ -203,10 +203,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      if (loginMethod === LoginMethod.DATABASE) {
+      const currentLoginMethod = loginMethod;
+      
+      if (currentLoginMethod === LoginMethod.DATABASE) {
         authService.logoutDatabase();
-      } else if (loginMethod === LoginMethod.AZURE_AD && azureService.isEnabled()) {
+      } else if (currentLoginMethod === LoginMethod.AZURE_AD && azureService.isEnabled()) {
+        // 先立即清除本地狀態，避免 Azure 登出重導向時狀態殘留
+        setUser(null);
+        setIsAuthenticated(false);
+        setLoginMethod(undefined);
+        
+        // 然後執行 Azure 登出（會重導向）
         await azureService.logout();
+        return; // Azure 登出會重導向，不需要繼續執行
       }
 
       // 清除狀態

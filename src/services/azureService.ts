@@ -277,8 +277,12 @@ class AzureService {
       const msalInstance = await this.getMsalInstance();
       const account = this.getCurrentAccount();
 
-      // 清除 localStorage
+      // 先清除 localStorage
       this.clearAzureUser();
+
+      if (config.azure.debugMode) {
+        console.log('Azure AD 開始登出流程');
+      }
 
       if (account) {
         if (config.azure.usePopupLogin) {
@@ -286,12 +290,27 @@ class AzureService {
             account,
             postLogoutRedirectUri: config.azure.logoutUri,
           });
+          
+          // 彈出式登出不會自動跳轉，手動導航到登入頁面
+          if (config.azure.debugMode) {
+            console.log('彈出式登出完成，導航到登入頁面');
+          }
+          window.location.href = '/login';
         } else {
           await msalInstance.logoutRedirect({
             account,
             postLogoutRedirectUri: config.azure.logoutUri,
           });
         }
+      } else {
+        // 即使沒有 account，也要強制跳轉到登入頁面
+        if (config.azure.debugMode) {
+          console.log('沒有 Azure 帳戶，直接跳轉到登入頁面');
+        }
+        
+        // 清理 URL 參數並跳轉到登入頁面
+        window.history.replaceState({}, document.title, window.location.pathname);
+        window.location.href = '/login';
       }
 
       if (config.azure.debugMode) {
@@ -301,6 +320,13 @@ class AzureService {
       console.error('Azure AD 登出失敗:', error);
       // 即使登出失敗，也要清除本地資料
       this.clearAzureUser();
+      
+      // 強制跳轉到登入頁面
+      if (config.azure.debugMode) {
+        console.log('登出失敗，強制跳轉到登入頁面');
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
+      window.location.href = config.azure.logoutUri || '/login';
     }
   }
 
@@ -389,11 +415,13 @@ class AzureService {
    * 清除 Azure 使用者資訊
    */
   private clearAzureUser(): void {
+    // 先檢查登入方式再清除
+    const loginMethod = localStorage.getItem('loginMethod');
+    
     localStorage.removeItem('azureUser');
     localStorage.removeItem('loginMethod');
     
     // 只有在 Azure 登入時才清除 isAuthenticated
-    const loginMethod = localStorage.getItem('loginMethod');
     if (loginMethod === 'azure') {
       localStorage.removeItem('isAuthenticated');
     }

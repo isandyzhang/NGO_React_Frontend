@@ -68,11 +68,29 @@ const Login: React.FC = () => {
 
   /**
    * 檢查使用者是否已登入，如果是則自動跳轉到 Dashboard
+   * 特別處理 Azure 登出後的情況
    */
   useEffect(() => {
+    // 檢查 URL 是否為 Azure 登出後的重導向
+    const currentPath = window.location.pathname;
+    const isLogoutRedirect = currentPath === '/login';
+    
     if (isAuthenticated && !loading) {
-      console.log('使用者已登入，自動跳轉到 Dashboard');
-      navigate('/dashboard');
+      // 如果是登出後重導向，暫停一會確保狀態已完全清除
+      if (isLogoutRedirect && window.location.search === '') {
+        console.log('檢測到可能的登出後重導向，延遲檢查登入狀態');
+        const delayTimer = setTimeout(() => {
+          // 重新檢查登入狀態
+          if (isAuthenticated && !loading) {
+            console.log('延遲檢查後，使用者仍已登入，跳轉到 Dashboard');
+            navigate('/dashboard');
+          }
+        }, 500);
+        return () => clearTimeout(delayTimer);
+      } else {
+        console.log('使用者已登入，自動跳轉到 Dashboard');
+        navigate('/dashboard');
+      }
     }
   }, [isAuthenticated, loading, navigate]);
   
