@@ -21,11 +21,65 @@ export interface LoginResponse {
   worker?: WorkerInfo;
 }
 
+// Email驗證回應介面
+export interface EmailVerificationResponse {
+  success: boolean;
+  message: string;
+  worker?: WorkerInfo;
+}
+
 /**
  * 身份驗證服務
  * 提供登入、登出等身份驗證相關的API呼叫
  */
 export const authService = {
+  /**
+   * 驗證Email是否存在
+   * @param email 電子郵件
+   * @returns 驗證結果
+   */
+  async verifyEmail(email: string): Promise<EmailVerificationResponse> {
+    try {
+      const response = await api.get(`/Worker/by-email/${encodeURIComponent(email)}`);
+      
+      if (response) {
+        return {
+          success: true,
+          message: "帳號驗證成功",
+          worker: response as WorkerInfo
+        };
+      } else {
+        return {
+          success: false,
+          message: "找不到對應的工作人員帳號"
+        };
+      }
+    } catch (error: any) {
+      console.error('Email驗證失敗:', error);
+      
+      // 處理 404 錯誤（找不到帳號）
+      if (error.response && error.response.status === 404) {
+        return {
+          success: false,
+          message: "找不到對應的工作人員帳號，請檢查Email是否正確"
+        };
+      }
+      
+      // 處理其他API錯誤
+      if (error.response && error.response.data) {
+        return {
+          success: false,
+          message: error.response.data.message || 'Email驗證失敗，請稍後再試'
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'Email驗證失敗，請稍後再試'
+      };
+    }
+  },
+
   /**
    * 工作人員登入 - 透過後端API驗證
    * @param email 電子郵件
