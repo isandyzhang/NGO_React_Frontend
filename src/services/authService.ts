@@ -98,8 +98,10 @@ export const authService = {
         // 儲存工作人員資訊到本地儲存
         localStorage.setItem('workerInfo', JSON.stringify(response.worker));
         localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('loginMethod', 'database');
         
         console.log('登入成功，工作人員資訊:', response.worker);
+        console.log('用戶角色:', response.worker?.role);
         
         return {
           success: true,
@@ -143,13 +145,21 @@ export const authService = {
       
       // 轉換格式以符合 LoginResult 介面
       if (result.success && result.worker) {
+        // 確保 loginMethod 已正確設置
+        localStorage.setItem('loginMethod', 'database');
+        
+        const user = {
+          ...result.worker,
+          loginSource: 'database'
+        } as any;
+        
+        console.log('loginWithDatabase 成功，用戶資訊:', user);
+        console.log('用戶角色:', user.role);
+        
         return {
           success: true,
           message: result.message,
-          user: {
-            ...result.worker,
-            loginSource: 'database'
-          } as any,
+          user: user,
           method: 'database'
         };
       } else {
@@ -192,9 +202,7 @@ export const authService = {
     localStorage.removeItem('workerInfo');
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('authToken');
-    
-    // 強制清除所有可能的殘留資料
-    localStorage.clear();
+    localStorage.removeItem('loginMethod');
     
     console.log('登出完成，已清除所有本地儲存資料');
   },
@@ -214,6 +222,27 @@ export const authService = {
    */
   isAuthenticated(): boolean {
     return localStorage.getItem('isAuthenticated') === 'true';
+  },
+
+  /**
+   * 檢查資料庫登入狀態
+   * @returns 是否已透過資料庫登入
+   */
+  isDatabaseAuthenticated(): boolean {
+    const workerInfo = localStorage.getItem('workerInfo');
+    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+    return isAuthenticated && workerInfo !== null;
+  },
+
+  /**
+   * 資料庫登出
+   */
+  logoutDatabase(): void {
+    // 清除資料庫登入相關的本地儲存
+    localStorage.removeItem('workerInfo');
+    localStorage.removeItem('isAuthenticated');
+    
+    console.log('資料庫登出完成');
   },
 
   /**

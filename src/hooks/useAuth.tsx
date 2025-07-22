@@ -67,12 +67,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (storedLoginMethod === LoginMethod.DATABASE) {
         // 資料庫登入
         const worker = authService.getCurrentWorker();
-        if (worker && authService.isDatabaseAuthenticated()) {
+        const isDbAuth = authService.isDatabaseAuthenticated();
+        
+        console.log('useAuth 檢查資料庫登入狀態:', {
+          worker,
+          isDbAuth,
+          workerRole: worker?.role
+        });
+        
+        if (worker && isDbAuth) {
           setUser(worker);
           setIsAuthenticated(true);
           setLoginMethod(LoginMethod.DATABASE);
+          console.log('useAuth 恢復登入狀態成功，角色:', worker.role);
         } else {
           // 清理無效的登入狀態
+          console.log('useAuth 清理無效登入狀態');
           authService.logoutDatabase();
           setIsAuthenticated(false);
           setUser(null);
