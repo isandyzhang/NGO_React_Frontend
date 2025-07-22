@@ -13,6 +13,7 @@ import {
   Divider,
 } from '@mui/material';
 import { useAuth } from '../../hooks/useAuth';
+import { UnifiedUser, LoginMethod } from '../../types/userTypes';
 import {
   Add,
   Assessment,
@@ -34,6 +35,58 @@ interface SidebarProps {
 const drawerWidth = 300;
 
 /**
+ * 輔助函數：獲取用戶顯示名稱
+ */
+const getUserDisplayName = (user: UnifiedUser): string => {
+  if (user.loginSource === 'azure') {
+    return user.displayName || user.email;
+  } else {
+    return user.name || user.email;
+  }
+};
+
+/**
+ * 輔助函數：獲取用戶電子郵件
+ */
+const getUserEmail = (user: UnifiedUser): string => {
+  return user.email;
+};
+
+/**
+ * 輔助函數：獲取用戶角色顯示文字
+ */
+const getUserRole = (user: UnifiedUser): string => {
+  if (user.loginSource === 'database' && user.role) {
+    const roleMap: { [key: string]: string } = {
+      'admin': '管理員',
+      'supervisor': '主管',
+      'staff': '員工',
+    };
+    return roleMap[user.role] || user.role;
+  } else if (user.loginSource === 'azure' && user.role) {
+    const roleMap: { [key: string]: string } = {
+      'admin': '管理員',
+      'supervisor': '主管', 
+      'staff': '員工',
+    };
+    return roleMap[user.role] || '使用者';
+  }
+  return '使用者';
+};
+
+/**
+ * 輔助函數：獲取登入來源顯示文字
+ */
+const getLoginSourceText = (loginMethod?: LoginMethod): string => {
+  if (loginMethod === LoginMethod.AZURE_AD) {
+    return 'Azure AD';
+  } else if (loginMethod === LoginMethod.DATABASE) {
+    return '本地帳戶';
+  }
+  return '';
+};
+
+/**
  * 側邊欄導航組件 (Sidebar)
  * 
  * 主要功能：
@@ -53,7 +106,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
-  const { worker, logout } = useAuth();
+  const { user, logout, loginMethod } = useAuth();
 
   // 導航選單項目配置
   const menuItems = [
@@ -121,7 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
             fontWeight: 'bold'
           }}
         >
-          {worker ? worker.name.charAt(0) : 'U'}
+          {user ? getUserDisplayName(user).charAt(0) : 'U'}
         </Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography 
@@ -134,7 +187,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
               whiteSpace: 'nowrap'
             }}
           >
-            {worker ? worker.name : '未登入'}
+            {user ? getUserDisplayName(user) : '未登入'}
           </Typography>
           <Typography 
             variant="body2" 
@@ -146,9 +199,9 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
               whiteSpace: 'nowrap'
             }}
           >
-            {worker ? worker.email : '請先登入'}
+            {user ? getUserEmail(user) : '請先登入'}
           </Typography>
-          {worker && (
+          {user && (
             <Typography 
               variant="caption" 
               sx={{ 
@@ -157,6 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
                 fontWeight: 500
               }}
             >
+              {getLoginSourceText(loginMethod)} • {getUserRole(user)}
             </Typography>
           )}
         </Box>

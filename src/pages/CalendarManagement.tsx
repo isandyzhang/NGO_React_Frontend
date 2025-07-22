@@ -46,7 +46,7 @@ const CalendarManagement: React.FC = () => {
    */
   const loadEventsFromDatabase = async () => {
     try {
-      // 使用測試端點載入所有排程，或使用特定工作者ID
+      // 載入所有排程
       const workerId = 1; // 這裡可以從用戶狀態中獲取
       const schedules = await scheduleService.getSchedulesByWorker(workerId);
       const calendarEvents = schedules.map((schedule) =>

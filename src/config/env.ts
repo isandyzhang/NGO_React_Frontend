@@ -13,6 +13,17 @@ export const config = {
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
   appEnv: import.meta.env.VITE_APP_ENV || envConfig.appEnv,
   
+  // Azure AD 設定（混合模式登入）
+  azure: {
+    clientId: import.meta.env.VITE_AZURE_CLIENT_ID || '',
+    tenantId: import.meta.env.VITE_AZURE_TENANT_ID || '',
+    redirectUri: import.meta.env.VITE_AZURE_REDIRECT_URI || window.location.origin,
+    logoutUri: import.meta.env.VITE_AZURE_LOGOUT_URI || `${window.location.origin}/login`,
+    enableAzureLogin: import.meta.env.VITE_ENABLE_AZURE_LOGIN === 'true',
+    usePopupLogin: import.meta.env.VITE_USE_POPUP_LOGIN === 'true',
+    debugMode: import.meta.env.VITE_DEBUG_AZURE === 'true',
+  },
+  
   // 檔案上傳設定
   maxFileSize: parseInt(import.meta.env.VITE_MAX_FILE_SIZE || '5242880'), // 5MB
   allowedFileTypes: (import.meta.env.VITE_ALLOWED_FILE_TYPES || 'image/jpeg,image/png,image/gif').split(','),

@@ -150,11 +150,20 @@ const AddCaseTab: React.FC = () => {
   };
 
   /**
-   * 處理圖片上傳
+   * 處理圖片上傳到 Azure Blob Storage
    */
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // 檢查檔案格式
+      if (!file.type.startsWith('image/')) {
+        setSubmitMessage({
+          type: 'error',
+          text: '請選擇有效的圖片檔案 (JPG, PNG, GIF)'
+        });
+        return;
+      }
+
       // 檢查檔案大小 (5MB)
       if (file.size > 5 * 1024 * 1024) {
         setSubmitMessage({
@@ -164,25 +173,55 @@ const AddCaseTab: React.FC = () => {
         return;
       }
 
-      // 檢查檔案格式
-      if (!file.type.startsWith('image/')) {
-        setSubmitMessage({
-          type: 'error',
-          text: '請選擇有效的圖片檔案 (JPG, PNG)'
-        });
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64String = e.target?.result as string;
-        setImagePreview(base64String);
+      try {
+        // 顯示上傳中狀態
         setFormData(prev => ({
           ...prev,
-          profileImage: base64String
+          profileImage: 'uploading...'
         }));
-      };
-      reader.readAsDataURL(file);
+        setImagePreview('uploading...');
+
+        // 上傳到 Azure Blob Storage
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await caseService.uploadProfileImage(formData);
+        
+        // 設定 Azure URL
+        setFormData(prev => ({
+          ...prev,
+          profileImage: response.imageUrl
+        }));
+        setImagePreview(response.imageUrl);
+
+        setSubmitMessage({
+          type: 'success',
+          text: '圖片上傳成功！'
+        });
+      } catch (error: any) {
+        console.error('圖片上傳失敗:', error);
+        
+        // 顯示詳細錯誤訊息
+        let errorMessage = '圖片上傳失敗：';
+        if (error.message) {
+          errorMessage += error.message;
+        } else {
+          errorMessage += '未知錯誤，請檢查網路連線和後端服務';
+        }
+        
+        setSubmitMessage({
+          type: 'error',
+          text: errorMessage
+        });
+        console.log('完整錯誤物件:', error);
+        
+        // 清除圖片
+        setFormData(prev => ({
+          ...prev,
+          profileImage: undefined
+        }));
+        setImagePreview(null);
+      }
     }
   };
 
@@ -592,24 +631,85 @@ const AddCaseTab: React.FC = () => {
                   borderRadius: 2,
                   border: `2px dashed ${THEME_COLORS.BORDER_DASHED}`,
                 }}>
-                  <Avatar
-                    src={imagePreview || undefined}
-                    sx={{
+                  {imagePreview === 'uploading...' ? (
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center',
+                      gap: 2,
                       width: 150,
                       height: 150,
-                      fontSize: '4rem',
-                      bgcolor: formData.gender === 'Male' ? THEME_COLORS.MALE_AVATAR : THEME_COLORS.FEMALE_AVATAR,
+                      justifyContent: 'center'
+                    }}>
+                      <Typography variant="body2" sx={{ mb: 2 }}>
+                        圖片上傳中...
+                      </Typography>
+                      <Box sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        border: '3px solid #f3f3f3',
+                        borderTop: `3px solid ${THEME_COLORS.PRIMARY}`,
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        '@keyframes spin': {
+                          '0%': { transform: 'rotate(0deg)' },
+                          '100%': { transform: 'rotate(360deg)' }
+                        }
+                      }} />
+                    </Box>
+                  ) : imagePreview ? (
+                    <Box sx={{ 
+                      width: 150, 
+                      height: 150, 
+                      position: 'relative',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
                       border: `3px solid ${THEME_COLORS.BORDER_LIGHT}`,
-                    }}
-                  >
-                    {formData.name ? formData.name.charAt(0) : '?'}
-                  </Avatar>
+                      bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                    }}>
+                      <img
+                        src={imagePreview}
+                        alt="個案照片預覽"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                        onError={(e) => {
+                          console.error('圖片加載失敗:', imagePreview);
+                          // 加載失敗時顯示默認頭像
+                          setImagePreview(null);
+                          setSubmitMessage({
+                            type: 'error',
+                            text: '圖片加載失敗，請重新上傳'
+                          });
+                        }}
+                        onLoad={() => {
+                          console.log('圖片加載成功:', imagePreview);
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Avatar
+                      sx={{
+                        width: 150,
+                        height: 150,
+                        fontSize: '4rem',
+                        bgcolor: formData.gender === 'Male' ? THEME_COLORS.MALE_AVATAR : THEME_COLORS.FEMALE_AVATAR,
+                        border: `3px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                      }}
+                    >
+                      {formData.name ? formData.name.charAt(0) : '?'}
+                    </Avatar>
+                  )}
                   
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
                     <Button
                       variant="outlined"
                       component="label"
                       startIcon={<PhotoCamera />}
+                      disabled={imagePreview === 'uploading...'}
                       sx={{
                         color: THEME_COLORS.PRIMARY,
                         borderColor: THEME_COLORS.PRIMARY,
@@ -628,7 +728,7 @@ const AddCaseTab: React.FC = () => {
                       />
                     </Button>
                     
-                    {imagePreview && (
+                    {imagePreview && imagePreview !== 'uploading...' && (
                       <Button
                         variant="outlined"
                         color="error"

@@ -23,7 +23,7 @@ import { THEME_COLORS } from '../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../styles/commonStyles';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
-import EmergencySupplyAddTab from '../components/SuppliesManagementPage/EmergencySupplyAddTab';
+import EmergencySupplyNeedAddTab from '../components/SuppliesManagementPage/EmergencySupplyNeedAddTab';
 import InventoryTab from '../components/SuppliesManagementPage/InventoryTab';
 import RegularRequestTab from '../components/SuppliesManagementPage/RegularRequestTab';
 import EmergencyRequestTab from '../components/SuppliesManagementPage/EmergencyRequestTab';
@@ -67,7 +67,7 @@ const SuppliesManagement: React.FC = () => {
     {
       label: '新增物資需求',
       icon: <Add sx={{ fontSize: 20 }} />,
-      component: <EmergencySupplyAddTab />
+      component: <EmergencySupplyNeedAddTab />
     },
     {
       label: '物資申請及紀錄',
