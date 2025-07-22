@@ -132,6 +132,44 @@ export const authService = {
   },
 
   /**
+   * 資料庫登入 (與 login 方法相同，提供向後兼容)
+   * @param email 電子郵件
+   * @param password 密碼
+   * @returns 登入結果
+   */
+  async loginWithDatabase(email: string, password: string): Promise<any> {
+    try {
+      const result = await this.login(email, password);
+      
+      // 轉換格式以符合 LoginResult 介面
+      if (result.success && result.worker) {
+        return {
+          success: true,
+          message: result.message,
+          user: {
+            ...result.worker,
+            loginSource: 'database'
+          } as any,
+          method: 'database'
+        };
+      } else {
+        return {
+          success: false,
+          message: result.message,
+          method: 'database'
+        };
+      }
+    } catch (error) {
+      console.error('資料庫登入失敗:', error);
+      return {
+        success: false,
+        message: '登入失敗，請稍後再試',
+        method: 'database'
+      };
+    }
+  },
+
+  /**
    * 根據email查詢工作人員資訊 (透過API)
    * @param email 電子郵件
    * @returns 工作人員資訊或null
