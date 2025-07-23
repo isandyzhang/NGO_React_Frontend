@@ -1,6 +1,6 @@
 # 活動圖片上傳功能開發日誌
 
-**日期**: 2025-01-15  
+**日期**: 2025-07-15  
 **工作項目**: 實作 Azure Blob Storage 圖片上傳功能  
 **開發者**: Claude Code Assistant  
 
@@ -814,100 +814,7 @@ public static readonly Dictionary<string, string> Categories = new Dictionary<st
 
 ---
 
----
-
-## 🚨 緊急物資需求系統API問題交接 (2025-07-21 上午)
-
-### ⚡ 立即需要做的事情
-**重啟電腦後的第一步**：
-1. 啟動後端：`cd D:\GitHub\NGO_WebAPI_Backend && dotnet run`
-2. 啟動前端：`cd D:\GitHub\Case-Management-System && npm run dev`
-3. 測試API：`curl http://localhost:5264/api/EmergencySupplyNeed/statistics`
-
-### 🎯 核心問題
-**緊急物資需求API一直回傳錯誤**：`{"message":"獲取緊急物資需求失敗","error":"Invalid column name 'SupplyId'."}`
-
-### 🔍 問題狀況詳析
-
-#### 1. 資料庫結構 (✅ 已確認正確)
-從隊友週末更新的ERD圖確認：
-- `EmergencySupplyNeeds` 表有 `SupplyName` (nvarchar(200)) ✅
-- **沒有** `SupplyId` 外鍵 ✅
-- 有 `Priority`, `Description`, `ImageUrl`, `CollectedQuantity` 等新欄位 ✅
-
-#### 2. 前端已修復 (✅ 已完成)
-**檔案**：`D:\GitHub\Case-Management-System\src\services\supplyService.ts`
-- 更新了 `EmergencySupplyNeed` 介面匹配後端回應
-- 修正統計方法回傳欄位 (加入 `completedRequests`, `highPriorityRequests` 等)
-- 加入除錯日誌和錯誤處理
-
-#### 3. 後端已嘗試修復 (⚠️ 需要驗證)
-**檔案**：`D:\GitHub\NGO_WebAPI_Backend\Controllers\EmergencySupplyNeedController.cs`
-**修改內容**：
-- 第30-33行：移除 `.Include(e => e.Case).Include(e => e.Worker)` 
-- 改為手動載入關聯 (第35-43行)
-- 統計查詢加入 `.AsNoTracking()` (第75行)
-
-### 🚨 懷疑原因
-1. **EF Core 緩存問題** - 可能還在使用舊的模型結構
-2. **進程鎖定** - 無法正常重新編譯 (PID 10908 被鎖定)
-3. **隱藏的關聯查詢** - 其他地方可能還在引用 SupplyId
-
-### 📋 重啟電腦後的檢查清單
-1. **重新啟動服務**
-   ```bash
-   # 後端
-   cd D:\GitHub\NGO_WebAPI_Backend
-   dotnet clean
-   dotnet build
-   dotnet run
-   
-   # 前端 (另一個終端)
-   cd D:\GitHub\Case-Management-System
-   npm run dev
-   ```
-
-2. **立即測試API**
-   ```bash
-   # 測試統計API
-   curl http://localhost:5264/api/EmergencySupplyNeed/statistics
-   
-   # 測試主要API
-   curl http://localhost:5264/api/EmergencySupplyNeed
-   
-   # 如果還是失敗，檢查錯誤詳情
-   ```
-
-3. **如果API仍然失敗**
-   - 檢查 `D:\GitHub\NGO_WebAPI_Backend\Models\NgoplatformDbContext.cs` 第194-208行的 EmergencySupplyMatch 配置
-   - 搜尋整個後端專案是否還有 SupplyId 引用：
-     ```bash
-     grep -r "SupplyId" D:\GitHub\NGO_WebAPI_Backend --include="*.cs"
-     ```
-
-4. **驗證前端緊急物資頁面**
-   - 打開 `http://localhost:5173` 
-   - 進入物資管理 > 緊急物資需求
-   - 檢查是否正常載入資料，不再顯示「載入資料失敗」
-
-### 🔧 備用修復方案
-如果重啟後問題仍存在：
-1. **檢查隊友更新**：可能週末有其他相關變更需要同步
-2. **資料庫重新生成**：考慮重新生成 DbContext 模型
-3. **直接SQL查詢**：確認資料庫實際結構與ERD一致
-
-### 📊 已修改的檔案
-- `D:\GitHub\Case-Management-System\src\services\supplyService.ts` (前端介面)
-- `D:\GitHub\NGO_WebAPI_Backend\Controllers\EmergencySupplyNeedController.cs` (後端查詢邏輯)
-
-### 🎯 成功標準
-✅ API回傳正常JSON而非錯誤訊息
-✅ 前端緊急物資頁面顯示統計資料和需求列表  
-✅ 可以正常新增/編輯/刪除緊急物資需求
-
----
-
-**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能，2025-07-16 的API連線問題排除，物資分發頁面防重複點擊優化，2025-07-17 的三級權限審核系統實作，以及 2025-07-21 的緊急物資API問題排查。
+**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能，2025-07-16 的API連線問題排除，物資分發頁面防重複點擊優化，以及 2025-07-17 的三級權限審核系統實作。
 
 ## 工程師備註 7/17
 由於token消耗完畢，因此暫停，目前三級權限的部分已經完成，但有使用者用戶流程需要優化
@@ -1375,3 +1282,83 @@ const currentStaffId = worker?.workerId || 1;
 - 前端會自動根據登入用戶的真實角色設定權限
 
 **安全登入系統完成**: 系統現在完全基於SQL資料庫進行身份驗證，任何新的社工加入都不會影響系統穩定性，角色權限完全由資料庫控制。
+
+## 最近更新 (2024-07-23)
+
+### ✅ 已完成的前端頁面優化工作
+
+#### 1. UI一致性改善
+- **日期格式統一**: 將所有日期顯示格式標準化為 YYYY-MM-DD
+- **按鈕格式統一**: 統一使用中空樣式按鈕 (outlined variant) 以提升視覺一致性
+- **測試介面清理**: 移除所有測試用的UI元件，提供乾淨的用戶體驗
+
+#### 2. 通知系統實作
+- **紅點通知組件**: 創建 `NotificationBadge` 組件，提供手遊式的心理壓力紅點提示
+- **全域通知管理**: 實作 `NotificationContext` 和 `useNotificationStatus` hook
+- **父子關係通知**: 實現父頁面與子頁面的通知聯動機制
+- **即時更新**: 操作後自動刷新通知狀態
+
+#### 3. 空狀態vs錯誤狀態修復 (關鍵UX改善)
+**問題**: 新用戶看到"載入失敗"但實際只是沒有資料
+
+**解決方案**: 在所有關鍵服務中實作精確的錯誤區分
+```typescript
+// 修復模式
+} catch (error: any) {
+  if (error.response?.status === 404 || error.response?.status === 204) {
+    // 合理的空資料狀態 → 返回空陣列/預設值
+    return [];
+  }
+  // 真正的錯誤 → 拋出異常顯示錯誤訊息
+  throw error;
+}
+```
+
+**修復的服務**:
+- `supplyService.ts`: 10+ 個方法 (物資申請、庫存、批次等)
+- `dashboardService.ts`: 所有儀表板方法 (統計、圖表、近期活動)
+- `caseService.ts`: 個案列表和搜尋功能
+- `activityService.ts`: 活動管理相關方法
+
+**影響**:
+- ✅ 新用戶現在看到"暫無資料"而非"載入失敗"
+- ✅ 真正的API錯誤仍正確顯示錯誤訊息
+- ✅ 改善首次使用體驗
+
+## 檔案異動摘要
+
+### 新增檔案
+- `src/components/shared/NotificationBadge.tsx` - 紅點通知組件
+- `src/contexts/NotificationContext.tsx` - 全域通知狀態管理
+- `src/hooks/useNotificationStatus.tsx` - 通知狀態hook
+
+### 修改檔案
+- `src/services/supplyService.ts` - 修復空狀態處理
+- `src/services/dashboardService.ts` - 修復空狀態處理  
+- `src/services/caseService.ts` - 修復空狀態處理
+- `src/services/activityService.ts` - 修復空狀態處理
+- `src/components/SuppliesManagementPage/DistributionTab.tsx` - 日期格式和按鈕樣式統一
+- `src/components/SuppliesManagementPage/RegularRequestTab.tsx` - 移除測試介面
+- `src/components/layout/Sidebar.tsx` - 新增通知紅點
+- `src/pages/SuppliesManagement.tsx` - 整合通知系統
+
+## 待辦事項
+
+### 🚧 進行中
+- 日曆UX修復 - 改善日曆相關的使用者體驗
+
+### 📋 待開始  
+- **新增帳號管理頁面** (大工程) - 設計並實作完整的帳號管理功能
+
+## Git 紀錄
+- 分支: `optimize-frontend-ui` → 已合併至 `main`
+- 最新提交: `1599ab3` - 修復空狀態vs錯誤狀態區別問題
+- 遠端狀態: 已推送並同步
+
+## 開發環境注意事項
+- 專案位置: `D:\GitHub\Case-Management-System`
+- 主要技術: React + TypeScript + Material-UI
+- 遠端倉庫: GitHub (注意倉庫遷移通知)
+
+---
+*此記錄由 Claude Code 自動生成並維護*
