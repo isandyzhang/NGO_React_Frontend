@@ -23,6 +23,8 @@ import { THEME_COLORS } from '../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../styles/commonStyles';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
+import NotificationBadge from '../components/shared/NotificationBadge';
+import { useNotificationContext } from '../contexts/NotificationContext';
 import EmergencySupplyNeedAddTab from '../components/SuppliesManagementPage/EmergencySupplyNeedAddTab';
 import InventoryTab from '../components/SuppliesManagementPage/InventoryTab';
 import RegularRequestTab from '../components/SuppliesManagementPage/RegularRequestTab';
@@ -48,6 +50,7 @@ const SuppliesManagement: React.FC = () => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
   const [isEmergencySupply, setIsEmergencySupply] = useState(false);
+  const { counts, hasSupplyNotifications, hasDistributionNotifications } = useNotificationContext();
 
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -67,28 +70,33 @@ const SuppliesManagement: React.FC = () => {
     {
       label: '新增物資需求',
       icon: <Add sx={{ fontSize: 20 }} />,
-      component: <EmergencySupplyNeedAddTab />
+      component: <EmergencySupplyNeedAddTab />,
+      showNotification: false
     },
     {
       label: '物資申請及紀錄',
       icon: <Assignment sx={{ fontSize: 20 }} />,
-      component: <EmergencyRequestTab />
+      component: <EmergencyRequestTab />,
+      showNotification: false // 緊急物資暂時不显示紅點
     }
   ] : [
     {
       label: '物資庫存',
       icon: <Storage sx={{ fontSize: 20 }} />,
-      component: <InventoryTab />
+      component: <InventoryTab />,
+      showNotification: false
     },
     {
       label: '物資申請及紀錄',
       icon: <Assignment sx={{ fontSize: 20 }} />,
-      component: <RegularRequestTab />
+      component: <RegularRequestTab />,
+      showNotification: hasSupplyNotifications
     },
     {
       label: '每月物資發放',
       icon: <CalendarMonth sx={{ fontSize: 20 }} />,
-      component: <DistributionTab isEmergencySupply={false} />
+      component: <DistributionTab isEmergencySupply={false} />,
+      showNotification: hasDistributionNotifications
     }
   ];
 
@@ -256,7 +264,18 @@ const SuppliesManagement: React.FC = () => {
           {tabs.map((tab, index) => (
             <Tab
               key={index}
-              label={tab.label}
+              label={
+                tab.showNotification ? (
+                  <NotificationBadge 
+                    showBadge={true}
+                    size="small"
+                  >
+                    <span>{tab.label}</span>
+                  </NotificationBadge>
+                ) : (
+                  tab.label
+                )
+              }
               icon={tab.icon}
               iconPosition="start"
             />
