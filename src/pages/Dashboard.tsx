@@ -105,17 +105,35 @@ const Dashboard: React.FC = () => {
 
 
 
-  // 事件類型配置 - 使用色票系統
+  // 事件類型配置 - 根據來源設定顏色
   const eventTypes = {
     meeting: { label: '會議', color: THEME_COLORS.PURPLE_500 },
-    activity: { label: '活動', color: THEME_COLORS.PINK_500 },
+    activity: { label: '活動', color: '#FF9800' }, // 橘色
     'case-visit': { label: '個案訪問', color: THEME_COLORS.BLUE_500 },
     training: { label: '培訓', color: THEME_COLORS.TEAL_500 },
     other: { label: '其他', color: THEME_COLORS.LIGHT_GREEN_500 },
+    schedule: { label: '行程', color: '#FFFFFF' }, // 白色
   };
 
   /**
-   * 載入最近的行事曆活動
+   * 將活動轉換為日曆事件
+   */
+  const convertActivityToCalendarEvent = (activity: any): CalendarEvent & { eventSource: 'activity' } => {
+    return {
+      id: `activity_${activity.activityId}`,
+      title: activity.activityName,
+      start: new Date(activity.startDate),
+      end: new Date(activity.endDate),
+      type: 'activity',
+      description: activity.description,
+      workerId: activity.workerId,
+      status: activity.status,
+      eventSource: 'activity'
+    } as CalendarEvent & { eventSource: 'activity' };
+  };
+
+  /**
+   * 載入最近的行事曆活動（包含活動和行程）
    */
   const loadRecentEvents = async () => {
     try {
@@ -129,28 +147,101 @@ const Dashboard: React.FC = () => {
       const workerId = currentWorker.workerId;
       const userRole = currentWorker.role;
       
-      console.log(`載入行事曆活動 - 用戶: ${currentWorker.name}, 角色: ${userRole}, WorkerId: ${workerId}`);
+      console.log(`載入近期活動和行程 - 用戶: ${currentWorker.name}, 角色: ${userRole}, WorkerId: ${workerId}`);
       
-      // Dashboard 顯示個人近期活動（包括主管）
-      const schedules = await scheduleService.getSchedulesByWorker(workerId);
-      const allEvents = schedules.map(schedule => scheduleService.convertToCalendarEvent(schedule));
+      const allEvents: (CalendarEvent & { eventSource?: 'activity' | 'schedule' })[] = [];
       const now = new Date();
       
-      // 篩選未來7天內的活動，並按日期排序
+      // 載入行程資料
+      try {
+        const schedules = await scheduleService.getSchedulesByWorker(workerId);
+        const scheduleEvents = schedules
+          .map(schedule => {
+            const event = scheduleService.convertToCalendarEvent(schedule);
+            return { ...event, eventSource: 'schedule' as const };
+          })
+          .filter(event => {
+            const eventDate = new Date(event.start);
+            const diffTime = eventDate.getTime() - now.getTime();
+            const diffDays = diffTime / (1000 * 3600 * 24);
+            return diffDays >= 0 && diffDays <= 14; // 未來14天內
+          });
+        allEvents.push(...scheduleEvents);
+        console.log(`載入了 ${scheduleEvents.length} 筆行程資料`);
+      } catch (scheduleError) {
+        console.error('載入行程失敗:', scheduleError);
+      }
+      
+      // 載入活動資料
+      try {
+        const activityResponse = await activityService.getActivities();
+        const activities = activityResponse.activities || [];
+        
+        // 過濾當前用戶的活動
+        const userActivities = activities.filter(activity => activity.workerId === workerId);
+        
+        const activityEvents = userActivities
+          .map(convertActivityToCalendarEvent)
+          .filter(event => {
+            const eventDate = new Date(event.start);
+            const diffTime = eventDate.getTime() - now.getTime();
+            const diffDays = diffTime / (1000 * 3600 * 24);
+            return diffDays >= 0 && diffDays <= 14; // 未來14天內
+          });
+        allEvents.push(...activityEvents);
+        console.log(`載入了 ${activityEvents.length} 筆活動資料`);
+      } catch (activityError) {
+        console.error('載入活動失敗:', activityError);
+      }
+      
+      // 複雜排序：3天內行程 > 3天內活動 > 其他行程 > 其他活動
       const upcomingEvents = allEvents
-        .filter(event => {
-          const eventDate = new Date(event.start);
-          const diffTime = eventDate.getTime() - now.getTime();
-          const diffDays = diffTime / (1000 * 3600 * 24);
-          return diffDays >= 0 && diffDays <= 7; // 未來7天內
+        .sort((a, b) => {
+          const aEventWithSource = a as CalendarEvent & { eventSource?: 'activity' | 'schedule' };
+          const bEventWithSource = b as CalendarEvent & { eventSource?: 'activity' | 'schedule' };
+          
+          const aDate = new Date(a.start);
+          const bDate = new Date(b.start);
+          const aDaysFromNow = (aDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
+          const bDaysFromNow = (bDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
+          
+          const aIsWithin3Days = aDaysFromNow <= 3;
+          const bIsWithin3Days = bDaysFromNow <= 3;
+          const aIsSchedule = aEventWithSource.eventSource === 'schedule';
+          const bIsSchedule = bEventWithSource.eventSource === 'schedule';
+          
+          // 定義優先級：數字越小優先級越高
+          const getPriority = (isWithin3Days: boolean, isSchedule: boolean) => {
+            if (isWithin3Days && isSchedule) return 1; // 3天內行程
+            if (isWithin3Days && !isSchedule) return 2; // 3天內活動
+            if (!isWithin3Days && isSchedule) return 3; // 其他行程
+            return 4; // 其他活動
+          };
+          
+          const aPriority = getPriority(aIsWithin3Days, aIsSchedule);
+          const bPriority = getPriority(bIsWithin3Days, bIsSchedule);
+          
+          // 先按優先級排序
+          if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+          }
+          
+          // 同優先級內按時間排序
+          return aDate.getTime() - bDate.getTime();
         })
-        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
-        .slice(0, 5); // 只取前5個
+        .slice(0, 8);
       
       setRecentEvents(upcomingEvents);
+      
+      if (upcomingEvents.length === 0) {
+        console.log('未來兩周內沒有活動或行程');
+      } else {
+        const scheduleCount = upcomingEvents.filter(e => e.eventSource === 'schedule').length;
+        const activityCount = upcomingEvents.filter(e => e.eventSource === 'activity').length;
+        console.log(`載入了 ${scheduleCount} 筆行程和 ${activityCount} 筆活動`);
+      }
     } catch (error) {
-      console.error('載入行事曆活動失敗:', error);
-      // 如果載入失敗（例如 404），設置空陣列避免一直重試
+      console.error('載入近期事件失敗:', error);
       setRecentEvents([]);
     }
   };
@@ -582,9 +673,27 @@ const Dashboard: React.FC = () => {
               </Typography>
               <Box sx={{ mt: 2, maxHeight: { xs: 300, sm: 320, md: 320, lg: 300 }, overflowY: 'auto' }}>
                 {recentEvents.length > 0 ? (
-                  recentEvents.slice(0, 3).map((event, index) => {
+                  recentEvents.map((event, index) => {
                     const { date, time } = formatEventDateTime(event.start);
-                    const eventType = eventTypes[event.type as keyof typeof eventTypes];
+                    const eventWithSource = event as CalendarEvent & { eventSource?: 'activity' | 'schedule' };
+                    
+                    // 根據事件來源決定顏色和標籤
+                    let chipColor, chipLabel, chipTextColor;
+                    if (eventWithSource.eventSource === 'activity') {
+                      chipColor = '#FF9800'; // 橘色
+                      chipLabel = '活動';
+                      chipTextColor = 'white';
+                    } else if (eventWithSource.eventSource === 'schedule') {
+                      chipColor = '#FFFFFF'; // 白色
+                      chipLabel = '行程';
+                      chipTextColor = '#333333';
+                    } else {
+                      // 後備方案：使用原有的 eventType
+                      const eventType = eventTypes[event.type as keyof typeof eventTypes];
+                      chipColor = eventType?.color || THEME_COLORS.PRIMARY;
+                      chipLabel = eventType?.label || '其他';
+                      chipTextColor = 'white';
+                    }
                     
                     return (
                       <Box key={event.id} sx={{ 
@@ -629,14 +738,16 @@ const Dashboard: React.FC = () => {
                             </Typography>
                           </Box>
                           <Chip
-                            label={eventType.label}
+                            label={chipLabel}
                             size="small"
                             sx={{
-                              backgroundColor: eventType.color,
-                              color: 'white',
+                              backgroundColor: chipColor,
+                              color: chipTextColor,
+                              border: chipColor === '#FFFFFF' ? '2px solid #E0E0E0' : 'none',
                               fontSize: { xs: '0.7rem', sm: '0.75rem' },
                               height: { xs: 20, sm: 22 },
-                              ml: 1
+                              ml: 1,
+                              fontWeight: 500
                             }}
                           />
                         </Box>

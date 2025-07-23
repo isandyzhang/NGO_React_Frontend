@@ -60,13 +60,13 @@ const CalendarManagement: React.FC = () => {
       
       // 根據角色決定載入範圍
       let schedules;
-      if (userRole === 'supervisor' || userRole === 'admin') {
-        // 主管和管理員可以看到所有行程
-        console.log('主管權限：載入所有工作人員的行程');
+      if (userRole === 'admin') {
+        // 只有管理員可以看到所有行程
+        console.log('管理員權限：載入所有工作人員的行程');
         schedules = await scheduleService.getAllSchedules();
       } else {
-        // 一般員工只能看到自己的行程
-        console.log(`員工權限：只載入自己的行程 (WorkerId: ${workerId})`);
+        // 員工和主管都只能看到自己的行程
+        console.log(`${userRole === 'supervisor' ? '主管' : '員工'}權限：只載入自己的行程 (WorkerId: ${workerId})`);
         schedules = await scheduleService.getSchedulesByWorker(workerId);
       }
       const calendarEvents = schedules.map((schedule) =>
