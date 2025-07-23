@@ -9,6 +9,7 @@ export { supplyService } from './supplyService';
 export { newsService } from './newsService';
 export { scheduleService } from './scheduleService';
 export { default as distributionBatchService } from './distributionBatchService';
+export { accountService } from './accountService';
 
 // 類型定義統一導出
 export type {
@@ -63,4 +64,11 @@ export type {
   DistributionMatch,
   CreateDistributionBatchRequest,
   ApproveDistributionBatchRequest,
-} from './distributionBatchService'; 
+} from './distributionBatchService';
+
+export type {
+  // 帳號管理相關類型
+  Account,
+  CreateAccountRequest,
+  UpdateAccountRequest,
+} from './accountService'; 

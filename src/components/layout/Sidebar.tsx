@@ -24,6 +24,7 @@ import {
   Home,
   LocalShipping,
   CalendarToday,
+  SupervisorAccount,
 } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -111,6 +112,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
   const { user, logout, loginMethod } = useAuth();
   const { counts, hasSupplyNotifications, hasDistributionNotifications } = useNotificationContext();
 
+  // 用戶權限檢查
+  const userRole = user?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
+  const canAccessAccountManagement = userRole === 'supervisor' || userRole === 'admin';
+
   // 導航選單項目配置
   const menuItems = [
     { text: '首頁', icon: <Home />, path: '/dashboard' },
@@ -118,6 +123,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
     { text: '活動管理', icon: <Add />, path: '/activity-management' },
     { text: '行事曆管理', icon: <CalendarToday />, path: '/calendar-management' },
     { text: '物資管理', icon: <LocalShipping />, path: '/supplies-management' },
+    // 只有主管和管理員能看到帳號管理
+    ...(canAccessAccountManagement ? [{ text: '帳號管理', icon: <SupervisorAccount />, path: '/account-management' }] : []),
   ];
 
   return (
