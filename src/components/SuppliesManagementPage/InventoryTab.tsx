@@ -329,13 +329,13 @@ const InventoryTab: React.FC = () => {
       title: '總物品種類',
       value: stats.totalItems.toString(),
       icon: <Inventory />,
-      color: THEME_COLORS.BLUE_500
+      color: THEME_COLORS.CHART_COLOR_2  // 藍色
     },
     {
       title: '庫存不足項目',
       value: stats.lowStockItems.toString(),
       icon: <Assignment />,
-      color: THEME_COLORS.PINK_500
+      color: THEME_COLORS.CHART_COLOR_6  // 紅色 - 警示用
     },
   ];
 
@@ -568,14 +568,14 @@ const InventoryTab: React.FC = () => {
                             <IconButton
                               size="small"
                               onClick={() => handleEdit(item)}
-                              sx={{ color: THEME_COLORS.BLUE_500 }}
+                              sx={{ color: THEME_COLORS.CHART_COLOR_2 }}
                             >
                               <Edit />
                             </IconButton>
                             <IconButton
                               size="small"
                               onClick={() => handleDelete(item)}
-                              sx={{ color: THEME_COLORS.PINK_500 }}
+                              sx={{ color: THEME_COLORS.CHART_COLOR_6 }}
                             >
                               <Delete />
                             </IconButton>
