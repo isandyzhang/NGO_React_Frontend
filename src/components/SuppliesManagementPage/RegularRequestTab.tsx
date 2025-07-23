@@ -40,6 +40,7 @@ import {
 } from '../../styles/commonStyles';
 import { supplyService, RegularSuppliesNeed } from '../../services';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 
 interface RegularSupplyRequest {
   id: number;
@@ -60,6 +61,7 @@ interface RegularSupplyRequest {
 const RegularRequestTab: React.FC = () => {
   // 從認證系統獲取用戶資訊
   const { user } = useAuth();
+  const { refreshNotifications } = useNotificationContext();
   
   // 根據用戶角色設定權限
   const userRole = user?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
@@ -225,6 +227,9 @@ const RegularRequestTab: React.FC = () => {
       // 重新載入資料
       await loadData();
       
+      // 刷新通知狀態
+      refreshNotifications();
+      
       // 關閉對話框
       setConfirmDialog({ open: false, type: 'approve', item: null });
     } catch (err) {
@@ -277,19 +282,6 @@ const RegularRequestTab: React.FC = () => {
 
   return (
     <Box sx={{ width: '100%' }}>
-      {/* 角色切換區域 (測試用) */}
-      <Paper elevation={1} sx={{ 
-        p: 2,
-        mb: 2,
-        bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
-        border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
-      }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <Typography variant="body2" color="textSecondary">
-            當前用戶: {currentUser}
-          </Typography>
-        </Box>
-      </Paper>
 
       {/* 搜尋區域 */}
       <Paper elevation={1} sx={{ 

@@ -13,6 +13,8 @@ import {
   Divider,
 } from '@mui/material';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotificationContext } from '../../contexts/NotificationContext';
+import NotificationBadge from '../shared/NotificationBadge';
 import { UnifiedUser, LoginMethod } from '../../types/userTypes';
 import {
   Add,
@@ -22,6 +24,7 @@ import {
   Home,
   LocalShipping,
   CalendarToday,
+  SupervisorAccount,
 } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -107,6 +110,11 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
   const { user, logout, loginMethod } = useAuth();
+  const { counts, hasSupplyNotifications, hasDistributionNotifications } = useNotificationContext();
+
+  // 用戶權限檢查
+  const userRole = user?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
+  const canAccessAccountManagement = userRole === 'supervisor' || userRole === 'admin';
 
   // 導航選單項目配置
   const menuItems = [
@@ -115,6 +123,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
     { text: '活動管理', icon: <Add />, path: '/activity-management' },
     { text: '行事曆管理', icon: <CalendarToday />, path: '/calendar-management' },
     { text: '物資管理', icon: <LocalShipping />, path: '/supplies-management' },
+    // 只有主管和管理員能看到帳號管理
+    ...(canAccessAccountManagement ? [{ text: '帳號管理', icon: <SupervisorAccount />, path: '/account-management' }] : []),
   ];
 
   return (
@@ -244,7 +254,18 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
               '& .MuiSvgIcon-root': {
                 fontSize: { xs: 20, md: 22 } // 平板增加圖標大小
               }
-            }}>{item.icon}</ListItemIcon>
+            }}>
+              {item.text === '物資管理' ? (
+                <NotificationBadge 
+                  showBadge={counts.totalPending > 0}
+                  size="small"
+                >
+                  {item.icon}
+                </NotificationBadge>
+              ) : (
+                item.icon
+              )}
+            </ListItemIcon>
             <ListItemText 
               primary={
                 <Typography

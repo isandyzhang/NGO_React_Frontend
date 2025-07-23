@@ -42,6 +42,7 @@ import {
   getStatusStyle,
   getResponsiveSpacing
 } from '../../styles/commonStyles';
+import { formatDateForInput } from '../../utils/dateHelper';
 import { 
   supplyService, 
   RegularSupplyMatch,
@@ -51,6 +52,7 @@ import {
   DistributionBatchDetail
 } from '../../services';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 
 interface DistributionTabProps {
   isEmergencySupply?: boolean;
@@ -89,6 +91,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
 }) => {
   // 從認證系統獲取用戶資訊
   const { user } = useAuth();
+  const { refreshNotifications } = useNotificationContext();
   
   // 根據用戶角色設定權限
   const userRole = user?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
@@ -303,6 +306,8 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
       
       // 刷新批次列表
       await loadBatches();
+      // 刷新通知狀態
+      refreshNotifications();
       alert('批次批准成功！');
     } catch (error) {
       console.error('批准批次失敗:', error);
@@ -323,6 +328,8 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
       
       // 刷新批次列表
       await loadBatches();
+      // 刷新通知狀態
+      refreshNotifications();
       alert('批次已拒絕！');
     } catch (error) {
       console.error('拒絕批次失敗:', error);
@@ -522,7 +529,7 @@ const DistributionTab: React.FC<DistributionTabProps> = ({
           caseCount: matchingResults.length,
           totalSupplyItems: matchingResults.reduce((sum, r) => sum + r.matchedQuantity, 0),
           createdByWorkerId: 1,
-          notes: `${getCurrentMonth()} 自動分發批次，共處理 ${matchingResults.length} 個申請`,
+          notes: `自動分發批次，共處理 ${matchingResults.length} 個申請`,
           matchIds: matchIds
         };
         
@@ -582,6 +589,8 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
       
       // 刷新分發批次歷史記錄
       setBatchHistoryRefresh(prev => prev + 1);
+      // 刷新通知狀態
+      refreshNotifications();
     } catch (error) {
       console.error('確認訂單失敗:', error);
       alert('確認訂單失敗，請稍後重試');
@@ -645,20 +654,6 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
         </Box>
       ) : (
         <>
-          {/* 角色切換區域 (測試用) */}
-          <Paper elevation={1} sx={{ 
-            p: 2,
-            mb: 2,
-            bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
-            border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
-          }}>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <Typography variant="body2" color="textSecondary">
-                當前用戶: {currentUser} ({userRole === 'supervisor' ? '主管' : userRole === 'admin' ? '管理員' : '員工'}) | 
-                權限: {userRole === 'supervisor' || userRole === 'admin' ? '可管理所有案例' : '僅管理自己負責的案例'}
-              </Typography>
-            </Box>
-          </Paper>
 
           {/* 分配操作區域 */}
           <Paper elevation={1} sx={{ 
@@ -692,13 +687,13 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                     color: THEME_COLORS.SUCCESS,
                     mb: 0.5
                   }}>
-                    {getCurrentMonth()} 物資分配
+                    智能物資分配
                   </Typography>
                   <Typography variant="body2" sx={{ 
                     color: THEME_COLORS.TEXT_MUTED,
                     fontSize: '0.875rem'
                   }}>
-                    針對已批准的申請進行自動物資配發媒合
+                    系統將自動分析已批准的申請，根據庫存情況進行智能配對與分發
                   </Typography>
                 </Box>
               </Box>
@@ -1055,7 +1050,7 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                           <TableRow hover>
                             <TableCell>{batch.distributionBatchId}</TableCell>
                       <TableCell>
-                              {new Date(batch.distributionDate).toLocaleDateString()}
+                              {formatDateForInput(batch.distributionDate)}
                       </TableCell>
                             <TableCell>{batch.caseCount}</TableCell>
                             <TableCell>{batch.totalSupplyItems}</TableCell>
@@ -1064,7 +1059,7 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                             </TableCell>
                             <TableCell>{batch.createdByWorker}</TableCell>
                             <TableCell>
-                              {new Date(batch.createdAt).toLocaleDateString()}
+                              {formatDateForInput(batch.createdAt)}
                             </TableCell>
                             <TableCell>
                               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1072,15 +1067,17 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                                 {(userRole === 'supervisor' || userRole === 'admin') && batch.status === 'pending' && (
                                   <>
                                     <Button
-                                      variant="contained"
+                                      variant="outlined"
                                       size="small"
                                       startIcon={<CheckCircle />}
                                       sx={{
-                                        bgcolor: THEME_COLORS.SUCCESS,
+                                        color: THEME_COLORS.SUCCESS,
+                                        borderColor: THEME_COLORS.SUCCESS,
                                         fontSize: '0.75rem',
                                         px: 1.5,
                                         '&:hover': {
-                                          bgcolor: THEME_COLORS.SUCCESS,
+                                          bgcolor: `${THEME_COLORS.SUCCESS}14`,
+                                          borderColor: THEME_COLORS.SUCCESS,
                                         }
                                       }}
                                       onClick={() => handleApproveBatch(batch.distributionBatchId)}
@@ -1088,15 +1085,17 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                                       批准
                                     </Button>
                                     <Button
-                                      variant="contained"
+                                      variant="outlined"
                                       size="small"
                                       startIcon={<Cancel />}
                                       sx={{
-                                        bgcolor: THEME_COLORS.ERROR,
+                                        color: THEME_COLORS.ERROR,
+                                        borderColor: THEME_COLORS.ERROR,
                                         fontSize: '0.75rem',
                                         px: 1.5,
                                         '&:hover': {
-                                          bgcolor: THEME_COLORS.ERROR,
+                                          bgcolor: `${THEME_COLORS.ERROR}14`,
+                                          borderColor: THEME_COLORS.ERROR,
                                         }
                                       }}
                                       onClick={() => handleRejectBatch(batch.distributionBatchId)}
@@ -1144,7 +1143,7 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                                         批准者: {batch.approvedByWorker || '未批准'}
                               </Typography>
                                       <Typography variant="body2" color="text.secondary">
-                                        批准時間: {batch.approvedAt ? new Date(batch.approvedAt).toLocaleString() : '未批准'}
+                                        批准時間: {batch.approvedAt ? formatDateForInput(batch.approvedAt) : '未批准'}
                               </Typography>
                                     </Box>
                                     <Box>
@@ -1194,7 +1193,7 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
             系統將處理所有已批准的申請，正在進行自動分配：
           </Typography>
           <Typography variant="body2" sx={{ mb: 3, color: THEME_COLORS.WARNING }}>
-            本次自動計算將針對 {getCurrentMonth()} 的<strong>已批准申請</strong>進行物資分配
+            本次自動計算將針對所有<strong>已批准申請</strong>進行物資分配
           </Typography>
           <Alert severity="info" sx={{ mb: 3 }}>
             <strong>注意：</strong>只有狀態為「批准」的申請才會被納入自動分配。<br/>
@@ -1324,7 +1323,7 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
           </Typography>
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
                   <Box>
-                    <Typography variant="body2"><strong>分發日期:</strong> {new Date(selectedBatch.distributionDate).toLocaleDateString()}</Typography>
+                    <Typography variant="body2"><strong>分發日期:</strong> {formatDateForInput(selectedBatch.distributionDate)}</Typography>
                     <Typography variant="body2"><strong>處理個案數:</strong> {selectedBatch.caseCount}</Typography>
                     <Typography variant="body2"><strong>總物資件數:</strong> {selectedBatch.totalSupplyItems}</Typography>
         </Box>
@@ -1365,8 +1364,8 @@ ${results.errors.length > 0 ? `❌ 錯誤：\n${results.errors.join('\n')}` : ''
                           <TableCell>{match.supplyName}</TableCell>
                           <TableCell>{match.requestedQuantity}</TableCell>
                           <TableCell>{match.matchedQuantity}</TableCell>
-                          <TableCell>{new Date(match.requestedDate).toLocaleDateString()}</TableCell>
-                          <TableCell>{new Date(match.matchDate).toLocaleDateString()}</TableCell>
+                          <TableCell>{formatDateForInput(match.requestedDate)}</TableCell>
+                          <TableCell>{formatDateForInput(match.matchDate)}</TableCell>
                           <TableCell>{match.note || '-'}</TableCell>
                         </TableRow>
                       ))}

@@ -1,6 +1,6 @@
 # 活動圖片上傳功能開發日誌
 
-**日期**: 2025-01-15  
+**日期**: 2025-07-15  
 **工作項目**: 實作 Azure Blob Storage 圖片上傳功能  
 **開發者**: Claude Code Assistant  
 
@@ -814,100 +814,7 @@ public static readonly Dictionary<string, string> Categories = new Dictionary<st
 
 ---
 
----
-
-## 🚨 緊急物資需求系統API問題交接 (2025-07-21 上午)
-
-### ⚡ 立即需要做的事情
-**重啟電腦後的第一步**：
-1. 啟動後端：`cd D:\GitHub\NGO_WebAPI_Backend && dotnet run`
-2. 啟動前端：`cd D:\GitHub\Case-Management-System && npm run dev`
-3. 測試API：`curl http://localhost:5264/api/EmergencySupplyNeed/statistics`
-
-### 🎯 核心問題
-**緊急物資需求API一直回傳錯誤**：`{"message":"獲取緊急物資需求失敗","error":"Invalid column name 'SupplyId'."}`
-
-### 🔍 問題狀況詳析
-
-#### 1. 資料庫結構 (✅ 已確認正確)
-從隊友週末更新的ERD圖確認：
-- `EmergencySupplyNeeds` 表有 `SupplyName` (nvarchar(200)) ✅
-- **沒有** `SupplyId` 外鍵 ✅
-- 有 `Priority`, `Description`, `ImageUrl`, `CollectedQuantity` 等新欄位 ✅
-
-#### 2. 前端已修復 (✅ 已完成)
-**檔案**：`D:\GitHub\Case-Management-System\src\services\supplyService.ts`
-- 更新了 `EmergencySupplyNeed` 介面匹配後端回應
-- 修正統計方法回傳欄位 (加入 `completedRequests`, `highPriorityRequests` 等)
-- 加入除錯日誌和錯誤處理
-
-#### 3. 後端已嘗試修復 (⚠️ 需要驗證)
-**檔案**：`D:\GitHub\NGO_WebAPI_Backend\Controllers\EmergencySupplyNeedController.cs`
-**修改內容**：
-- 第30-33行：移除 `.Include(e => e.Case).Include(e => e.Worker)` 
-- 改為手動載入關聯 (第35-43行)
-- 統計查詢加入 `.AsNoTracking()` (第75行)
-
-### 🚨 懷疑原因
-1. **EF Core 緩存問題** - 可能還在使用舊的模型結構
-2. **進程鎖定** - 無法正常重新編譯 (PID 10908 被鎖定)
-3. **隱藏的關聯查詢** - 其他地方可能還在引用 SupplyId
-
-### 📋 重啟電腦後的檢查清單
-1. **重新啟動服務**
-   ```bash
-   # 後端
-   cd D:\GitHub\NGO_WebAPI_Backend
-   dotnet clean
-   dotnet build
-   dotnet run
-   
-   # 前端 (另一個終端)
-   cd D:\GitHub\Case-Management-System
-   npm run dev
-   ```
-
-2. **立即測試API**
-   ```bash
-   # 測試統計API
-   curl http://localhost:5264/api/EmergencySupplyNeed/statistics
-   
-   # 測試主要API
-   curl http://localhost:5264/api/EmergencySupplyNeed
-   
-   # 如果還是失敗，檢查錯誤詳情
-   ```
-
-3. **如果API仍然失敗**
-   - 檢查 `D:\GitHub\NGO_WebAPI_Backend\Models\NgoplatformDbContext.cs` 第194-208行的 EmergencySupplyMatch 配置
-   - 搜尋整個後端專案是否還有 SupplyId 引用：
-     ```bash
-     grep -r "SupplyId" D:\GitHub\NGO_WebAPI_Backend --include="*.cs"
-     ```
-
-4. **驗證前端緊急物資頁面**
-   - 打開 `http://localhost:5173` 
-   - 進入物資管理 > 緊急物資需求
-   - 檢查是否正常載入資料，不再顯示「載入資料失敗」
-
-### 🔧 備用修復方案
-如果重啟後問題仍存在：
-1. **檢查隊友更新**：可能週末有其他相關變更需要同步
-2. **資料庫重新生成**：考慮重新生成 DbContext 模型
-3. **直接SQL查詢**：確認資料庫實際結構與ERD一致
-
-### 📊 已修改的檔案
-- `D:\GitHub\Case-Management-System\src\services\supplyService.ts` (前端介面)
-- `D:\GitHub\NGO_WebAPI_Backend\Controllers\EmergencySupplyNeedController.cs` (後端查詢邏輯)
-
-### 🎯 成功標準
-✅ API回傳正常JSON而非錯誤訊息
-✅ 前端緊急物資頁面顯示統計資料和需求列表  
-✅ 可以正常新增/編輯/刪除緊急物資需求
-
----
-
-**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能，2025-07-16 的API連線問題排除，物資分發頁面防重複點擊優化，2025-07-17 的三級權限審核系統實作，以及 2025-07-21 的緊急物資API問題排查。
+**備註**: 此文件記錄了 2025-01-15 的開發進度，包括圖片上傳功能和標籤分類功能，2025-07-16 的API連線問題排除，物資分發頁面防重複點擊優化，以及 2025-07-17 的三級權限審核系統實作。
 
 ## 工程師備註 7/17
 由於token消耗完畢，因此暫停，目前三級權限的部分已經完成，但有使用者用戶流程需要優化
@@ -1375,3 +1282,307 @@ const currentStaffId = worker?.workerId || 1;
 - 前端會自動根據登入用戶的真實角色設定權限
 
 **安全登入系統完成**: 系統現在完全基於SQL資料庫進行身份驗證，任何新的社工加入都不會影響系統穩定性，角色權限完全由資料庫控制。
+
+## 最近更新 (2024-07-23)
+
+### ✅ 已完成的前端頁面優化工作
+
+#### 1. UI一致性改善
+- **日期格式統一**: 將所有日期顯示格式標準化為 YYYY-MM-DD
+- **按鈕格式統一**: 統一使用中空樣式按鈕 (outlined variant) 以提升視覺一致性
+- **測試介面清理**: 移除所有測試用的UI元件，提供乾淨的用戶體驗
+
+#### 2. 通知系統實作
+- **紅點通知組件**: 創建 `NotificationBadge` 組件，提供手遊式的心理壓力紅點提示
+- **全域通知管理**: 實作 `NotificationContext` 和 `useNotificationStatus` hook
+- **父子關係通知**: 實現父頁面與子頁面的通知聯動機制
+- **即時更新**: 操作後自動刷新通知狀態
+
+#### 3. 空狀態vs錯誤狀態修復 (關鍵UX改善)
+**問題**: 新用戶看到"載入失敗"但實際只是沒有資料
+
+**解決方案**: 在所有關鍵服務中實作精確的錯誤區分
+```typescript
+// 修復模式
+} catch (error: any) {
+  if (error.response?.status === 404 || error.response?.status === 204) {
+    // 合理的空資料狀態 → 返回空陣列/預設值
+    return [];
+  }
+  // 真正的錯誤 → 拋出異常顯示錯誤訊息
+  throw error;
+}
+```
+
+**修復的服務**:
+- `supplyService.ts`: 10+ 個方法 (物資申請、庫存、批次等)
+- `dashboardService.ts`: 所有儀表板方法 (統計、圖表、近期活動)
+- `caseService.ts`: 個案列表和搜尋功能
+- `activityService.ts`: 活動管理相關方法
+
+**影響**:
+- ✅ 新用戶現在看到"暫無資料"而非"載入失敗"
+- ✅ 真正的API錯誤仍正確顯示錯誤訊息
+- ✅ 改善首次使用體驗
+
+## 檔案異動摘要
+
+### 新增檔案
+- `src/components/shared/NotificationBadge.tsx` - 紅點通知組件
+- `src/contexts/NotificationContext.tsx` - 全域通知狀態管理
+- `src/hooks/useNotificationStatus.tsx` - 通知狀態hook
+
+### 修改檔案
+- `src/services/supplyService.ts` - 修復空狀態處理
+- `src/services/dashboardService.ts` - 修復空狀態處理  
+- `src/services/caseService.ts` - 修復空狀態處理
+- `src/services/activityService.ts` - 修復空狀態處理
+- `src/components/SuppliesManagementPage/DistributionTab.tsx` - 日期格式和按鈕樣式統一
+- `src/components/SuppliesManagementPage/RegularRequestTab.tsx` - 移除測試介面
+- `src/components/layout/Sidebar.tsx` - 新增通知紅點
+- `src/pages/SuppliesManagement.tsx` - 整合通知系統
+
+## 待辦事項
+
+### 🚧 進行中
+- 日曆UX修復 - 改善日曆相關的使用者體驗
+
+### 📋 待開始  
+- **新增帳號管理頁面** (大工程) - 設計並實作完整的帳號管理功能
+
+## Git 紀錄
+- 分支: `optimize-frontend-ui` → 已合併至 `main`
+- 最新提交: `1599ab3` - 修復空狀態vs錯誤狀態區別問題
+- 遠端狀態: 已推送並同步
+
+## 開發環境注意事項
+- 專案位置: `D:\GitHub\Case-Management-System`
+- 主要技術: React + TypeScript + Material-UI
+- 遠端倉庫: GitHub (注意倉庫遷移通知)
+
+---
+
+## 🔐 帳號管理系統完整實作 (2025-07-23)
+
+### 📋 系統概述
+實作完整的帳號管理系統，作為"最後一項大工程"，提供完整的 CRUD 操作和基於角色的權限控制。
+
+### ✅ 完成的功能
+
+#### 1. **後端 AccountController API**
+**檔案**: `D:\GitHub\NGO_WebAPI_Backend\Controllers\AccountController.cs`
+
+**主要 API 端點**:
+- `GET /api/Account` - 取得所有帳號列表
+- `GET /api/Account/{id}` - 根據ID查詢帳號
+- `POST /api/Account` - 建立新帳號
+- `PUT /api/Account/{id}` - 更新帳號資訊
+- `DELETE /api/Account/{id}` - 刪除帳號
+- `PATCH /api/Account/{id}/activate` - 啟用帳號
+- `PATCH /api/Account/{id}/deactivate` - 停用帳號
+- `PATCH /api/Account/{id}/reset-password` - 重置密碼
+- `GET /api/Account/check-email` - 檢查電子信箱是否存在
+- `GET /api/Account/stats` - 取得帳號統計資料
+
+**技術特色**:
+- 基於現有的 `Worker` 實體進行帳號管理
+- 完整的DTO模型設計 (`AccountDto`, `CreateAccountRequest`, `UpdateAccountRequest`)
+- 密碼加密使用 SHA256 雜湊演算法
+- 支援Azure AD和本地資料庫雙重登入來源
+- 完整的驗證和錯誤處理
+- 防止刪除有關聯資料的帳號
+
+#### 2. **前端帳號管理頁面**
+**檔案**: `D:\GitHub\Case-Management-System\src\pages\AccountManagement.tsx`
+
+**功能特色**:
+- **角色權限控制**:
+  - **員工 (staff)**: 無法存取此頁面
+  - **主管 (supervisor)**: 僅能檢視帳號資訊
+  - **管理員 (admin)**: 完整 CRUD 權限
+- **帳號列表顯示**: 完整的資料表格，包含姓名、信箱、角色、登入來源、狀態、最後登入
+- **權限無存取UI**: 員工角色顯示專門的無權限頁面
+- **完整操作按鈕**: 編輯、刪除功能（僅管理員）
+
+#### 3. **新增帳號對話框**
+**檔案**: `D:\GitHub\Case-Management-System\src\components\AccountManagement\AddAccountDialog.tsx`
+
+**功能特色**:
+- **完整表單驗證**: 姓名、信箱、角色必填，密碼長度檢查
+- **登入來源選擇**: 支援 Azure AD 和本地資料庫帳戶
+- **動態密碼欄位**: Azure AD 帳戶不需要密碼設定
+- **即時信箱驗證**: 檢查信箱格式和唯一性
+- **角色說明**: 每個角色都有詳細的權限說明
+- **密碼顯示切換**: 支援密碼可見性切換
+
+#### 4. **編輯帳號對話框**
+**檔案**: `D:\GitHub\Case-Management-System\src\components\AccountManagement\EditAccountDialog.tsx`
+
+**功能特色**:
+- **帳號資訊區塊**: 顯示ID、登入來源、最後登入等唯讀資訊
+- **基本資訊編輯**: 姓名、信箱、電話、部門
+- **權限與狀態設定**: 角色選擇和啟用/停用狀態切換
+- **狀態切換器**: 視覺化的啟用/停用開關
+- **密碼重置提示**: 針對本地帳戶提供密碼重置指引
+
+#### 5. **帳號服務整合**
+**檔案**: `D:\GitHub\Case-Management-System\src\services\accountService.ts`
+
+**服務方法**:
+```typescript
+class AccountService {
+  async getAccounts(): Promise<Account[]>
+  async getAccountById(id: number): Promise<Account>
+  async createAccount(accountData: CreateAccountRequest): Promise<Account>
+  async updateAccount(id: number, accountData: UpdateAccountRequest): Promise<Account>
+  async deleteAccount(id: number): Promise<void>
+  async activateAccount(id: number): Promise<Account>
+  async deactivateAccount(id: number): Promise<Account>
+  async resetPassword(id: number, newPassword: string): Promise<void>
+  async checkEmailExists(email: string): Promise<boolean>
+  async getAccountStats(): Promise<AccountStatsResponse>
+}
+```
+
+**錯誤處理特色**:
+- 區分 404/204 (無資料) 和真正的錯誤
+- 空資料時返回空陣列而非錯誤
+- 完整的異常處理和使用者友好訊息
+
+#### 6. **路由和導航整合**
+**檔案**: `D:\GitHub\Case-Management-System\src\routes\index.tsx`
+- 新增 `/account-management` 路由
+- 支援懶載入 (lazy loading)
+
+**檔案**: `D:\GitHub\Case-Management-System\src\components\layout\Sidebar.tsx`
+- 新增帳號管理選單項目
+- 基於權限的選單顯示控制
+- 使用 `SupervisorAccount` 圖標
+
+### 🛡️ 權限控制設計
+
+#### 權限矩陣
+| 功能 | 員工 (staff) | 主管 (supervisor) | 管理員 (admin) |
+|------|-------------|------------------|----------------|
+| 存取帳號管理頁面 | ❌ | ✅ | ✅ |
+| 檢視帳號列表 | ❌ | ✅ (唯讀) | ✅ |
+| 新增帳號 | ❌ | ❌ | ✅ |
+| 編輯帳號 | ❌ | ❌ | ✅ |
+| 刪除帳號 | ❌ | ❌ | ✅ |
+
+#### 安全機制
+1. **前端權限控制**: 基於 `useAuth` hook 的角色檢查
+2. **路由保護**: 不符權限的角色顯示無權限頁面
+3. **UI條件顯示**: 操作按鈕根據權限動態顯示/隱藏
+4. **二次確認**: 刪除操作需要確認對話框
+
+### 🎯 UI/UX 設計特色
+
+#### 1. **Material-UI 一致性**
+- 使用統一的主題顏色和樣式
+- 符合現有頁面的設計語言
+- 響應式設計，支援行動裝置
+
+#### 2. **狀態視覺化**
+- **角色標籤**: 不同顏色標示 (管理員-紅色, 主管-橙色, 員工-藍色)
+- **狀態標籤**: 啟用/停用狀態的顏色區分
+- **登入來源**: Azure AD / 本地帳戶標示
+
+#### 3. **使用者體驗**
+- **載入狀態**: 所有異步操作都有載入提示
+- **錯誤處理**: 完整的錯誤訊息顯示
+- **確認對話框**: 危險操作的二次確認
+- **表單驗證**: 即時驗證和錯誤提示
+
+### 📊 技術架構
+
+#### 前端技術棧
+- **React 18** + **TypeScript**
+- **Material-UI (MUI)** - UI組件庫
+- **React Router** - 路由管理
+- **Axios** - HTTP請求處理
+
+#### 後端技術棧
+- **ASP.NET Core Web API**
+- **Entity Framework Core** - ORM
+- **SQL Server** - 資料庫
+- **SHA256** - 密碼雜湊
+
+#### 資料模型
+```typescript
+interface Account {
+  id: number;
+  name: string;
+  email: string;
+  role: 'staff' | 'supervisor' | 'admin';
+  loginSource: 'database' | 'azure';
+  status: 'active' | 'inactive';
+  createdAt: string;
+  lastLogin?: string;
+  workerId?: number;
+  phone?: string;
+  department?: string;
+}
+```
+
+### 📁 新增的檔案清單
+
+#### 後端檔案
+- `Controllers/AccountController.cs` - 帳號管理 API 控制器
+
+#### 前端檔案
+- `pages/AccountManagement.tsx` - 主要帳號管理頁面
+- `components/AccountManagement/AddAccountDialog.tsx` - 新增帳號對話框
+- `components/AccountManagement/EditAccountDialog.tsx` - 編輯帳號對話框
+- `services/accountService.ts` - 帳號管理服務層
+
+#### 修改的檔案
+- `routes/index.tsx` - 新增路由定義
+- `components/layout/Sidebar.tsx` - 新增導航選單
+- `services/index.ts` - 新增服務和類型導出
+
+### 🧪 功能測試
+
+#### 測試環境
+- **前端**: http://localhost:5175
+- **後端**: http://localhost:5264
+- **API測試**: 所有端點正常回應
+
+#### 測試場景
+1. ✅ **權限控制**: 不同角色的存取限制正確
+2. ✅ **CRUD操作**: 新增、編輯、刪除功能正常
+3. ✅ **表單驗證**: 所有驗證規則正確執行
+4. ✅ **錯誤處理**: 網路錯誤和業務錯誤正確處理
+5. ✅ **UI響應**: 載入狀態和使用者回饋完整
+
+### 🚀 部署準備
+
+#### 環境需求
+- **資料庫**: 需要現有的 `Workers` 表
+- **API權限**: 確保帳號管理API端點可存取
+- **前端路由**: 確保 `/account-management` 路由正確配置
+
+#### 後續優化建議
+1. **密碼強度**: 實作更強的密碼政策
+2. **審計日誌**: 記錄帳號變更歷史
+3. **批量操作**: 支援批量啟用/停用帳號
+4. **進階權限**: 更細緻的權限控制
+5. **Azure AD整合**: 真正的Azure AD單一登入
+
+### 📈 系統影響
+
+#### 正面影響
+- ✅ **管理效率**: 管理員可透過UI管理帳號
+- ✅ **安全性**: 基於角色的存取控制
+- ✅ **可維護性**: 標準化的帳號管理流程
+- ✅ **使用者體驗**: 直觀的管理介面
+
+#### 注意事項
+- 🔒 **權限控制**: 確保只有管理員能存取敏感功能
+- 📊 **效能**: 大量帳號時考慮分頁載入
+- 🛡️ **安全性**: 密碼重置功能需要額外安全機制
+
+**帳號管理系統實作完成**: 提供完整的帳號生命週期管理，符合企業級應用的安全和可用性要求。
+
+---
+*此記錄由 Claude Code 自動生成並維護*

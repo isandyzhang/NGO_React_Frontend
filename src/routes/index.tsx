@@ -10,6 +10,7 @@ const Dashboard = lazy(() => import('../pages/Dashboard'));
 const CaseManagement = lazy(() => import('../pages/CaseManagement'));
 const SuppliesManagement = lazy(() => import('../pages/SuppliesManagement'));
 const CalendarManagement = lazy(() => import('../pages/CalendarManagement'));
+const AccountManagement = lazy(() => import('../pages/AccountManagement'));
 const Login = lazy(() => import('../pages/Login'));
 
 /**
@@ -25,6 +26,7 @@ const Login = lazy(() => import('../pages/Login'));
  *    - /activity-management - 活動管理頁面
  *    - /supplies-management - 物資管理頁面
  *    - /calendar-management - 行事曆管理頁面
+ *    - /account-management - 帳號管理頁面
  *    - /login - 登入頁面
  * 
  * 特色功能：
@@ -70,6 +72,10 @@ const router = createBrowserRouter([
       {
         path: 'calendar-management',
         element: <PageWithSuspense><CalendarManagement /></PageWithSuspense>,
+      },
+      {
+        path: 'account-management',
+        element: <PageWithSuspense><AccountManagement /></PageWithSuspense>,
       },
     ],
   },
