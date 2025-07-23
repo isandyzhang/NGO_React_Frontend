@@ -79,7 +79,17 @@ class ActivityService {
         activities: activities,
         totalCount: activities.length || 0
       };
-    } catch (error) {
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空結果
+        console.log('沒有找到活動資料，返回空結果');
+        return {
+          activities: [],
+          totalCount: 0
+        };
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得活動列表失敗:', error);
       throw error;
     }
@@ -172,8 +182,15 @@ class ActivityService {
       const response = await api.get('/Activity/upcoming', {
         params: { limit }
       });
-      return response.data;
-    } catch (error) {
+      return response.data || [];
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到即將到來的活動資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得即將到來活動失敗:', error);
       throw error;
     }
@@ -185,8 +202,15 @@ class ActivityService {
   async getCompletedActivities(): Promise<ActivityListResponse> {
     try {
       const response = await api.get('/Activity/completed');
-      return response.data;
-    } catch (error) {
+      return response.data || { activities: [], totalCount: 0 };
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空結果
+        console.log('沒有找到已完成的活動資料，返回空結果');
+        return { activities: [], totalCount: 0 };
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得已完成活動失敗:', error);
       throw error;
     }
@@ -211,8 +235,15 @@ class ActivityService {
   async getCategories(): Promise<CategoryOption[]> {
     try {
       const response = await api.get<CategoryOption[]>('/Activity/categories');
-      return response;
-    } catch (error) {
+      return response || [];
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到活動分類資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得活動分類失敗:', error);
       throw error;
     }

@@ -127,7 +127,20 @@ export const caseService = {
       }
       const response = await api.get<PagedResponse<CaseResponse>>('/Case', params);
       return response;
-    } catch (error) {
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空結果
+        console.log('沒有找到案例資料，返回空結果');
+        return {
+          data: [],
+          totalCount: 0,
+          page: page,
+          pageSize: pageSize,
+          totalPages: 0
+        };
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('獲取案例列表失敗:', error);
       throw error;
     }
@@ -149,7 +162,20 @@ export const caseService = {
     try {
       const response = await api.get<{ data: CaseResponse[]; total: number; page: number; pageSize: number; totalPages: number }>('/Case/search', params);
       return response;
-    } catch (error) {
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空結果
+        console.log('沒有找到搜尋結果，返回空結果');
+        return {
+          data: [],
+          total: 0,
+          page: params.page || 1,
+          pageSize: params.pageSize || 10,
+          totalPages: 0
+        };
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('搜尋案例失敗:', error);
       throw error;
     }

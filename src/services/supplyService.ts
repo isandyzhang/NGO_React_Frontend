@@ -152,8 +152,15 @@ class SupplyService {
   async getSupplyCategories(): Promise<SupplyCategory[]> {
     try {
       const response = await api.get<SupplyCategory[]>('/Supply/categories');
-      return response;
-    } catch (error) {
+      return response || [];
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到物資分類資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得物資分類失敗:', error);
       throw error;
     }
@@ -165,8 +172,15 @@ class SupplyService {
   async getSupplies(): Promise<Supply[]> {
     try {
       const response = await api.get<Supply[]>('/Supply');
-      return response;
-    } catch (error) {
+      return response || [];
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到物資資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得物資列表失敗:', error);
       throw error;
     }
@@ -263,8 +277,15 @@ class SupplyService {
         ? `/RegularSuppliesNeed?workerId=${workerId}`
         : '/RegularSuppliesNeed';
       const response = await api.get<RegularSuppliesNeed[]>(url);
-      return response;
-    } catch (error) {
+      return response || [];
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到常駐物資需求資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得常駐物資需求失敗:', error);
       throw error;
     }
@@ -380,7 +401,14 @@ class SupplyService {
       const data = await api.get<any[]>(`/RegularSuppliesNeed/batch/${batchId}/details`);
       console.log('API 回應資料:', data);
       return data || [];
-    } catch (error) {
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log(`批次 ${batchId} 沒有分發詳情資料，返回空陣列`);
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error(`取得批次 ${batchId} 分發詳情失敗:`, error);
       throw error;
     }
@@ -407,6 +435,12 @@ class SupplyService {
       const response = await api.get<EmergencySupplyNeed[]>('/EmergencySupplyNeed');
       console.log('緊急物資需求 API 回應:', response);
       
+      // 處理空回應
+      if (!response || response.length === 0) {
+        console.log('沒有緊急物資需求資料，返回空陣列');
+        return [];
+      }
+      
       // 處理日期格式轉換
       const processedResponse = response.map(item => ({
         ...item,
@@ -416,7 +450,14 @@ class SupplyService {
       }));
       
       return processedResponse;
-    } catch (error) {
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到緊急物資需求資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得緊急物資需求失敗:', error);
       throw error;
     }
@@ -524,8 +565,15 @@ class SupplyService {
   async getRegularSupplyMatches(): Promise<RegularSupplyMatch[]> {
     try {
       const response = await api.get<RegularSupplyMatch[]>('/RegularSupplyMatch');
-      return response;
-    } catch (error) {
+      return response || [];
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到常駐物資配對資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得常駐物資配對失敗:', error);
       throw error;
     }
@@ -537,8 +585,15 @@ class SupplyService {
   async getEmergencySupplyMatches(): Promise<EmergencySupplyMatch[]> {
     try {
       const response = await api.get<EmergencySupplyMatch[]>('/EmergencySupplyMatch');
-      return response;
-    } catch (error) {
+      return response || [];
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到緊急物資配對資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得緊急物資配對失敗:', error);
       throw error;
     }
@@ -576,8 +631,15 @@ class SupplyService {
   async getCaseOrders(): Promise<CaseOrder[]> {
     try {
       const response = await api.get<CaseOrder[]>('/CaseOrder');
-      return response;
-    } catch (error) {
+      return response || [];
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到個案訂單資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得個案訂單失敗:', error);
       throw error;
     }
@@ -589,8 +651,15 @@ class SupplyService {
   async getUserOrders(): Promise<UserOrder[]> {
     try {
       const response = await api.get<UserOrder[]>('/UserOrder');
-      return response;
-    } catch (error) {
+      return response || [];
+    } catch (error: any) {
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        // 404 Not Found 或 204 No Content 表示沒有資料，返回空陣列
+        console.log('沒有找到用戶訂單資料，返回空陣列');
+        return [];
+      }
+      // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
       console.error('取得用戶訂單失敗:', error);
       throw error;
     }
