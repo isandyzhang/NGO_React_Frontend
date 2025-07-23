@@ -21,6 +21,7 @@ import {
 import { PhotoCamera, Delete } from '@mui/icons-material';
 import { emergencySupplyNeedService, CreateEmergencySupplyNeedRequest } from '../../services/emergencySupplyNeedService';
 import { caseService } from '../../services/caseService';
+import { THEME_COLORS } from '../../styles/theme';
 
 interface CaseOption {
   caseId: number;
@@ -212,12 +213,16 @@ const EmergencySupplyNeedAddTab: React.FC = () => {
 
       <Card>
         <CardContent>
+          
           <form onSubmit={handleSubmit}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               
               {/* 第一排：個案選擇 + 物品名稱 */}
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <Box sx={{ flex: 1, minWidth: 300 }}>
+                  <Typography variant="subtitle1" sx={{ color: THEME_COLORS.TEXT_PRIMARY, mb: 1, fontWeight: 600 }}>
+                    個案選擇 *
+                  </Typography>
                   <Autocomplete
                     value={selectedCase}
                     onChange={handleCaseChange}
@@ -227,7 +232,7 @@ const EmergencySupplyNeedAddTab: React.FC = () => {
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        label="選擇個案"
+                        label="請選擇需要物資的個案"
                         required
                         InputProps={{
                           ...params.InputProps,
@@ -244,9 +249,12 @@ const EmergencySupplyNeedAddTab: React.FC = () => {
                 </Box>
 
                 <Box sx={{ flex: 1, minWidth: 300 }}>
+                  <Typography variant="subtitle1" sx={{ color: THEME_COLORS.TEXT_PRIMARY, mb: 1, fontWeight: 600 }}>
+                    物品名稱 *
+                  </Typography>
                   <TextField
                     fullWidth
-                    label="物品名稱"
+                    label="請輸入需要的物品名稱"
                     required
                     value={formData.supplyName}
                     onChange={(e) => handleInputChange('supplyName', e.target.value)}
@@ -258,9 +266,12 @@ const EmergencySupplyNeedAddTab: React.FC = () => {
               {/* 第二排：數量 + 優先級 */}
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <Box sx={{ flex: 1, minWidth: 300 }}>
+                  <Typography variant="subtitle1" sx={{ color: THEME_COLORS.TEXT_PRIMARY, mb: 1, fontWeight: 600 }}>
+                    需求數量 *
+                  </Typography>
                   <TextField
                     fullWidth
-                    label="需求數量"
+                    label="請輸入需要的數量"
                     type="number"
                     required
                     value={formData.quantity}
@@ -270,17 +281,20 @@ const EmergencySupplyNeedAddTab: React.FC = () => {
                 </Box>
 
                 <Box sx={{ flex: 1, minWidth: 300 }}>
+                  <Typography variant="subtitle1" sx={{ color: THEME_COLORS.TEXT_PRIMARY, mb: 1, fontWeight: 600 }}>
+                    優先級 *
+                  </Typography>
                   <FormControl fullWidth>
-                    <InputLabel>優先級</InputLabel>
+                    <InputLabel>請選擇需求的優先級</InputLabel>
                     <Select
                       value={formData.priority}
                       onChange={(e) => handleInputChange('priority', e.target.value)}
-                      label="優先級"
+                      label="請選擇需求的優先級"
                     >
-                      <MenuItem value="Low">低</MenuItem>
-                      <MenuItem value="Normal">一般</MenuItem>
-                      <MenuItem value="High">高</MenuItem>
-                      <MenuItem value="Urgent">緊急</MenuItem>
+                      <MenuItem value="Low">🟢 低 - 一般需求</MenuItem>
+                      <MenuItem value="Normal">🟡 一般 - 正常需求</MenuItem>
+                      <MenuItem value="High">🟠 高 - 重要需求</MenuItem>
+                      <MenuItem value="Urgent">🔴 緊急 - 急需處理</MenuItem>
                     </Select>
                   </FormControl>
                 </Box>
@@ -288,9 +302,12 @@ const EmergencySupplyNeedAddTab: React.FC = () => {
 
               {/* 描述 */}
               <Box>
+                <Typography variant="subtitle1" sx={{ color: THEME_COLORS.TEXT_PRIMARY, mb: 1, fontWeight: 600 }}>
+                    需求描述
+                </Typography>
                 <TextField
                   fullWidth
-                  label="描述"
+                  label="請詳細描述物品規格、用途或特殊需求"
                   multiline
                   rows={4}
                   value={formData.description}
@@ -301,8 +318,8 @@ const EmergencySupplyNeedAddTab: React.FC = () => {
 
               {/* 圖片上傳 */}
               <Box>
-                <Typography variant="h6" gutterBottom>
-                  物品圖片
+                <Typography variant="subtitle1" sx={{ color: THEME_COLORS.TEXT_PRIMARY, mb: 1, fontWeight: 600 }}>
+                  物品圖片 (選填)
                 </Typography>
                 
                 {imagePreview ? (

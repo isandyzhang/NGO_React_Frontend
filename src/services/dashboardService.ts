@@ -3,9 +3,18 @@ import { api } from './api';
 // Dashboard統計數據介面
 export interface DashboardStats {
   totalCases: number;
-  totalUsers: number;
+  thisYearNewCases: number;
+  casesGrowthPercentage: number;
+  
+  totalWorkers: number;
+  thisYearNewWorkers: number;
+  workersGrowthPercentage: number;
+  
   totalActivities: number;
   monthlyCompletedActivities: number;
+  
+  // 為了向後相容保留
+  totalUsers: number;
 }
 
 // 性別分佈介面
@@ -17,6 +26,12 @@ export interface GenderDistribution {
 // 個案城市分佈介面
 export interface CaseDistribution {
   city: string;
+  count: number;
+}
+
+// 個案縣市分佈介面 (用於地圖顯示)
+export interface CountyDistribution {
+  county: string;
   count: number;
 }
 
@@ -88,6 +103,17 @@ export const dashboardService = {
       return response;
     } catch (error) {
       console.error('獲取近期活動數據失敗:', error);
+      throw error;
+    }
+  },
+
+  // 獲取個案縣市分佈數據 (用於地圖顯示)
+  getCountyDistribution: async (): Promise<CountyDistribution[]> => {
+    try {
+      const response = await api.get<CountyDistribution[]>('/Dashboard/county-distribution');
+      return response;
+    } catch (error) {
+      console.error('獲取縣市分佈數據失敗:', error);
       throw error;
     }
   }

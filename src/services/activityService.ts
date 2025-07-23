@@ -219,6 +219,45 @@ class ActivityService {
   }
 
   /**
+   * 測試 Azure Blob Storage 連接
+   */
+  async testAzureConnection(): Promise<{ success: boolean; message: string; containerName?: string; containerExists?: boolean }> {
+    try {
+      console.log('🧪 開始測試 Azure Blob Storage 連接');
+      
+      const apiBaseUrl = config.apiBaseUrl;
+      const token = localStorage.getItem('authToken');
+      const testUrl = `${apiBaseUrl}/Activity/test-azure-connection`;
+      
+      console.log('📡 測試 URL:', testUrl);
+      
+      const response = await fetch(testUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
+      
+      console.log('📊 測試回應狀態:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ 測試失敗:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ 測試成功:', result);
+      
+      return result;
+    } catch (error: any) {
+      console.error('💥 Azure 連接測試失敗:', error);
+      throw new Error(error.message || 'Azure 連接測試失敗');
+    }
+  }
+
+  /**
    * 上傳圖片到 Azure Blob Storage (帶重試機制)
    */
   async uploadImage(formData: FormData, maxRetries: number = 2): Promise<{ imageUrl: string }> {

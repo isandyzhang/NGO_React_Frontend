@@ -54,6 +54,7 @@ export interface CreateCaseRequest {
   City: string;
   District: string;
   DetailAddress: string;
+  SpeechToTextAudioUrl?: string;
 }
 
 export interface CaseResponse {
@@ -74,6 +75,7 @@ export interface CaseResponse {
   district: string;
   detailAddress: string;
   workerName?: string;
+  speechToTextAudioUrl?: string;
 }
 
 export interface CaseRecord {

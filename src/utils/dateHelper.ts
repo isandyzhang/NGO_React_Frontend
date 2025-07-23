@@ -4,12 +4,44 @@
  */
 
 /**
+ * 格式化日期為顯示格式 (yyyy-mm-dd)
+ * @param dateString - 日期字符串或Date對象
+ * @param options - 格式化選項
+ * @returns 格式化後的日期字符串
+ */
+export const formatDate = (
+  dateString: string | Date | null | undefined,
+  options: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }
+): string => {
+  if (!dateString) return '';
+  
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    if (isNaN(date.getTime())) return '';
+    
+    // 使用 yyyy-mm-dd 格式
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.error('日期格式化失敗:', error);
+    return '';
+  }
+};
+
+/**
  * 格式化日期為中文顯示格式
  * @param dateString - 日期字符串或Date對象
  * @param options - 格式化選項
  * @returns 格式化後的中文日期字符串
  */
-export const formatDate = (
+export const formatDateChinese = (
   dateString: string | Date | null | undefined,
   options: Intl.DateTimeFormatOptions = {
     year: 'numeric',

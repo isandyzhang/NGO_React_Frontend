@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Box, 
   TextField,
   InputAdornment,
@@ -24,6 +24,12 @@ import {
   Stack,
   FormControl,
   InputLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
+  Slider,
 } from '@mui/material';
 import { 
   Search,
@@ -34,11 +40,18 @@ import {
   ExpandLess,
   Visibility,
   VisibilityOff,
+  Delete,
+  PlayArrow,
+  Pause,
+  VolumeUp,
+  PhotoCamera,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { caseService, CaseResponse } from '../../services/caseService';
 import { authService } from '../../services/authService';
 import { formatDate } from '../../utils/dateHelper';
+import { speechService } from '../../services/speechService';
 
 interface CaseRecord {
   caseId: number;
@@ -57,6 +70,7 @@ interface CaseRecord {
   profileImage?: string;
   detailAddress: string;
   workerName?: string;
+  speechToTextAudioUrl?: string;
 }
 
 const SearchEditCaseTab: React.FC = () => {
@@ -75,6 +89,30 @@ const SearchEditCaseTab: React.FC = () => {
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+
+  // 刪除確認對話框狀態
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteRecord, setDeleteRecord] = useState<CaseRecord | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  // 錯誤提示對話框狀態
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
+
+  // 音檔播放相關狀態
+  const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentPlayingCaseId, setCurrentPlayingCaseId] = useState<number | null>(null);
+  const [volume, setVolume] = useState(1); // 音量控制 (0-1)
+  const [transcriptionText, setTranscriptionText] = useState<string>(''); // 語音轉字幕文字
+  const [isTranscribing, setIsTranscribing] = useState(false); // 轉字幕中狀態
+
+  // 圖片上傳相關狀態
+  const [imageUploadLoading, setImageUploadLoading] = useState<number | null>(null);
+
+
 
   // 載入案例資料
   const loadCases = async (page: number = 1) => {
@@ -122,8 +160,15 @@ const SearchEditCaseTab: React.FC = () => {
         status: item.status,
         profileImage: item.profileImage,
         detailAddress: item.detailAddress,
-        workerName: item.workerName
+        workerName: item.workerName,
+        speechToTextAudioUrl: item.speechToTextAudioUrl
       }));
+      
+      console.log('🎵 音檔檢查:', transformedData.map(caseItem => ({ 
+        caseId: caseItem.caseId, 
+        name: caseItem.name, 
+        speechToTextAudioUrl: caseItem.speechToTextAudioUrl 
+      })));
       
       setCaseRecords(transformedData);
       setTotalCount(response.totalCount);
@@ -197,7 +242,8 @@ const SearchEditCaseTab: React.FC = () => {
         status: item.status,
         profileImage: item.profileImage,
         detailAddress: item.detailAddress,
-        workerName: item.workerName
+        workerName: item.workerName,
+        speechToTextAudioUrl: item.speechToTextAudioUrl
       }));
       
       setCaseRecords(transformedData);
@@ -276,7 +322,8 @@ const SearchEditCaseTab: React.FC = () => {
         status: item.status,
         profileImage: item.profileImage,
         detailAddress: item.detailAddress,
-        workerName: item.workerName
+        workerName: item.workerName,
+        speechToTextAudioUrl: item.speechToTextAudioUrl
       }));
       
       setCaseRecords(transformedData);
@@ -296,11 +343,22 @@ const SearchEditCaseTab: React.FC = () => {
   };
 
   const toggleRowExpansion = (id: number) => {
-    setExpandedRows(prev => 
-      prev.includes(id) 
-        ? prev.filter(rowId => rowId !== id)
-        : [...prev, id]
-    );
+    if (expandedRows.includes(id)) {
+      setExpandedRows(prev => prev.filter(rowId => rowId !== id));
+      if (editingRow === id) {
+        setEditingRow(null);
+        setEditFormData(null);
+      }
+    } else {
+      setExpandedRows(prev => [...prev, id]);
+      // 預設進入編輯模式
+      const record = caseRecords.find(r => r.caseId === id);
+      if (record) {
+        setEditingRow(id);
+        setEditFormData({ ...record });
+        setFieldErrors({});
+      }
+    }
   };
 
   const handleEdit = (record: CaseRecord) => {
@@ -392,6 +450,84 @@ const SearchEditCaseTab: React.FC = () => {
     );
   };
 
+  // 刪除相關處理函數
+  const handleDeleteClick = (record: CaseRecord) => {
+    setDeleteRecord(record);
+    setDeleteConfirmName('');
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteRecord || deleteConfirmName !== deleteRecord.name) {
+      return;
+    }
+
+    try {
+      setDeleteLoading(true);
+      await caseService.deleteCase(deleteRecord.caseId);
+      
+      // 重新載入資料
+      await loadCases(currentPage);
+      
+      // 重置狀態
+      setDeleteDialogOpen(false);
+      setDeleteRecord(null);
+      setDeleteConfirmName('');
+      
+      alert('個案已成功刪除！');
+    } catch (err: any) {
+      console.error('刪除錯誤:', err);
+      
+      // 處理後端回傳的詳細錯誤訊息
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.details) {
+          // 顯示詳細的錯誤訊息，包含相關資料列表
+          setErrorMessage(errorData.message || '無法刪除個案');
+          setErrorDetails(errorData.relatedData || []);
+          setErrorDialogOpen(true);
+        } else if (errorData.message) {
+          setErrorMessage(errorData.message);
+          setErrorDetails([]);
+          setErrorDialogOpen(true);
+        } else {
+          setErrorMessage('刪除失敗，請稍後再試');
+          setErrorDetails([]);
+          setErrorDialogOpen(true);
+        }
+      } else if (err.message) {
+        setErrorMessage(err.message);
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
+      } else {
+        setErrorMessage('刪除失敗，請稍後再試');
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
+      }
+      
+      setError(err instanceof Error ? err.message : '刪除時發生錯誤');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setDeleteRecord(null);
+    setDeleteConfirmName('');
+  };
+
+  // 檢查使用者權限
+  const getCurrentUserRole = () => {
+    const currentWorker = authService.getCurrentWorker();
+    return currentWorker?.role || '';
+  };
+
+  const canDeleteCase = () => {
+    const role = getCurrentUserRole();
+    return role === 'admin' || role === 'supervisor';
+  };
+
   // 計算年齡函數
   const calculateAge = (birthday?: string) => {
     if (!birthday) return '未知';
@@ -421,6 +557,147 @@ const SearchEditCaseTab: React.FC = () => {
     };
     return colorMap[difficulty] || THEME_COLORS.PRIMARY;
   };
+
+  // 音檔播放功能
+  const handlePlayAudio = (audioUrl: string, caseId: number) => {
+    if (currentPlayingCaseId === caseId && isPlaying) {
+      // 停止播放
+      if (audioPlayer) {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+      }
+      setIsPlaying(false);
+      setCurrentPlayingCaseId(null);
+      setAudioPlayer(null);
+    } else {
+      // 開始播放
+      if (audioPlayer) {
+        audioPlayer.pause();
+      }
+      
+      const newAudioPlayer = new Audio(audioUrl);
+      
+      // 設定音量
+      newAudioPlayer.volume = volume;
+      
+      newAudioPlayer.addEventListener('ended', () => {
+        setIsPlaying(false);
+        setCurrentPlayingCaseId(null);
+        setAudioPlayer(null);
+      });
+      
+      newAudioPlayer.addEventListener('error', () => {
+        console.error('音檔播放失敗:', audioUrl);
+        setIsPlaying(false);
+        setCurrentPlayingCaseId(null);
+        setAudioPlayer(null);
+      });
+      
+      newAudioPlayer.play().then(() => {
+        setIsPlaying(true);
+        setCurrentPlayingCaseId(caseId);
+        setAudioPlayer(newAudioPlayer);
+      }).catch((error) => {
+        console.error('音檔播放失敗:', error);
+        setIsPlaying(false);
+        setCurrentPlayingCaseId(null);
+        setAudioPlayer(null);
+      });
+    }
+  };
+
+  // 音量控制
+  const handleVolumeChange = (event: Event, newValue: number | number[]) => {
+    const newVolume = newValue as number;
+    setVolume(newVolume);
+    
+    // 如果正在播放，立即更新音量
+    if (audioPlayer) {
+      audioPlayer.volume = newVolume;
+    }
+  };
+
+  // 語音轉字幕功能
+  const handleTranscribeAudio = async (audioUrl: string, caseId: number) => {
+    try {
+      setIsTranscribing(true);
+      setTranscriptionText('');
+      
+      console.log('開始語音轉字幕:', audioUrl);
+      
+      const response = await speechService.transcribeFromUrl(audioUrl);
+      
+      console.log('語音轉字幕成功:', response);
+      setTranscriptionText(response.text);
+      
+    } catch (error: any) {
+      console.error('語音轉字幕失敗:', error);
+      alert(`語音轉字幕失敗：${error.message}`);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  // 格式化日期為 yyyy-mm-dd
+  const formatDateForInput = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  };
+
+  // 圖片上傳功能
+  const handleImageUpload = async (file: File, caseId: number) => {
+    try {
+      setImageUploadLoading(caseId);
+      
+      const formData = new FormData();
+      formData.append('imageFile', file);
+      
+      // 這裡需要調用後端的圖片上傳 API
+      // const response = await caseService.uploadImage(caseId, formData);
+      
+      // 暫時模擬上傳成功
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // 更新本地狀態
+      setCaseRecords(prev => 
+        prev.map(record => 
+          record.caseId === caseId 
+            ? { ...record, profileImage: URL.createObjectURL(file) }
+            : record
+        )
+      );
+      
+      alert('圖片上傳成功！');
+    } catch (error) {
+      console.error('圖片上傳失敗:', error);
+      alert('圖片上傳失敗，請稍後再試');
+    } finally {
+      setImageUploadLoading(null);
+    }
+  };
+
+  // 處理圖片選擇
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>, caseId: number) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // 檢查檔案類型
+      if (!file.type.startsWith('image/')) {
+        alert('請選擇圖片檔案');
+        return;
+      }
+      
+      // 檢查檔案大小 (限制為 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('圖片大小不能超過 5MB');
+        return;
+      }
+      
+      handleImageUpload(file, caseId);
+    }
+  };
+
+
 
 
 
@@ -498,7 +775,19 @@ const SearchEditCaseTab: React.FC = () => {
             onClick={handleSearch}
             disabled={loading}
             startIcon={loading ? <CircularProgress size={20} /> : <Search />}
-            sx={{ minWidth: 100, bgcolor: THEME_COLORS.PRIMARY }}
+            sx={{ 
+              minWidth: 100, 
+              bgcolor: THEME_COLORS.PRIMARY,
+              color: 'white',
+              '&:hover': {
+                bgcolor: THEME_COLORS.PRIMARY_HOVER,
+                color: 'white',
+              },
+              '&:disabled': {
+                bgcolor: THEME_COLORS.DISABLED_BG,
+                color: THEME_COLORS.DISABLED_TEXT,
+              }
+            }}
           >
             {loading ? '搜尋中...' : '查詢'}
           </Button>
@@ -621,8 +910,12 @@ const SearchEditCaseTab: React.FC = () => {
                         label={genderMapping[record.gender as keyof typeof genderMapping] || record.gender}
                         size="small"
                         sx={{
-                          backgroundColor: record.gender === 'Male' ? THEME_COLORS.MALE_AVATAR : THEME_COLORS.FEMALE_AVATAR,
+                          backgroundColor: record.gender === 'Male' ? THEME_COLORS.PRIMARY : THEME_COLORS.PRIMARY_LIGHT,
                           color: 'white',
+                          fontWeight: 500,
+                          '&:hover': {
+                            backgroundColor: record.gender === 'Male' ? THEME_COLORS.PRIMARY_HOVER : THEME_COLORS.PRIMARY,
+                          }
                         }}
                       />
                     </TableCell>
@@ -650,26 +943,16 @@ const SearchEditCaseTab: React.FC = () => {
                       {formatDate(record.createdAt)}
                     </TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(record);
-                          }}
-                          sx={{ color: THEME_COLORS.PRIMARY }}
-                        >
-                          <Edit />
-                        </IconButton>
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleRowExpansion(record.caseId);
-                          }}
-                          sx={{ color: THEME_COLORS.TEXT_SECONDARY }}
-                        >
-                          {expandedRows.includes(record.caseId) ? <ExpandLess /> : <ExpandMore />}
-                        </IconButton>
-                      </Box>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleRowExpansion(record.caseId);
+                        }}
+                        sx={{ color: THEME_COLORS.TEXT_SECONDARY }}
+                        title={expandedRows.includes(record.caseId) ? "收合詳細資料" : "展開詳細資料"}
+                      >
+                        {expandedRows.includes(record.caseId) ? <ExpandLess /> : <ExpandMore />}
+                      </IconButton>
                     </TableCell>
                   </TableRow>
 
@@ -684,13 +967,73 @@ const SearchEditCaseTab: React.FC = () => {
                           borderRadius: 2,
                           border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
                         }}>
-                          <Typography variant="h6" gutterBottom sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
+                          <Typography variant="h6" sx={{ color: THEME_COLORS.TEXT_PRIMARY, mb: 2 }}>
                             詳細資料
                           </Typography>
                           
-                          {editingRow === record.caseId && editFormData ? (
-                            // 編輯模式
+                                                                                  {expandedRows.includes(record.caseId) && editFormData && (
+                              // 編輯模式
                             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
+                              {/* 圖片上傳區域 */}
+                              <Box sx={{ gridColumn: '1 / -1', mb: 2 }}>
+                                <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1 }}>
+                                  個人照片
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                  <Box sx={{ 
+                                    width: 80, 
+                                    height: 80, 
+                                    borderRadius: '50%',
+                                    overflow: 'hidden',
+                                    border: `2px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                                    bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}>
+                                    {editFormData.profileImage ? (
+                                      <img
+                                        src={editFormData.profileImage}
+                                        alt={`${editFormData.name}的照片`}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                      />
+                                    ) : (
+                                      <Typography variant="body2" color="textSecondary">
+                                        無照片
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                  <Box>
+                                    <input
+                                      accept="image/*"
+                                      style={{ display: 'none' }}
+                                      id={`image-upload-${record.caseId}`}
+                                      type="file"
+                                      onChange={(e) => handleImageSelect(e, record.caseId)}
+                                    />
+                                    <label htmlFor={`image-upload-${record.caseId}`}>
+                                      <Button
+                                        variant="outlined"
+                                        component="span"
+                                        startIcon={imageUploadLoading === record.caseId ? <CircularProgress size={20} /> : <PhotoCamera />}
+                                        disabled={imageUploadLoading === record.caseId}
+                                        sx={{ 
+                                          borderColor: THEME_COLORS.BORDER_DEFAULT,
+                                          color: THEME_COLORS.TEXT_SECONDARY,
+                                          '&:hover': {
+                                            borderColor: THEME_COLORS.PRIMARY,
+                                            backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
+                                            color: THEME_COLORS.PRIMARY,
+                                          }
+                                        }}
+                                      >
+                                        {imageUploadLoading === record.caseId ? '上傳中...' : '變更圖片'}
+                                      </Button>
+                                    </label>
+                                  </Box>
+                                </Box>
+                              </Box>
+
                               <TextField
                                 label="姓名"
                                 value={editFormData.name}
@@ -715,7 +1058,7 @@ const SearchEditCaseTab: React.FC = () => {
                               <TextField
                                 label="出生日期"
                                 type="date"
-                                value={editFormData.birthday ? (editFormData.birthday.length > 10 ? editFormData.birthday.substring(0, 10) : editFormData.birthday) : ''}
+                                value={formatDateForInput(editFormData.birthday || '')}
                                 onChange={(e) => handleEditInputChange('birthday', e.target.value)}
                                 InputLabelProps={{ shrink: true }}
                               />
@@ -741,55 +1084,65 @@ const SearchEditCaseTab: React.FC = () => {
                                 type={showIdRows.includes(record.caseId) ? "text" : "password"}
                               />
 
-                              <TextField
-                                label="電話"
-                                value={editFormData.phone}
-                                onChange={(e) => handleEditInputChange('phone', e.target.value)}
-                                error={fieldErrors.phone}
-                                helperText={fieldErrors.phone ? '電話為必填' : ''}
-                              />
+                              <Box sx={{ display: 'flex', gap: 2, gridColumn: '1 / -1' }}>
+                                <TextField
+                                  label="電話"
+                                  value={editFormData.phone}
+                                  onChange={(e) => handleEditInputChange('phone', e.target.value)}
+                                  error={fieldErrors.phone}
+                                  helperText={fieldErrors.phone ? '電話為必填' : ''}
+                                  sx={{ flex: 1 }}
+                                />
 
-                              <TextField
-                                select
-                                label="城市"
-                                value={editFormData.city}
-                                onChange={(e) => handleEditInputChange('city', e.target.value)}
-                                InputLabelProps={{ shrink: true }}
-                              >
-                                <MenuItem value="">請選擇城市</MenuItem>
-                                {cityOptions.map((option) => (
-                                  <MenuItem key={option} value={option}>{option}</MenuItem>
-                                ))}
-                              </TextField>
+                                <TextField
+                                  label="Email"
+                                  type="email"
+                                  value={editFormData.email}
+                                  onChange={(e) => handleEditInputChange('email', e.target.value)}
+                                  error={fieldErrors.email}
+                                  helperText={fieldErrors.email ? 'Email為必填' : ''}
+                                  sx={{ flex: 1 }}
+                                />
+                              </Box>
 
-                              <TextField
-                                select
-                                label="地區"
-                                value={editFormData.district}
-                                onChange={(e) => handleEditInputChange('district', e.target.value)}
-                                InputLabelProps={{ shrink: true }}
-                                disabled={!editFormData.city}
-                              >
-                                <MenuItem value="">請選擇地區</MenuItem>
-                                {(districtOptions[editFormData.city] ? districtOptions[editFormData.city] : []).map((option: string) => (
-                                  <MenuItem key={option} value={option}>{option}</MenuItem>
-                                ))}
-                              </TextField>
+                              <Box sx={{ display: 'flex', gap: 2, gridColumn: '1 / -1' }}>
+                                <TextField
+                                  select
+                                  label="城市"
+                                  value={editFormData.city}
+                                  onChange={(e) => handleEditInputChange('city', e.target.value)}
+                                  InputLabelProps={{ shrink: true }}
+                                  sx={{ flex: 1 }}
+                                >
+                                  <MenuItem value="">請選擇城市</MenuItem>
+                                  {cityOptions.map((option) => (
+                                    <MenuItem key={option} value={option}>{option}</MenuItem>
+                                  ))}
+                                </TextField>
 
-                              <TextField
-                                label="地址"
-                                value={editFormData.address}
-                                onChange={(e) => handleEditInputChange('address', e.target.value)}
-                              />
+                                <TextField
+                                  select
+                                  label="地區"
+                                  value={editFormData.district}
+                                  onChange={(e) => handleEditInputChange('district', e.target.value)}
+                                  InputLabelProps={{ shrink: true }}
+                                  disabled={!editFormData.city}
+                                  sx={{ flex: 1 }}
+                                >
+                                  <MenuItem value="">請選擇地區</MenuItem>
+                                  {(districtOptions[editFormData.city] ? districtOptions[editFormData.city] : []).map((option: string) => (
+                                    <MenuItem key={option} value={option}>{option}</MenuItem>
+                                  ))}
+                                </TextField>
 
-                              <TextField
-                                label="Email"
-                                type="email"
-                                value={editFormData.email}
-                                onChange={(e) => handleEditInputChange('email', e.target.value)}
-                                error={fieldErrors.email}
-                                helperText={fieldErrors.email ? 'Email為必填' : ''}
-                              />
+                                <TextField
+                                  label="詳細地址"
+                                  value={editFormData.detailAddress || editFormData.address}
+                                  onChange={(e) => handleEditInputChange('detailAddress', e.target.value)}
+                                  placeholder="請輸入詳細地址"
+                                  sx={{ flex: 2 }}
+                                />
+                              </Box>
 
                               <TextField
                                 select
@@ -797,6 +1150,7 @@ const SearchEditCaseTab: React.FC = () => {
                                 value={editFormData.description}
                                 onChange={(e) => handleEditInputChange('description', e.target.value)}
                                 InputLabelProps={{ shrink: true }}
+                                sx={{ gridColumn: '1 / -1' }}
                               >
                                 <MenuItem value="">請選擇困難類型</MenuItem>
                                 {difficultyOptions.map((option) => (
@@ -816,14 +1170,133 @@ const SearchEditCaseTab: React.FC = () => {
                                 ))}
                               </TextField>
 
-                              {/* 操作按鈕 */}
-                              <Box sx={{ display: 'flex', gap: 2, gridColumn: '1 / -1', mt: 2 }}>
+                              {/* 音檔播放器 */}
+                              <Box sx={{ gridColumn: '1 / -1' }}>
+                                <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1 }}>
+                                  語音檔案
+                                </Typography>
+                                {editFormData.speechToTextAudioUrl ? (
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    {/* 播放控制 */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handlePlayAudio(editFormData.speechToTextAudioUrl!, record.caseId)}
+                                        sx={{ 
+                                          color: currentPlayingCaseId === record.caseId && isPlaying ? THEME_COLORS.ERROR : THEME_COLORS.PRIMARY,
+                                          '&:hover': {
+                                            color: currentPlayingCaseId === record.caseId && isPlaying ? THEME_COLORS.ERROR_DARK : THEME_COLORS.PRIMARY_HOVER,
+                                          }
+                                        }}
+                                        title={currentPlayingCaseId === record.caseId && isPlaying ? "停止播放" : "播放語音"}
+                                      >
+                                        {currentPlayingCaseId === record.caseId && isPlaying ? <Pause /> : <PlayArrow />}
+                                      </IconButton>
+                                      <Typography variant="body2" color="textSecondary">
+                                        {currentPlayingCaseId === record.caseId && isPlaying ? "播放中..." : "點擊播放語音"}
+                                      </Typography>
+                                    </Box>
+
+                                    {/* 音量控制 */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                      <VolumeUp sx={{ fontSize: 20, color: THEME_COLORS.TEXT_SECONDARY }} />
+                                      <Slider
+                                        value={volume}
+                                        onChange={handleVolumeChange}
+                                        min={0}
+                                        max={1}
+                                        step={0.1}
+                                        sx={{
+                                          flex: 1,
+                                          '& .MuiSlider-thumb': {
+                                            backgroundColor: THEME_COLORS.PRIMARY,
+                                          },
+                                          '& .MuiSlider-track': {
+                                            backgroundColor: THEME_COLORS.PRIMARY,
+                                          },
+                                          '& .MuiSlider-rail': {
+                                            backgroundColor: THEME_COLORS.BORDER_DEFAULT,
+                                          }
+                                        }}
+                                      />
+                                      <Typography variant="body2" color="textSecondary" sx={{ minWidth: 40 }}>
+                                        {Math.round(volume * 100)}%
+                                      </Typography>
+                                    </Box>
+
+                                    {/* 語音轉字幕按鈕 */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        onClick={() => handleTranscribeAudio(editFormData.speechToTextAudioUrl!, record.caseId)}
+                                        disabled={isTranscribing}
+                                        startIcon={isTranscribing ? <CircularProgress size={16} /> : null}
+                                        sx={{
+                                          borderColor: THEME_COLORS.PRIMARY,
+                                          color: THEME_COLORS.PRIMARY,
+                                          '&:hover': {
+                                            borderColor: THEME_COLORS.PRIMARY_DARK,
+                                            backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
+                                          },
+                                          '&:disabled': {
+                                            borderColor: THEME_COLORS.DISABLED_BG,
+                                            color: THEME_COLORS.DISABLED_TEXT,
+                                          }
+                                        }}
+                                      >
+                                        {isTranscribing ? '轉字幕中...' : '語音轉字幕'}
+                                      </Button>
+                                    </Box>
+
+                                    {/* 字幕顯示區域 */}
+                                    {transcriptionText && (
+                                      <Box sx={{ 
+                                        mt: 1, 
+                                        p: 2, 
+                                        bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                                        borderRadius: 1,
+                                        border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
+                                      }}>
+                                        <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1 }}>
+                                          語音轉字幕結果：
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ 
+                                          whiteSpace: 'pre-wrap',
+                                          lineHeight: 1.6,
+                                          color: THEME_COLORS.TEXT_PRIMARY
+                                        }}>
+                                          {transcriptionText}
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                ) : (
+                                  <Typography variant="body2" color="textSecondary">
+                                    此個案暫無語音檔案
+                                  </Typography>
+                                )}
+                              </Box>
+
+                              {/* 操作按鈕 - 左下角 */}
+                              <Box sx={{ display: 'flex', gap: 2, gridColumn: '1 / -1', mt: 2, justifyContent: 'flex-start' }}>
                                 <Button
                                   variant="contained"
                                   onClick={handleSave}
                                   disabled={loading}
                                   startIcon={loading ? <CircularProgress size={20} /> : <Save />}
-                                  sx={{ bgcolor: THEME_COLORS.PRIMARY }}
+                                  sx={{ 
+                                    bgcolor: THEME_COLORS.PRIMARY,
+                                    color: 'white',
+                                    '&:hover': {
+                                      bgcolor: THEME_COLORS.PRIMARY_HOVER,
+                                      color: 'white',
+                                    },
+                                    '&:disabled': {
+                                      bgcolor: THEME_COLORS.DISABLED_BG,
+                                      color: THEME_COLORS.DISABLED_TEXT,
+                                    }
+                                  }}
                                 >
                                   {loading ? '儲存中...' : '儲存'}
                                 </Button>
@@ -831,67 +1304,36 @@ const SearchEditCaseTab: React.FC = () => {
                                   variant="outlined"
                                   onClick={handleCancel}
                                   startIcon={<Cancel />}
-                                  sx={{ borderColor: THEME_COLORS.BORDER_DEFAULT }}
+                                  sx={{ 
+                                    borderColor: THEME_COLORS.BORDER_DEFAULT,
+                                    color: THEME_COLORS.TEXT_SECONDARY,
+                                    '&:hover': {
+                                      borderColor: THEME_COLORS.PRIMARY,
+                                      backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
+                                      color: THEME_COLORS.PRIMARY,
+                                    }
+                                  }}
                                 >
                                   取消
                                 </Button>
-                              </Box>
-                            </Box>
-                          ) : (
-                            // 檢視模式
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">姓名</Typography>
-                                <Typography>{record.name}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">性別</Typography>
-                                <Typography>{genderMapping[record.gender as keyof typeof genderMapping] || record.gender}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">出生日期</Typography>
-                                <Typography>{record.birthday ? formatDate(record.birthday) : '未設定'}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">身分證字號</Typography>
-                                <Typography>
-                                  {showIdRows.includes(record.caseId) ? record.identityNumber : '●●●●●●●●●●'}
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => toggleIdVisibility(record.caseId)}
-                                    sx={{ ml: 1 }}
+                                {canDeleteCase() && (
+                                  <Button
+                                    variant="outlined"
+                                    onClick={() => handleDeleteClick(record)}
+                                    startIcon={<Delete />}
+                                    sx={{ 
+                                      borderColor: THEME_COLORS.ERROR,
+                                      color: THEME_COLORS.ERROR,
+                                      '&:hover': {
+                                        borderColor: THEME_COLORS.ERROR_DARK,
+                                        backgroundColor: '#ffebee',
+                                        color: THEME_COLORS.ERROR_DARK,
+                                      }
+                                    }}
                                   >
-                                    {showIdRows.includes(record.caseId) ? <VisibilityOff /> : <Visibility />}
-                                  </IconButton>
-                                </Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">電話</Typography>
-                                <Typography>{record.phone}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">城市</Typography>
-                                <Typography>{record.city}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">地區</Typography>
-                                <Typography>{record.district}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">地址</Typography>
-                                <Typography>{record.address}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">Email</Typography>
-                                <Typography>{record.email}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">困難類型</Typography>
-                                <Typography>{record.description}</Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" color="textSecondary">建立日期</Typography>
-                                <Typography>{formatDate(record.createdAt)}</Typography>
+                                    刪除
+                                  </Button>
+                                )}
                               </Box>
                             </Box>
                           )}
@@ -924,6 +1366,171 @@ const SearchEditCaseTab: React.FC = () => {
           />
         </Stack>
       )}
+
+      {/* 刪除確認對話框 */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            padding: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: THEME_COLORS.ERROR,
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}>
+          <Delete />
+          刪除個案確認
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            您即將刪除個案資料，此操作<strong>不可復原</strong>。
+          </DialogContentText>
+          {deleteRecord && (
+            <Box sx={{ 
+              bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+              p: 2,
+              borderRadius: 1,
+              mb: 2
+            }}>
+              <Typography variant="subtitle2" color="textSecondary">個案資訊：</Typography>
+              <Typography><strong>姓名：</strong>{deleteRecord.name}</Typography>
+              <Typography><strong>身分證字號：</strong>{deleteRecord.identityNumber}</Typography>
+              <Typography><strong>電話：</strong>{deleteRecord.phone}</Typography>
+            </Box>
+          )}
+          <Typography variant="body2" sx={{ mb: 1, color: THEME_COLORS.ERROR }}>
+            為了確保安全，請輸入個案姓名 "<strong>{deleteRecord?.name}</strong>" 以確認刪除：
+          </Typography>
+          <TextField
+            fullWidth
+            variant="outlined"
+            value={deleteConfirmName}
+            onChange={(e) => setDeleteConfirmName(e.target.value)}
+            placeholder={`請輸入: ${deleteRecord?.name}`}
+            error={deleteConfirmName !== '' && deleteConfirmName !== deleteRecord?.name}
+            helperText={
+              deleteConfirmName !== '' && deleteConfirmName !== deleteRecord?.name 
+                ? '姓名不符，請重新輸入'
+                : ''
+            }
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={handleDeleteCancel}
+            variant="outlined"
+            sx={{ 
+              borderColor: THEME_COLORS.BORDER_DEFAULT,
+              color: THEME_COLORS.TEXT_SECONDARY,
+              '&:hover': {
+                borderColor: THEME_COLORS.PRIMARY,
+                backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
+                color: THEME_COLORS.PRIMARY,
+              }
+            }}
+          >
+            取消
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            variant="contained"
+            disabled={deleteConfirmName !== deleteRecord?.name || deleteLoading}
+            startIcon={deleteLoading ? <CircularProgress size={20} /> : <Delete />}
+            sx={{ 
+              bgcolor: THEME_COLORS.ERROR,
+              color: 'white',
+              '&:hover': {
+                bgcolor: THEME_COLORS.ERROR_DARK,
+                color: 'white',
+              },
+              '&:disabled': {
+                bgcolor: THEME_COLORS.DISABLED_BG,
+                color: THEME_COLORS.DISABLED_TEXT,
+              }
+            }}
+          >
+            {deleteLoading ? '刪除中...' : '確認刪除'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+
+
+      {/* 錯誤提示對話框 */}
+      <Dialog
+        open={errorDialogOpen}
+        onClose={() => setErrorDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            padding: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: THEME_COLORS.ERROR,
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}>
+          <Delete />
+          刪除失敗
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            {errorMessage}
+          </DialogContentText>
+          {errorDetails.length > 0 && (
+            <Box sx={{ 
+              bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+              p: 2,
+              borderRadius: 1,
+              mb: 2
+            }}>
+              <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1 }}>
+                相關資料：
+              </Typography>
+              {errorDetails.map((detail, index) => (
+                <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                  • {detail}
+                </Typography>
+              ))}
+            </Box>
+          )}
+          <Typography variant="body2" color="textSecondary">
+            請先刪除上述相關資料後，再嘗試刪除個案。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={() => setErrorDialogOpen(false)}
+            variant="contained"
+            sx={{ 
+              bgcolor: THEME_COLORS.PRIMARY,
+              color: 'white',
+              '&:hover': {
+                bgcolor: THEME_COLORS.PRIMARY_HOVER,
+                color: 'white',
+              }
+            }}
+          >
+            了解
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

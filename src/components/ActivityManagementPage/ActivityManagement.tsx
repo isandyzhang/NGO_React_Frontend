@@ -130,6 +130,21 @@ const ActivityManagement: React.FC = () => {
         ? prev.filter(rowId => rowId !== id)
         : [...prev, id]
     );
+    
+    // 當展開行時，自動進入編輯模式
+    if (!expandedRows.includes(id)) {
+      const record = activityRecords.find(r => r.activityId === id);
+      if (record) {
+        setEditingRow(id);
+        setEditFormData({ ...record });
+        setFieldErrors({});
+      }
+    } else {
+      // 當收起行時，退出編輯模式
+      setEditingRow(null);
+      setEditFormData(null);
+      setFieldErrors({});
+    }
   };
 
   const handleEdit = (record: ActivityRecord) => {
@@ -244,6 +259,27 @@ const ActivityManagement: React.FC = () => {
   // 對象標籤顏色
   const getAudienceColor = (aud: string) => aud === 'case' ? THEME_COLORS.PRIMARY : THEME_COLORS.INFO;
 
+  // 狀態中文映射
+  const getStatusLabel = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'open': '開放報名',
+      'full': '人數已滿',
+      'closed': '已關閉',
+      'completed': '已完成'
+    };
+    return statusMap[status] || status;
+  };
+
+  // 對象中文映射
+  const getAudienceLabel = (audience: string) => {
+    const audienceMap: { [key: string]: string } = {
+      'case': '個案',
+      'public': '一般民眾',
+      'user': '志工'
+    };
+    return audienceMap[audience] || audience;
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {/* 錯誤訊息 */}
@@ -323,7 +359,19 @@ const ActivityManagement: React.FC = () => {
             onClick={handleSearch}
             disabled={loading}
             startIcon={loading ? <CircularProgress size={20} /> : <Search />}
-            sx={{ minWidth: 100, bgcolor: THEME_COLORS.PRIMARY }}
+            sx={{ 
+              minWidth: 100, 
+              bgcolor: THEME_COLORS.SUCCESS,
+              color: 'white',
+              '&:hover': {
+                bgcolor: THEME_COLORS.SUCCESS_DARK || '#2e7d32',
+                color: 'white',
+              },
+              '&:disabled': {
+                bgcolor: THEME_COLORS.DISABLED_BG,
+                color: THEME_COLORS.DISABLED_TEXT,
+              }
+            }}
           >
             {loading ? '搜尋中...' : '查詢'}
           </Button>
@@ -386,17 +434,9 @@ const ActivityManagement: React.FC = () => {
                     onClick={() => toggleRowExpansion(record.activityId)}
                   >
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar 
-                          src={record.imageUrl || undefined} 
-                          sx={{ width: 40, height: 40, bgcolor: THEME_COLORS.PRIMARY }}
-                        >
-                          {!record.imageUrl && record.activityName.charAt(0)}
-                        </Avatar>
                         <Typography sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
                           {record.activityName}
                         </Typography>
-                      </Box>
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
                       {record.location}
@@ -420,7 +460,7 @@ const ActivityManagement: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={record.status}
+                        label={getStatusLabel(record.status)}
                         size="small"
                         sx={{
                           backgroundColor: getStatusColor(record.status),
@@ -430,7 +470,7 @@ const ActivityManagement: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={record.targetAudience}
+                        label={getAudienceLabel(record.targetAudience)}
                         size="small"
                         sx={{
                           backgroundColor: getAudienceColor(record.targetAudience),
@@ -483,8 +523,7 @@ const ActivityManagement: React.FC = () => {
                               詳細資料
                             </Typography>
                             
-                            {editingRow === record.activityId && editFormData ? (
-                              // 編輯模式
+                            {expandedRows.includes(record.activityId) && editFormData && (
                               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
                                 <TextField
                                   label="活動名稱"
@@ -578,34 +617,10 @@ const ActivityManagement: React.FC = () => {
                                   </Select>
                                 </FormControl>
                               </Box>
-                            ) : (
-                              // 檢視模式
-                              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
-                                <Box>
-                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>描述</Typography>
-                                  <Typography sx={{ mt: 1 }}>{record.description}</Typography>
-                                </Box>
-                                <Box>
-                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>圖片URL</Typography>
-                                  <Typography sx={{ mt: 1 }}>{record.imageUrl || '無'}</Typography>
-                                </Box>
-                                <Box>
-                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>最大人數</Typography>
-                                  <Typography sx={{ mt: 1 }}>{record.maxParticipants}</Typography>
-                                </Box>
-                                <Box>
-                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>結束日期</Typography>
-                                  <Typography sx={{ mt: 1 }}>{formatDate(record.endDate)}</Typography>
-                                </Box>
-                                <Box>
-                                  <Typography variant="subtitle2" color={THEME_COLORS.TEXT_SECONDARY}>報名截止日</Typography>
-                                  <Typography sx={{ mt: 1 }}>{record.signupDeadline ? formatDate(record.signupDeadline) : '無'}</Typography>
-                                </Box>
-                              </Box>
                             )}
 
                             {/* 操作按鈕 */}
-                            {editingRow === record.activityId && (
+                            {expandedRows.includes(record.activityId) && (
                               <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'space-between' }}>
                                 {/* 左側刪除按鈕 */}
                                 <Button

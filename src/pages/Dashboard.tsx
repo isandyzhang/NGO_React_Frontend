@@ -6,21 +6,22 @@ import {
   Typography, 
   useTheme,
   Chip,
-  Skeleton
+  CircularProgress
 } from '@mui/material';
 import { PieChart, BarChart } from '@mui/x-charts';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
 import { CalendarEvent, scheduleService } from '../services/scheduleService';
 import { calendarService, caseService, activityService, authService } from '../services';
-import { dashboardService, DashboardStats, GenderDistribution, CaseDistribution, DifficultyAnalysis } from '../services/dashboardService';
+import { dashboardService, DashboardStats, GenderDistribution, CaseDistribution, CountyDistribution, DifficultyAnalysis } from '../services/dashboardService';
 import { 
   People, 
   Assignment, 
   CalendarToday,
   Info,
   Dashboard as DashboardIcon,
-  TrendingUp
+  TrendingUp,
+  Map as MapIcon
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../styles/theme';
 import { commonStyles } from '../styles/commonStyles';
@@ -48,6 +49,7 @@ const Dashboard: React.FC = () => {
   const [genderData, setGenderData] = useState<{id: number, value: number, label: string}[]>([]);
   const [regionDistributionData, setRegionDistributionData] = useState<{region: string, count: number}[]>([]);
   const [difficultyData, setDifficultyData] = useState<{difficulty: string, count: number}[]>([]);
+  const [countyDistributionData, setCountyDistributionData] = useState<{county: string, count: number}[]>([]);
   
 
 
@@ -75,43 +77,47 @@ const Dashboard: React.FC = () => {
   const [statsCards, setStatsCards] = useState([
     {
       title: '個案人數',
-      value: '載入中...',
+      value: '',
+      subtitle: '',
       icon: <Assignment />,
-      color: THEME_COLORS.PINK_500,
+      color: THEME_COLORS.CHART_COLOR_1, // 主綠色
       loading: true
     },
     {
       title: '志工人數',
-      value: '載入中...',
+      value: '',
+      subtitle: '',
       icon: <People />,
-      color: THEME_COLORS.BLUE_500,
+      color: THEME_COLORS.CHART_COLOR_2, // 藍色
       loading: true
     },
     {
       title: '活動總數',
-      value: '載入中...',
+      value: '',
+      subtitle: '',
       icon: <CalendarToday />,
-      color: THEME_COLORS.TEAL_500,
+      color: THEME_COLORS.CHART_COLOR_5, // 青色
       loading: true
     },
     {
       title: '本月完成活動',
-      value: '載入中...',
+      value: '',
+      subtitle: '',
       icon: <TrendingUp />,
-      color: THEME_COLORS.PURPLE_500,
+      color: THEME_COLORS.CHART_COLOR_4, // 紫色
       loading: true
     }
   ]);
 
 
 
-  // 事件類型配置 - 使用色票系統
+  // 事件類型配置 - 使用簡化色票系統
   const eventTypes = {
-    meeting: { label: '會議', color: THEME_COLORS.PURPLE_500 },
-    activity: { label: '活動', color: THEME_COLORS.PINK_500 },
-    'case-visit': { label: '個案訪問', color: THEME_COLORS.BLUE_500 },
-    training: { label: '培訓', color: THEME_COLORS.TEAL_500 },
-    other: { label: '其他', color: THEME_COLORS.LIGHT_GREEN_500 },
+    meeting: { label: '會議', color: THEME_COLORS.CHART_COLOR_4 }, // 紫色
+    activity: { label: '活動', color: THEME_COLORS.CHART_COLOR_3 }, // 橙色
+    'case-visit': { label: '個案訪問', color: THEME_COLORS.CHART_COLOR_2 }, // 藍色
+    training: { label: '培訓', color: THEME_COLORS.CHART_COLOR_5 }, // 青色
+    other: { label: '其他', color: THEME_COLORS.CHART_COLOR_1 }, // 主綠色
   };
 
   /**
@@ -187,29 +193,33 @@ const Dashboard: React.FC = () => {
         {
           title: '個案人數',
           value: stats.totalCases.toString(),
+          subtitle: `今年新增: ${stats.thisYearNewCases} (${stats.casesGrowthPercentage >= 0 ? '+' : ''}${stats.casesGrowthPercentage}%)`,
           icon: <Assignment />,
-          color: THEME_COLORS.PINK_500,
+          color: THEME_COLORS.CHART_COLOR_1, // 主綠色
           loading: false
         },
         {
-          title: '用戶人數',
-          value: stats.totalUsers.toString(),
+          title: '志工人數',
+          value: stats.totalWorkers.toString(),
+          subtitle: `今年新增: ${stats.thisYearNewWorkers} (${stats.workersGrowthPercentage >= 0 ? '+' : ''}${stats.workersGrowthPercentage}%)`,
           icon: <People />,
-          color: THEME_COLORS.BLUE_500,
+          color: THEME_COLORS.CHART_COLOR_2, // 藍色
           loading: false
         },
         {
           title: '活動總數',
           value: stats.totalActivities.toString(),
+          subtitle: '',
           icon: <CalendarToday />,
-          color: THEME_COLORS.TEAL_500,
+          color: THEME_COLORS.CHART_COLOR_5, // 青色
           loading: false
         },
         {
           title: '本月完成活動',
           value: stats.monthlyCompletedActivities.toString(),
+          subtitle: '',
           icon: <TrendingUp />,
-          color: THEME_COLORS.PURPLE_500,
+          color: THEME_COLORS.CHART_COLOR_4, // 紫色
           loading: false
         }
       ]);
@@ -245,6 +255,24 @@ const Dashboard: React.FC = () => {
         count: item.count
       }));
       setDifficultyData(difficultyChartData);
+
+      // 載入縣市分佈數據 (用於地圖顯示)
+      try {
+        const countyDistribution = await dashboardService.getCountyDistribution();
+        const countyMapData = countyDistribution.map(item => ({
+          county: item.county,
+          count: item.count
+        }));
+        setCountyDistributionData(countyMapData);
+      } catch (countyError) {
+        console.warn('縣市分佈API尚未實作，使用城市資料模擬:', countyError);
+        // 如果縣市API還沒實作，使用現有的城市資料作為模擬
+        const simulatedCountyData = caseDistribution.map(item => ({
+          county: item.city.replace('市', '').replace('縣', '') + (item.city.includes('市') ? '市' : '縣'),
+          count: item.count
+        }));
+        setCountyDistributionData(simulatedCountyData);
+      }
 
     } catch (error) {
       console.error('載入圖表數據失敗:', error);
@@ -296,17 +324,17 @@ const Dashboard: React.FC = () => {
     change: '+0%' // 暫時使用固定值，後續可以加入變化計算
   }));
 
-  // 困難分析圖表顏色 - 使用色票系統
+  // 困難分析圖表顏色 - 使用簡化色票系統
   const getDifficultyColor = (difficulty: string) => {
     const colorMap: { [key: string]: string } = {
-      '經濟困難': THEME_COLORS.PINK_500,     // 粉色系 - 緊急
-      '家庭問題': THEME_COLORS.BROWN_500,    // 棕色系 - 家庭
-      '學習困難': THEME_COLORS.BLUE_500,     // 藍色系 - 學習
-      '健康問題': THEME_COLORS.PINK_700,     // 深粉色 - 健康
-      '行為問題': THEME_COLORS.PURPLE_500,   // 紫色系 - 行為
-      '人際關係': THEME_COLORS.TEAL_500,     // 青色系 - 社交
-      '情緒困擾': THEME_COLORS.DEEP_PURPLE_500, // 深紫色 - 情緒
-      '其他困難': THEME_COLORS.LIGHT_GREEN_500  // 黃綠色 - 其他
+      '經濟困難': THEME_COLORS.CHART_COLOR_6,  // 紅色 - 緊急
+      '家庭問題': THEME_COLORS.CHART_COLOR_3,  // 橙色 - 家庭
+      '學習困難': THEME_COLORS.CHART_COLOR_2,  // 藍色 - 學習
+      '健康問題': THEME_COLORS.CHART_COLOR_4,  // 紫色 - 健康
+      '行為問題': THEME_COLORS.CHART_COLOR_5,  // 青色 - 行為
+      '人際關係': THEME_COLORS.CHART_COLOR_1,  // 主綠色 - 社交
+      '情緒困擾': THEME_COLORS.CHART_COLOR_4,  // 紫色 - 情緒
+      '其他困難': THEME_COLORS.CHART_COLOR_1   // 主綠色 - 其他
     };
     return colorMap[difficulty] || THEME_COLORS.PRIMARY;
   };
@@ -318,6 +346,7 @@ const Dashboard: React.FC = () => {
 
   // 地區分布使用色票系統 - 完整光譜
   const regionColors = theme.chart.geographic;
+
 
     return (
     <PageContainer>
@@ -442,28 +471,45 @@ const Dashboard: React.FC = () => {
                       {card.title}
                     </Typography>
                     {card.loading ? (
-                      <Skeleton 
-                        variant="text" 
-                        width="80%" 
-                        height={50}
-                        sx={{
-                          fontSize: { xs: '1.75rem', sm: '2rem', md: '2.1rem', lg: '2.25rem' },
-                          transform: 'none'
-                        }}
-                      />
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        py: 2
+                      }}>
+                        <CircularProgress 
+                          size={32}
+                          thickness={4}
+                          sx={{ color: card.color }}
+                        />
+                      </Box>
                     ) : (
-                      <Typography 
-                        component="div"
-                        sx={{ 
-                          ...theme.customTypography.cardValue,
-                          fontSize: { xs: '1.75rem', sm: '2rem', md: '2.1rem', lg: '2.25rem' }, // 平板優化
-                          fontWeight: 700,
-                          lineHeight: 1.1,
-                          letterSpacing: '-0.02em'
-                        }}
-                      >
-                        {card.value}
-                      </Typography>
+                      <>
+                        <Typography 
+                          component="div"
+                          sx={{ 
+                            ...theme.customTypography.cardValue,
+                            fontSize: { xs: '1.75rem', sm: '2rem', md: '2.1rem', lg: '2.25rem' }, // 平板優化
+                            fontWeight: 700,
+                            lineHeight: 1.1,
+                            letterSpacing: '-0.02em'
+                          }}
+                        >
+                          {card.value}
+                        </Typography>
+                        {card.subtitle && (
+                          <Typography 
+                            sx={{ 
+                              fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
+                              color: 'text.secondary',
+                              mt: 0.5,
+                              fontWeight: 500
+                            }}
+                          >
+                            {card.subtitle}
+                          </Typography>
+                        )}
+                      </>
                     )}
                   </Box>
                   <Box 
@@ -541,7 +587,7 @@ const Dashboard: React.FC = () => {
                       data: genderData,
                     },
                   ]}
-                  colors={[THEME_COLORS.BLUE_200, THEME_COLORS.PINK_200]} // 使用色票中的藍色和粉色
+                  colors={[THEME_COLORS.MALE_AVATAR, THEME_COLORS.FEMALE_AVATAR]} // 使用性別專用顏色：男生淡藍色、女生淡紅色
                   width={320}
                   height={270}
                   sx={{ 
@@ -679,76 +725,149 @@ const Dashboard: React.FC = () => {
           </Card>
         </Box>
 
-        {/* 居住地區分布 - 長條圖 */}
+      </Box>
+
+      {/* 地區分布圓餅圖 */}
+      <Box 
+        display="flex" 
+        flexWrap="wrap" 
+        gap={{ xs: 2, sm: 2, md: 3 }}
+        sx={{ 
+          mb: { xs: 3, md: 4 },
+          px: { xs: 1, sm: 0 }
+        }}
+      >
         <Box 
           sx={{
-            flexBasis: { 
-              xs: '100%', 
-              sm: '100%',
-              md: '100%',
-              lg: 'calc(33.333% - 16px)' 
-            },
+            flexBasis: { xs: '100%' },
             minWidth: 0,
-            order: { xs: 3, sm: 3, md: 3, lg: 3 }
+            display: 'flex'
           }}
         >
-          <Card sx={{ boxShadow: { xs: 1, sm: 2 } }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
-              <Typography 
-                gutterBottom 
-                sx={{
-                  ...commonStyles.cardTitle,
-                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
-                }}
-              >
-                全台個案地區分布
-              </Typography>
+          <Card sx={{ 
+            width: '100%', 
+            display: 'flex', 
+            flexDirection: 'column',
+            boxShadow: { xs: 1, sm: 2 }
+          }}>
+            <CardContent sx={{ flex: 1, p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1, 
+                mb: 2 
+              }}>
+                <MapIcon sx={{ 
+                  color: THEME_COLORS.PRIMARY,
+                  fontSize: { xs: 20, sm: 22, md: 24 }
+                }} />
+                <Typography 
+                  sx={{
+                    ...commonStyles.cardTitle,
+                    fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
+                  }}
+                >
+                  全台個案地區分佈
+                </Typography>
+              </Box>
               <Box 
                 sx={{ 
-                  height: { xs: 300, sm: 350, md: 420, lg: 350 }, // 平板增加高度
-                  width: '100%',
-                  display: 'flex', 
-                  justifyContent: 'center', 
+                  display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  overflow: 'hidden'
+                  gap: 2
                 }}
               >
-                <BarChart
-                    dataset={regionDistributionData}
-                    xAxis={[{ 
-                      scaleType: 'band', 
-                      dataKey: 'region'
-                    }]}
+                {/* 圓餅圖 */}
+                <Box sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
+                  <PieChart
                     series={[
                       {
-                        dataKey: 'count',
-                        label: '個案人數',
-                        color: regionColors[0] // 使用新的色票
+                        data: countyDistributionData.map((item, index) => ({
+                          id: index,
+                          value: item.count,
+                          label: item.county
+                        })),
+                        innerRadius: 60,
+                        outerRadius: 120,
+                        paddingAngle: 2,
+                        arcLabel: () => '', // 移除弧形標籤
                       },
                     ]}
-                    colors={regionColors} // 使用色票系統的藍色系
-                    width={550}
-                    height={340} // 平板增加圖表高度
+                    colors={[
+                      THEME_COLORS.CHART_COLOR_1, THEME_COLORS.CHART_COLOR_2, 
+                      THEME_COLORS.CHART_COLOR_3, THEME_COLORS.CHART_COLOR_4,
+                      THEME_COLORS.CHART_COLOR_5, THEME_COLORS.CHART_COLOR_6,
+                      '#8E44AD', '#E67E22', '#F39C12', '#27AE60',
+                      '#3498DB', '#E74C3C', '#9B59B6', '#1ABC9C'
+                    ]}
+                    width={400}
+                    height={300}
+                    slotProps={{
+                      legend: { hidden: true } // 隱藏內建圖例
+                    }}
                     sx={{ 
                       maxWidth: '100%', 
-                      maxHeight: '100%',
-                      '& .MuiChartsAxis-tickLabel': {
-                        fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
-                      },
-                      '& .MuiChartsAxis-tick': {
-                        stroke: 'rgba(0,0,0,0.2)'
-                      },
-                      '& .MuiChartsAxis-line': {
-                        stroke: 'rgba(0,0,0,0.2)'
-                      }
+                      maxHeight: '100%'
                     }}
-                    margin={{ 
-                      left: 40, 
-                      right: 20, 
-                      top: 20, 
-                      bottom: 60
-                    }}
-                />
+                  />
+                </Box>
+
+                {/* 自訂圖例 - 只顯示左邊的縣市 */}
+                <Box sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: 1,
+                  maxWidth: '50%',
+                  width: '50%',
+                  px: 2
+                }}>
+                  {countyDistributionData.slice(0, Math.ceil(countyDistributionData.length / 2)).map((item, index) => {
+                    const colors = [
+                      THEME_COLORS.CHART_COLOR_1, THEME_COLORS.CHART_COLOR_2, 
+                      THEME_COLORS.CHART_COLOR_3, THEME_COLORS.CHART_COLOR_4,
+                      THEME_COLORS.CHART_COLOR_5, THEME_COLORS.CHART_COLOR_6,
+                      '#8E44AD', '#E67E22', '#F39C12', '#27AE60',
+                      '#3498DB', '#E74C3C', '#9B59B6', '#1ABC9C'
+                    ];
+                    return (
+                      <Box 
+                        key={index}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          minWidth: 0
+                        }}
+                      >
+                        <Box 
+                          sx={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            backgroundColor: colors[index % colors.length],
+                            flexShrink: 0
+                          }}
+                        />
+                        <Typography 
+                          variant="caption" 
+                          sx={{
+                            fontSize: '0.75rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {item.county} ({item.count})
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
               </Box>
             </CardContent>
           </Card>
