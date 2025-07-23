@@ -200,8 +200,19 @@ const AccountManagement: React.FC = () => {
       // 重新載入帳號列表
       await loadAccounts();
       setConfirmDialog({ ...confirmDialog, open: false });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '刪除帳號失敗');
+    } catch (err: any) {
+      // 處理不同類型的錯誤
+      if (err.response?.status === 400) {
+        setError('此帳號仍有相關聯的資料，無法刪除');
+      } else if (err.response?.status === 404) {
+        setError('找不到指定的帳號');
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('刪除帳號失敗，請稍後再試');
+      }
     }
   };
 
@@ -282,7 +293,6 @@ const AccountManagement: React.FC = () => {
                 <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>角色</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>登入來源</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>狀態</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>最後登入</TableCell>
                 {canManage && (
                   <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY, textAlign: 'center' }}>操作</TableCell>
                 )}
@@ -291,14 +301,14 @@ const AccountManagement: React.FC = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={canManage ? 7 : 6} sx={{ textAlign: 'center', py: 4 }}>
+                  <TableCell colSpan={canManage ? 6 : 5} sx={{ textAlign: 'center', py: 4 }}>
                     <CircularProgress />
                     <Typography sx={{ mt: 2 }}>載入中...</Typography>
                   </TableCell>
                 </TableRow>
               ) : accounts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={canManage ? 7 : 6} sx={{ textAlign: 'center', py: 4 }}>
+                  <TableCell colSpan={canManage ? 6 : 5} sx={{ textAlign: 'center', py: 4 }}>
                     <Typography color="textSecondary">暫無帳號資料</Typography>
                   </TableCell>
                 </TableRow>
@@ -347,11 +357,6 @@ const AccountManagement: React.FC = () => {
                             fontWeight: 500,
                           }}
                         />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-                          {account.lastLogin || '從未登入'}
-                        </Typography>
                       </TableCell>
                       {canManage && (
                         <TableCell>

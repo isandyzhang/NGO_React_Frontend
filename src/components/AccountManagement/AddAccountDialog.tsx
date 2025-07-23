@@ -50,7 +50,6 @@ const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
     role: 'staff',
     loginSource: 'database',
     phone: '',
-    department: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -67,7 +66,6 @@ const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
       role: 'staff',
       loginSource: 'database',
       phone: '',
-      department: '',
     });
     setShowPassword(false);
     setError(null);
@@ -149,8 +147,17 @@ const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
       setError(null);
       await onSave(formData);
       handleClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '建立帳號失敗');
+    } catch (err: any) {
+      // 處理不同類型的錯誤
+      if (err.response?.status === 409) {
+        setError('此電子信箱已被使用，請使用其他信箱地址');
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('建立帳號失敗，請稍後再試');
+      }
     } finally {
       setSaving(false);
     }
@@ -229,14 +236,6 @@ const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
                 sx={{ ...commonStyles.formInput }}
               />
 
-              <TextField
-                label="部門"
-                value={formData.department || ''}
-                onChange={(e) => handleFormChange('department', e.target.value)}
-                fullWidth
-                placeholder="請輸入所屬部門"
-                sx={{ ...commonStyles.formInput }}
-              />
             </Box>
           </Box>
 

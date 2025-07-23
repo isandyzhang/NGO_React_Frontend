@@ -49,7 +49,6 @@ const EditAccountDialog: React.FC<EditAccountDialogProps> = ({
     role: 'staff',
     status: 'active',
     phone: '',
-    department: '',
   });
 
   const [loading, setSaving] = useState(false);
@@ -65,7 +64,6 @@ const EditAccountDialog: React.FC<EditAccountDialogProps> = ({
         role: account.role,
         status: account.status,
         phone: account.phone || '',
-        department: account.department || '',
       });
     }
   }, [account]);
@@ -131,8 +129,17 @@ const EditAccountDialog: React.FC<EditAccountDialogProps> = ({
       setError(null);
       await onSave(account.id, formData);
       handleClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '更新帳號失敗');
+    } catch (err: any) {
+      // 處理不同類型的錯誤
+      if (err.response?.status === 409) {
+        setError('此電子信箱已被其他帳號使用，請使用其他信箱地址');
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('更新帳號失敗，請稍後再試');
+      }
     } finally {
       setSaving(false);
     }
@@ -223,14 +230,6 @@ const EditAccountDialog: React.FC<EditAccountDialogProps> = ({
                   }}
                 />
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
-                  最後登入:
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {account.lastLogin || '從未登入'}
-                </Typography>
-              </Box>
             </Box>
           </Box>
 
@@ -272,13 +271,6 @@ const EditAccountDialog: React.FC<EditAccountDialogProps> = ({
                 sx={ { ...commonStyles.formInput }}
               />
 
-              <TextField
-                label="部門"
-                value={formData.department || ''}
-                onChange={(e) => handleFormChange('department', e.target.value)}
-                fullWidth
-                sx={{ ...commonStyles.formInput }}
-              />
             </Box>
           </Box>
 

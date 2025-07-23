@@ -11,10 +11,8 @@ export interface Account {
   loginSource: 'database' | 'azure';
   status: 'active' | 'inactive';
   createdAt: string;
-  lastLogin?: string;
   workerId?: number;
   phone?: string;
-  department?: string;
 }
 
 /**
@@ -27,7 +25,6 @@ export interface CreateAccountRequest {
   role: 'staff' | 'supervisor' | 'admin';
   loginSource: 'database' | 'azure';
   phone?: string;
-  department?: string;
 }
 
 /**
@@ -39,7 +36,6 @@ export interface UpdateAccountRequest {
   role?: 'staff' | 'supervisor' | 'admin';
   status?: 'active' | 'inactive';
   phone?: string;
-  department?: string;
 }
 
 /**
