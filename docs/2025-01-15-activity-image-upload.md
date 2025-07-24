@@ -1560,6 +1560,9 @@ const currentStaffId = worker?.workerId || 1;
 - **權限無存取UI**: 員工角色顯示專門的無權限頁面
 - **完整操作按鈕**: 編輯、刪除功能（僅管理員）
 
+//GITPUSH
+
+
 #### 3. **新增帳號對話框**
 **檔案**: `D:\GitHub\Case-Management-System\src\components\AccountManagement\AddAccountDialog.tsx`
 
