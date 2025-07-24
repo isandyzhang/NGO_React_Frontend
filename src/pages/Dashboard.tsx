@@ -183,7 +183,7 @@ const Dashboard: React.FC = () => {
         const activityResponse = await activityService.getActivities();
         const activities = activityResponse.activities || [];
         
-        // 過濾當前用戶的活動
+        // 所有人（包含主管）都只看自己相關的活動，避免互相干擾
         const userActivities = activities.filter(activity => activity.workerId === workerId);
         
         const activityEvents = userActivities
@@ -267,17 +267,12 @@ const Dashboard: React.FC = () => {
       
       console.log(`載入統計資料 - 用戶: ${currentWorker.name}, 角色: ${userRole}`);
       
-      // 根據角色決定載入範圍
-      let stats;
-      if (userRole === 'supervisor' || userRole === 'admin') {
-        // 主管和管理員看全系統統計
-        console.log('主管權限：載入全系統統計');
-        stats = await dashboardService.getStats();
-      } else {
-        // 員工只看自己的統計 - 暫時使用全系統統計，等後端API完成後修改
-        console.log(`員工權限：只載入自己的統計 (WorkerId: ${workerId})`);
-        stats = await dashboardService.getStats(); // TODO: 改為 getStatsForWorker(workerId)
-      }
+      // 所有人都只看自己相關的統計資料，避免互相干擾
+      console.log(`載入個人相關統計 - 用戶: ${currentWorker.name}, 角色: ${userRole}, WorkerId: ${workerId}`);
+      
+      // 暫時使用全系統統計，等後端個人統計API完成後修改
+      // TODO: 改為 getStatsForWorker(workerId) 來獲取個人相關統計
+      const stats = await dashboardService.getStats();
       
       // 更新統計卡片
       setStatsCards([
