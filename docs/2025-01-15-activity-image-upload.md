@@ -929,6 +929,162 @@ public static readonly Dictionary<string, string> Categories = new Dictionary<st
 
 ---
 
+## 📅 儀表板近期活動優先級排序系統 (2025-07-24)
+
+### 📋 排序邏輯設計
+
+儀表板的「近期活動」區塊實作了複雜的優先級排序系統，確保最重要的事件優先顯示。
+
+### ✅ 排序優先級規則
+
+**排序優先級（數字越小優先級越高）**：
+1. **3天內行程** (優先級: 1) - 最高優先級
+2. **3天內活動** (優先級: 2) 
+3. **其他行程** (優先級: 3)
+4. **其他活動** (優先級: 4) - 最低優先級
+
+### 🔧 技術實現
+
+**檔案**: `D:\GitHub\Case-Management-System\src\pages\Dashboard.tsx` (第 203-238 行)
+
+```typescript
+// 複雜排序：3天內行程 > 3天內活動 > 其他行程 > 其他活動
+const upcomingEvents = allEvents.sort((a, b) => {
+  const aDaysFromNow = (aDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
+  const bDaysFromNow = (bDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
+  
+  const aIsWithin3Days = aDaysFromNow <= 3;
+  const bIsWithin3Days = bDaysFromNow <= 3;
+  const aIsSchedule = aEventWithSource.eventSource === 'schedule';
+  const bIsSchedule = bEventWithSource.eventSource === 'schedule';
+  
+  // 定義優先級：數字越小優先級越高
+  const getPriority = (isWithin3Days: boolean, isSchedule: boolean) => {
+    if (isWithin3Days && isSchedule) return 1; // 3天內行程
+    if (isWithin3Days && !isSchedule) return 2; // 3天內活動
+    if (!isWithin3Days && isSchedule) return 3; // 其他行程
+    return 4; // 其他活動
+  };
+  
+  // 先按優先級排序，同優先級內按時間排序
+  return aPriority !== bPriority ? aPriority - bPriority : aDate.getTime() - bDate.getTime();
+}).slice(0, 8);
+```
+
+### 🎯 排序邏輯說明
+
+#### 時間範圍定義
+- **3天內**: 從現在起 72 小時內的事件
+- **其他**: 超過 72 小時的未來事件（最多顯示未來 14 天）
+
+#### 事件類型區分
+- **行程 (Schedule)**: 來自行事曆管理的個人工作行程
+- **活動 (Activity)**: 來自活動管理的 NGO 活動
+
+#### 實際排序範例
+假設今天是 7/24，有以下事件：
+1. 7/25 10:00 - 個案訪談 (行程) → **優先級 1**
+2. 7/26 14:00 - 志工培訓 (活動) → **優先級 2** 
+3. 7/30 09:00 - 月會 (行程) → **優先級 3**
+4. 8/02 10:00 - 社區服務 (活動) → **優先級 4**
+
+最終顯示順序：個案訪談 → 志工培訓 → 月會 → 社區服務
+
+### 🛡️ 權限控制整合
+
+**檔案**: `D:\GitHub\Case-Management-System\src\pages\Dashboard.tsx` (第 186-187 行)
+
+```typescript
+// 所有人（包含主管）都只看自己相關的活動，避免互相干擾
+const userActivities = activities.filter(activity => activity.workerId === workerId);
+```
+
+**特點**：
+- ✅ **個人化顯示**: 每個用戶只看到自己相關的行程和活動
+- ✅ **避免干擾**: 主管不會看到員工的工作安排，反之亦然
+- ✅ **優先級排序**: 確保最緊急的事項優先顯示
+- ✅ **限制數量**: 最多顯示 8 個近期事件
+
+### 📊 使用者體驗效果
+
+1. **緊急事項優先**: 3天內的行程會排在最前面
+2. **類型區分**: 行程比活動更重要（工作 > 服務）
+3. **時間排序**: 同優先級內按時間先後排序
+4. **數量控制**: 避免資訊過載，只顯示最重要的 8 個事件
+
+這個排序系統確保使用者能夠快速識別最需要關注的近期事件，提升工作效率和時間管理。
+
+---
+
+## 🔐 權限控制統一化修正 (2025-07-24)
+
+### 📋 問題說明
+原先的儀表板權限控制邏輯不一致：
+- **統計卡片**: 主管看全系統統計，員工看自己統計
+- **近期活動**: 所有人都只看自己的活動
+
+經團隊討論後，決定統一為**所有人都只看自己相關的資料**，避免互相干擾。
+
+### ✅ 修正內容
+
+#### 1. 儀表板統計卡片權限統一
+**檔案**: `D:\GitHub\Case-Management-System\src\pages\Dashboard.tsx` (第 270-275 行)
+
+**修正前**:
+```typescript
+if (userRole === 'supervisor' || userRole === 'admin') {
+  // 主管和管理員看全系統統計
+  stats = await dashboardService.getStats();
+} else {
+  // 員工只看自己的統計
+  stats = await dashboardService.getStats();
+}
+```
+
+**修正後**:
+```typescript
+// 所有人都只看自己相關的統計資料，避免互相干擾
+const stats = await dashboardService.getStats();
+// TODO: 改為 getStatsForWorker(workerId) 來獲取個人相關統計
+```
+
+#### 2. 近期活動權限確認無誤
+**檔案**: `D:\GitHub\Case-Management-System\src\pages\Dashboard.tsx` (第 186-187 行)
+
+```typescript
+// 所有人（包含主管）都只看自己相關的活動，避免互相干擾
+const userActivities = activities.filter(activity => activity.workerId === workerId);
+```
+
+### 🎯 權限控制統一原則
+
+**適用角色**:
+- ✅ **員工 (staff)**: 只看自己的資料
+- ✅ **主管 (supervisor)**: 只看自己的資料  
+- ✅ **管理員 (admin)**: 只看自己的資料
+
+**資料來源**:
+- ✅ **統計卡片**: 個人相關統計（待後端API完成）
+- ✅ **近期活動**: 個人活動和行程
+- ✅ **優先級排序**: 統一使用複雜排序邏輯
+
+### 🛡️ 效果與優勢
+
+1. **避免干擾**: 主管不會看到員工的工作內容，專注自己的職責
+2. **權限一致**: 所有功能模組使用統一的權限控制邏輯
+3. **個人化體驗**: 每個用戶看到的都是與自己相關的資訊
+4. **降低複雜度**: 不需要複雜的角色權限判斷邏輯
+
+### 🔧 待修復問題
+
+**活動創建 workerId 分配問題**:
+- **問題**: 新建活動的 `workerId` 固定為 1，而非當前登入者
+- **影響**: 導致活動無法正確分配給創建者
+- **狀態**: 由團隊成員負責修復
+- **測試**: 修復後需驗證新建活動能正確分配當前登入者的 `workerId`
+
+---
+
 ## 🚨 緊急物資需求系統完整修復 (2025-07-18 下午)
 
 ### 📋 問題回顧
