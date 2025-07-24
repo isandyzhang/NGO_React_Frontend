@@ -134,6 +134,11 @@ declare module '@mui/material/styles' {
       legendLabel: React.CSSProperties;
       metricValue: React.CSSProperties;
       changeIndicator: React.CSSProperties;
+      // Dashboard 專用字體
+      dashboardTitle: React.CSSProperties;
+      dashboardValue: React.CSSProperties;
+      dashboardSubtitle: React.CSSProperties;
+      dashboardTrend: React.CSSProperties;
     };
     customColors: {
       changePositive: string;
@@ -172,6 +177,11 @@ declare module '@mui/material/styles' {
       legendLabel?: React.CSSProperties;
       metricValue?: React.CSSProperties;
       changeIndicator?: React.CSSProperties;
+      // Dashboard 專用字體
+      dashboardTitle?: React.CSSProperties;
+      dashboardValue?: React.CSSProperties;
+      dashboardSubtitle?: React.CSSProperties;
+      dashboardTrend?: React.CSSProperties;
     };
     customColors?: {
       changePositive?: string;
@@ -378,6 +388,38 @@ export const theme = createTheme({
     },
     
     changeIndicator: {
+      fontSize: '0.75rem',
+      fontWeight: 600,
+      letterSpacing: '0.025em',
+      lineHeight: 1.2,
+    },
+    
+    // Dashboard 專用字體樣式
+    dashboardTitle: {
+      fontSize: '1.125rem',
+      fontWeight: 600,
+      color: '#666666',
+      letterSpacing: '0.02em',
+      lineHeight: 1.3,
+    },
+    
+    dashboardValue: {
+      fontSize: '2.5rem',
+      fontWeight: 700,
+      color: '#333333',
+      letterSpacing: '-0.02em',
+      lineHeight: 1.1,
+    },
+    
+    dashboardSubtitle: {
+      fontSize: '0.875rem',
+      fontWeight: 400,
+      color: '#999999',
+      letterSpacing: '0.01em',
+      lineHeight: 1.4,
+    },
+    
+    dashboardTrend: {
       fontSize: '0.75rem',
       fontWeight: 600,
       letterSpacing: '0.025em',

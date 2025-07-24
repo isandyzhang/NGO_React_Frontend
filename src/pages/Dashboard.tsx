@@ -6,11 +6,13 @@ import {
   Typography, 
   useTheme,
   Chip,
-  CircularProgress
+  CircularProgress,
+  Stack
 } from '@mui/material';
 import { PieChart, BarChart } from '@mui/x-charts';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
+import StatCard from '../components/shared/StatCard';
 import { CalendarEvent, scheduleService } from '../services/scheduleService';
 import { calendarService, caseService, activityService, authService } from '../services';
 import { dashboardService, DashboardStats, GenderDistribution, CaseDistribution, CountyDistribution, DifficultyAnalysis } from '../services/dashboardService';
@@ -26,6 +28,9 @@ import {
 import { THEME_COLORS } from '../styles/theme';
 import { commonStyles } from '../styles/commonStyles';
 import { formatDate as formatDateHelper, isToday, isTomorrow } from '../utils/dateHelper';
+import RegionChart from '../components/shared/RegionChart';
+import GenderChart from '../components/shared/GenderChart';
+import DifficultyRadarChart from '../components/shared/DifficultyRadarChart';
 
 /**
  * 儀表板頁面組件
@@ -50,6 +55,10 @@ const Dashboard: React.FC = () => {
   const [regionDistributionData, setRegionDistributionData] = useState<{region: string, count: number}[]>([]);
   const [difficultyData, setDifficultyData] = useState<{difficulty: string, count: number}[]>([]);
   const [countyDistributionData, setCountyDistributionData] = useState<{county: string, count: number}[]>([]);
+  const [countyDistribution, setCountyDistribution] = useState<CountyDistribution[]>([]);
+  const [countyDistributionLoading, setCountyDistributionLoading] = useState(true);
+  const [genderDistribution, setGenderDistribution] = useState<GenderDistribution[]>([]);
+  const [genderDistributionLoading, setGenderDistributionLoading] = useState(true);
   
 
 
@@ -80,32 +89,30 @@ const Dashboard: React.FC = () => {
       value: '',
       subtitle: '',
       icon: <Assignment />,
-      color: THEME_COLORS.CHART_COLOR_1, // 主綠色
-      loading: true
+      color: '#4CAF50', // 綠色
+      loading: true,
+      trend: 'up' as 'up' | 'down' | 'neutral',
+      data: [45, 52, 48, 58, 65, 72, 68]
     },
     {
       title: '志工人數',
       value: '',
       subtitle: '',
       icon: <People />,
-      color: THEME_COLORS.CHART_COLOR_2, // 藍色
-      loading: true
+      color: '#2196F3', // 藍色
+      loading: true,
+      trend: 'up' as 'up' | 'down' | 'neutral',
+      data: [12, 15, 18, 22, 25, 28, 24]
     },
     {
       title: '活動總數',
       value: '',
       subtitle: '',
       icon: <CalendarToday />,
-      color: THEME_COLORS.CHART_COLOR_5, // 青色
-      loading: true
-    },
-    {
-      title: '本月完成活動',
-      value: '',
-      subtitle: '',
-      icon: <TrendingUp />,
-      color: THEME_COLORS.CHART_COLOR_4, // 紫色
-      loading: true
+      color: '#FF9800', // 橙色
+      loading: true,
+      trend: 'up' as 'up' | 'down' | 'neutral',
+      data: [8, 12, 10, 15, 18, 22, 20]
     }
   ]);
 
@@ -284,34 +291,32 @@ const Dashboard: React.FC = () => {
         {
           title: '個案人數',
           value: stats.totalCases.toString(),
-          subtitle: `今年新增: ${stats.thisYearNewCases} (${stats.casesGrowthPercentage >= 0 ? '+' : ''}${stats.casesGrowthPercentage}%)`,
+          subtitle: `今年成長`,
           icon: <Assignment />,
-          color: THEME_COLORS.CHART_COLOR_1, // 主綠色
-          loading: false
+          color: '#4CAF50', // 綠色
+          loading: false,
+          trend: stats.casesGrowthPercentage >= 0 ? 'up' : 'down',
+          data: [1, 3, 4, 7, 20, 27, 39, 40, 59, 77, 98, 85, 130, 157, 130, 187, 200, 230, 259, 239, 288] // 用戶提供的數據
         },
         {
           title: '志工人數',
           value: stats.totalWorkers.toString(),
-          subtitle: `今年新增: ${stats.thisYearNewWorkers} (${stats.workersGrowthPercentage >= 0 ? '+' : ''}${stats.workersGrowthPercentage}%)`,
+          subtitle: `今年成長`,
           icon: <People />,
-          color: THEME_COLORS.CHART_COLOR_2, // 藍色
-          loading: false
+          color: '#2196F3', // 藍色
+          loading: false,
+          trend: stats.workersGrowthPercentage >= 0 ? 'up' : 'down',
+          data: [34, 35, 40, 58, 67, 53, 49, 32] // 用戶提供的志工人數數據
         },
         {
           title: '活動總數',
           value: stats.totalActivities.toString(),
-          subtitle: '',
+          subtitle: '今年活動總計',
           icon: <CalendarToday />,
-          color: THEME_COLORS.CHART_COLOR_5, // 青色
-          loading: false
-        },
-        {
-          title: '本月完成活動',
-          value: stats.monthlyCompletedActivities.toString(),
-          subtitle: '',
-          icon: <TrendingUp />,
-          color: THEME_COLORS.CHART_COLOR_4, // 紫色
-          loading: false
+          color: '#FF9800', // 橙色
+          loading: false,
+          trend: 'up' as const,
+          data: [1, 3, 4, 7, 20, 27, 39, 40, 59, 77, 98, 85, 130, 157, 130, 187, 200, 230, 259, 239, 288] // 用戶提供的數據
         }
       ]);
     } catch (error) {
@@ -323,13 +328,25 @@ const Dashboard: React.FC = () => {
   const loadChartData = async () => {
     try {
       // 載入性別分佈數據
-      const genderDistribution = await dashboardService.getGenderDistribution();
-      const genderChartData = genderDistribution.map((item, index) => ({
-        id: index,
-        value: item.count,
-        label: item.gender === 'Male' ? '男生' : item.gender === 'Female' ? '女生' : item.gender
-      }));
-      setGenderData(genderChartData);
+      try {
+        setGenderDistributionLoading(true);
+        const genderDistributionResponse = await dashboardService.getGenderDistribution();
+        
+        // 為新的 GenderChart 組件設置數據
+        setGenderDistribution(genderDistributionResponse);
+        
+        // 為舊版本保留原有邏輯
+        const genderChartData = genderDistributionResponse.map((item, index) => ({
+          id: index,
+          value: item.count,
+          label: item.gender === 'Male' ? '男生' : item.gender === 'Female' ? '女生' : item.gender
+        }));
+        setGenderData(genderChartData);
+        setGenderDistributionLoading(false);
+      } catch (genderError) {
+        console.error('載入性別分佈數據失敗:', genderError);
+        setGenderDistributionLoading(false);
+      }
 
       // 載入個案城市分佈數據
       const caseDistribution = await dashboardService.getCaseDistribution();
@@ -349,12 +366,22 @@ const Dashboard: React.FC = () => {
 
       // 載入縣市分佈數據 (用於地圖顯示)
       try {
-        const countyDistribution = await dashboardService.getCountyDistribution();
-        const countyMapData = countyDistribution.map(item => ({
+        setCountyDistributionLoading(true);
+        const countyDistributionResponse = await dashboardService.getCountyDistribution();
+        
+        // 為新的 RegionChart 組件設置數據
+        setCountyDistribution(countyDistributionResponse.map(item => ({
+          County: item.county,
+          Count: item.count
+        })));
+        
+        // 為舊的地圖顯示保留原有邏輯
+        const countyMapData = countyDistributionResponse.map(item => ({
           county: item.county,
           count: item.count
         }));
         setCountyDistributionData(countyMapData);
+        setCountyDistributionLoading(false);
       } catch (countyError) {
         console.warn('縣市分佈API尚未實作，使用城市資料模擬:', countyError);
         // 如果縣市API還沒實作，使用現有的城市資料作為模擬
@@ -363,6 +390,13 @@ const Dashboard: React.FC = () => {
           count: item.count
         }));
         setCountyDistributionData(simulatedCountyData);
+        
+        // 為新組件也設置模擬數據
+        setCountyDistribution(simulatedCountyData.map(item => ({
+          County: item.county,
+          Count: item.count
+        })));
+        setCountyDistributionLoading(false);
       }
 
     } catch (error) {
@@ -507,7 +541,7 @@ const Dashboard: React.FC = () => {
 
 
       
-      {/* 統計卡片 */}
+      {/* 統計卡片 - 使用 MUI X StatCard 組件 */}
       <Box 
         display="flex" 
         flexWrap="wrap" 
@@ -523,105 +557,148 @@ const Dashboard: React.FC = () => {
             sx={{
               flexBasis: { 
                 xs: '100%', 
-                sm: 'calc(50% - 8px)', 
-                md: 'calc(33.333% - 12px)', // 平板橫屏：3列佈局
-                lg: 'calc(25% - 18px)' 
+                sm: 'calc(33.333% - 8px)', 
+                md: 'calc(33.333% - 12px)',
+                lg: 'calc(33.333% - 16px)'
               },
               minWidth: 0,
               flex: '1 1 auto',
               display: 'flex'
             }}
           >
-            <Card sx={{ 
-              ...commonStyles.statsCard,
-              height: { xs: 140, sm: 150, md: 170, lg: 160 }, // 平板增加高度
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: { xs: 1, sm: 2 }
-            }}>
-              <CardContent sx={{ 
-                p: { xs: 2, sm: 2.5, md: 3 },
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center'
+            {card.loading ? (
+              <Card sx={{ 
+                width: '100%',
+                height: { xs: 102, sm: 110, md: 119 }, // 調整高度與StatCard的85%保持一致
+                borderRadius: 2,
+                border: '1px solid #e0e0e0',
+                backgroundColor: '#ffffff',
+                transition: 'all 0.2s ease-in-out'
               }}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ height: '100%' }}>
-                  <Box sx={{ flex: 1 }}>
+                <CardContent sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  p: 3,
+                  pb: 1,
+                  justifyContent: 'flex-start'
+                }}>
+                  {/* 標題和趨勢標籤 - 載入時也顯示 */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start', 
+                    mb: 1,
+                    width: '100%'
+                  }}>
                     <Typography 
+                      component="h2" 
+                      variant="subtitle2" 
                       sx={{ 
-                        ...theme.customTypography.chartLabel,
-                        color: theme.customTypography.cardLabel.color,
-                        fontSize: { xs: '1rem', sm: '1.125rem', md: '1.1rem' }, // 平板略微調整
-                        fontWeight: 500,
-                        mb: { xs: 0.5, sm: 1, md: 1.2 }, // 平板增加間距
-                        letterSpacing: '0.01em'
+                        mb: 0,
+                        fontWeight: 600,
+                        color: '#333333',
+                        fontSize: '0.875rem'
                       }}
                     >
                       {card.title}
                     </Typography>
-                    {card.loading ? (
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        py: 2
-                      }}>
+                    <Chip 
+                      size="small" 
+                      color="default"
+                      label="載入中..."
+                      sx={{
+                        height: 28,
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        borderRadius: '14px',
+                        '& .MuiChip-label': {
+                          px: 2
+                        }
+                      }}
+                    />
+                  </Box>
+
+                  {/* 載入中的數字和圖表區域 */}
+                  <Stack
+                    direction="row"
+                    sx={{ 
+                      justifyContent: 'space-between', 
+                      flexGrow: '1', 
+                      gap: 2,
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    {/* 左邊：載入中的數字 */}
+                    <Stack sx={{ gap: 0.5, alignItems: 'flex-start', flex: 1 }}>
+                      <Typography 
+                        variant="h3" 
+                        component="p" 
+                        sx={{ 
+                          fontSize: '2.5rem',
+                          fontWeight: 700,
+                          color: '#333333',
+                          letterSpacing: '-0.02em',
+                          lineHeight: 1.1,
+                          pl: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          minHeight: '3rem' // 確保最小高度
+                        }}
+                      >
                         <CircularProgress 
-                          size={32}
+                          size={20}
                           thickness={4}
                           sx={{ color: card.color }}
                         />
-                      </Box>
-                    ) : (
-                      <>
-                        <Typography 
-                          component="div"
-                          sx={{ 
-                            ...theme.customTypography.cardValue,
-                            fontSize: { xs: '1.75rem', sm: '2rem', md: '2.1rem', lg: '2.25rem' }, // 平板優化
-                            fontWeight: 700,
-                            lineHeight: 1.1,
-                            letterSpacing: '-0.02em'
-                          }}
-                        >
-                          {card.value}
-                        </Typography>
-                        {card.subtitle && (
-                          <Typography 
-                            sx={{ 
-                              fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
-                              color: 'text.secondary',
-                              mt: 0.5,
-                              fontWeight: 500
-                            }}
-                          >
-                            {card.subtitle}
-                          </Typography>
-                        )}
-                      </>
-                    )}
-                  </Box>
-                  <Box 
-                    sx={{ 
-                      color: card.color,
-                      fontSize: { xs: 36, sm: 40, md: 42, lg: 44 }, // 平板優化
+                        --
+                      </Typography>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          fontSize: '0.875rem',
+                          fontWeight: 400,
+                          color: '#999999',
+                          letterSpacing: '0.01em',
+                          lineHeight: 1.4,
+                          pl: 1,
+                          minHeight: '1.2rem' // 確保最小高度
+                        }}
+                      >
+                        載入中...
+                      </Typography>
+                    </Stack>
+                    
+                    {/* 右邊：載入中的圖表 */}
+                    <Box sx={{ 
+                      minWidth: '200px', // 確保最小寬度
+                      height: 100,
+                      flexShrink: 0,
+                      minHeight: 100,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      width: { xs: 48, sm: 52, md: 54, lg: 56 }, // 平板優化
-                      height: { xs: 48, sm: 52, md: 54, lg: 56 } // 平板優化
-                    }}
-                  >
-                    {React.cloneElement(card.icon, { 
-                      sx: { fontSize: 'inherit' } 
-                    })}
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
+                      justifyContent: 'center'
+                    }}>
+                      <CircularProgress 
+                        size={24}
+                        thickness={3}
+                        sx={{ color: card.color }}
+                      />
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ) : (
+              <StatCard
+                title={card.title}
+                value={card.value}
+                interval={card.subtitle}
+                trend={card.trend}
+                data={card.data}
+                icon={card.icon}
+              />
+            )}
           </Box>
         ))}
       </Box>
@@ -636,7 +713,7 @@ const Dashboard: React.FC = () => {
           px: { xs: 1, sm: 0 }
         }}
       >
-        {/* 性別分布 - 圓餅圖 */}
+        {/* 性別分布 - 半圓甜甜圈圖 */}
         <Box 
           sx={{
             flexBasis: { 
@@ -649,46 +726,10 @@ const Dashboard: React.FC = () => {
             order: { xs: 1, md: 1, lg: 1 }
           }}
         >
-          <Card sx={{ boxShadow: { xs: 1, sm: 2 } }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
-              <Typography 
-                gutterBottom 
-                sx={{
-                  ...commonStyles.cardTitle,
-                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
-                }}
-              >
-                性別分布
-              </Typography>
-              <Box 
-                sx={{ 
-                  height: { xs: 250, sm: 280, md: 320, lg: 320 }, // 平板增加高度
-                  width: '100%',
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center',
-                  '& .MuiChartsLegend-root': {
-                    transform: { xs: 'scale(0.8)', sm: 'scale(0.85)', md: 'scale(0.95)', lg: 'scale(1)' }
-                  }
-                }}
-              >
-                <PieChart
-                  series={[
-                    {
-                      data: genderData,
-                    },
-                  ]}
-                  colors={[THEME_COLORS.MALE_AVATAR, THEME_COLORS.FEMALE_AVATAR]} // 使用性別專用顏色：男生淡藍色、女生淡紅色
-                  width={320}
-                  height={270}
-                  sx={{ 
-                    maxWidth: '100%', 
-                    maxHeight: '100%'
-                  }}
-                />
-              </Box>
-            </CardContent>
-          </Card>
+          <GenderChart 
+            data={genderData}
+            loading={genderDistributionLoading}
+          />
         </Box>
 
 
@@ -855,133 +896,10 @@ const Dashboard: React.FC = () => {
             display: 'flex'
           }}
         >
-          <Card sx={{ 
-            width: '100%', 
-            display: 'flex', 
-            flexDirection: 'column',
-            boxShadow: { xs: 1, sm: 2 }
-          }}>
-            <CardContent sx={{ flex: 1, p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 2 
-              }}>
-                <MapIcon sx={{ 
-                  color: THEME_COLORS.PRIMARY,
-                  fontSize: { xs: 20, sm: 22, md: 24 }
-                }} />
-                <Typography 
-                  sx={{
-                    ...commonStyles.cardTitle,
-                    fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
-                  }}
-                >
-                  全台個案地區分佈
-                </Typography>
-              </Box>
-              <Box 
-                sx={{ 
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 2
-                }}
-              >
-                {/* 圓餅圖 */}
-                <Box sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  <PieChart
-                    series={[
-                      {
-                        data: countyDistributionData.map((item, index) => ({
-                          id: index,
-                          value: item.count,
-                          label: item.county
-                        })),
-                        innerRadius: 60,
-                        outerRadius: 120,
-                        paddingAngle: 2,
-                        arcLabel: () => '', // 移除弧形標籤
-                      },
-                    ]}
-                    colors={[
-                      THEME_COLORS.CHART_COLOR_1, THEME_COLORS.CHART_COLOR_2, 
-                      THEME_COLORS.CHART_COLOR_3, THEME_COLORS.CHART_COLOR_4,
-                      THEME_COLORS.CHART_COLOR_5, THEME_COLORS.CHART_COLOR_6,
-                      '#8E44AD', '#E67E22', '#F39C12', '#27AE60',
-                      '#3498DB', '#E74C3C', '#9B59B6', '#1ABC9C'
-                    ]}
-                    width={400}
-                    height={300}
-                    slotProps={{
-                      legend: { hidden: true } // 隱藏內建圖例
-                    }}
-                    sx={{ 
-                      maxWidth: '100%', 
-                      maxHeight: '100%'
-                    }}
-                  />
-                </Box>
-
-                {/* 自訂圖例 - 只顯示左邊的縣市 */}
-                <Box sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: 1,
-                  maxWidth: '50%',
-                  width: '50%',
-                  px: 2
-                }}>
-                  {countyDistributionData.slice(0, Math.ceil(countyDistributionData.length / 2)).map((item, index) => {
-                    const colors = [
-                      THEME_COLORS.CHART_COLOR_1, THEME_COLORS.CHART_COLOR_2, 
-                      THEME_COLORS.CHART_COLOR_3, THEME_COLORS.CHART_COLOR_4,
-                      THEME_COLORS.CHART_COLOR_5, THEME_COLORS.CHART_COLOR_6,
-                      '#8E44AD', '#E67E22', '#F39C12', '#27AE60',
-                      '#3498DB', '#E74C3C', '#9B59B6', '#1ABC9C'
-                    ];
-                    return (
-                      <Box 
-                        key={index}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          minWidth: 0
-                        }}
-                      >
-                        <Box 
-                          sx={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '50%',
-                            backgroundColor: colors[index % colors.length],
-                            flexShrink: 0
-                          }}
-                        />
-                        <Typography 
-                          variant="caption" 
-                          sx={{
-                            fontSize: '0.75rem',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {item.county} ({item.count})
-                        </Typography>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
+          <RegionChart 
+            data={countyDistribution} 
+            loading={countyDistributionLoading}
+          />
         </Box>
       </Box>
 
@@ -1003,149 +921,7 @@ const Dashboard: React.FC = () => {
             display: 'flex'
           }}
         >
-          <Card sx={{ 
-            width: '100%', 
-            display: 'flex', 
-            flexDirection: 'column',
-            boxShadow: { xs: 1, sm: 2 }
-          }}>
-            <CardContent sx={{ flex: 1, p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
-              <Typography 
-                gutterBottom 
-                sx={{
-                  ...commonStyles.cardTitle,
-                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
-                }}
-              >
-                個案面臨困難分析
-              </Typography>
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: { xs: 'column', sm: 'column', md: 'row' },
-                alignItems: { xs: 'center', sm: 'center', md: 'center' }, 
-                gap: { xs: 2, sm: 2.5, md: 3.5 } // 平板增加間距
-              }}>
-                {/* 甜甜圈圖 */}
-                <Box 
-                  sx={{ 
-                    flex: '0 0 auto',
-                    width: { xs: 200, sm: 220, md: 220, lg: 240 },
-                    height: { xs: 200, sm: 220, md: 220, lg: 240 },
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center'
-                  }}
-                >
-                  <PieChart
-                    series={[
-                      {
-                        data: difficultiesData.map(item => ({ 
-                          id: item.id, 
-                          value: item.value
-                        })),
-                        innerRadius: 35,
-                        outerRadius: 75,
-                        paddingAngle: 2,
-                        arcLabel: () => '', // 移除弧形標籤
-                      },
-                    ]}
-                    colors={difficultiesColors}
-                    width={260}
-                    height={260}
-                    sx={{ 
-                      maxWidth: '100%', 
-                      maxHeight: '100%'
-                    }}
-                    margin={{ top: 0, bottom: 0, left: 0, right: 0 }}
-                  />
-                </Box>
-                
-                {/* 圖例 */}
-                <Box sx={{ 
-                  flex: 1, 
-                  pl: { xs: 0, sm: 0, md: 2 },
-                  width: { xs: '100%', sm: '100%', md: 'auto' }
-                }}>
-                  {difficultiesData.map((difficulty, index) => (
-                    <Box key={index} sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      mb: { xs: 1.5, sm: 2, md: 2.5 },
-                      py: { xs: 0.5, sm: 1, md: 1.5 }, // 平板增加垂直內邊距
-                      gap: { xs: 1, sm: 1.5, md: 2 }, // 平板增加間距
-                      minHeight: { md: '44px' }, // 平板增加最小高度提升觸摸友好性
-                      borderRadius: 1,
-                      px: { md: 1 }, // 平板增加水平內邊距
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                      transition: 'background-color 0.2s ease'
-                    }}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: { xs: 1, sm: 2 }, 
-                        flex: 1, 
-                        minWidth: 0 
-                      }}>
-                        <Box 
-                          sx={{ 
-                            width: { xs: 20, sm: 24, md: 28 }, 
-                            height: { xs: 12, sm: 16, md: 18 }, 
-                            borderRadius: 1, 
-                            bgcolor: difficultiesColors[index],
-                            flexShrink: 0
-                          }} 
-                        />
-                        <Typography sx={{ 
-                          ...theme.customTypography.legendLabel,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          fontSize: { xs: '0.75rem', sm: '0.875rem' }
-                        }}>
-                          {difficulty.label}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: { xs: 0.5, sm: 1 }, 
-                        flexShrink: 0 
-                      }}>
-                        <Typography sx={{ 
-                          ...theme.customTypography.chartLabel, 
-                          minWidth: { xs: '35px', sm: '40px', md: '45px' }, 
-                          textAlign: 'right',
-                          fontSize: { xs: '0.75rem', sm: '0.875rem', md: '0.9rem' }
-                        }}>
-                          {difficulty.value}人
-                        </Typography>
-                        <Box 
-                          sx={{ 
-                            bgcolor: difficulty.change.startsWith('+') 
-                              ? theme.customColors.changePositive 
-                              : theme.customColors.changeNegative,
-                            color: 'white',
-                            px: { xs: 1, sm: 1.5, md: 2 },
-                            py: { xs: 0.3, sm: 0.5, md: 0.6 },
-                            borderRadius: 2,
-                            minWidth: { xs: '50px', sm: '60px', md: '65px' },
-                            textAlign: 'center',
-                            ...theme.customTypography.changeIndicator,
-                            fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.8rem' }
-                          }}
-                        >
-                          {difficulty.change}
-                        </Box>
-                      </Box>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
+          <DifficultyRadarChart loading={false} />
         </Box>
       </Box>
 
