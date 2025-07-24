@@ -111,7 +111,7 @@ class ActivityService {
   /**
    * 建立新活動
    */
-  async createActivity(activityData: Omit<Activity, 'activityId' | 'currentParticipants'>): Promise<Activity> {
+  async createActivity(activityData: Omit<Activity, 'activityId' | 'currentParticipants' | 'workerId'>): Promise<Activity> {
     try {
       const response = await api.post('/Activity', activityData);
       return response.data;

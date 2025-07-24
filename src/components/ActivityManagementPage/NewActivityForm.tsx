@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import {
   Box,
   Paper,
@@ -108,6 +109,7 @@ const getDynamicThemeColors = (activityType: 'public' | 'case') => {
  */
 const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel }) => {
   const theme = useTheme();
+  const { user } = useAuth();
 
   // 分類選項狀態
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -125,10 +127,10 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
     imageUrl: '',
     location: '',
     maxParticipants: 0,
-    startDate: dayjs(), // 預設為當下時間
-    endDate: dayjs().add(5, 'hour'), // 預設為開始時間後5小時
-    signupDeadline: dayjs().subtract(3, 'day'), // 預設為開始時間前3天
-    workerId: 1, // 可根據實際登入者自動帶入
+    startDate: dayjs().add(7, 'day').hour(12).minute(0), // 預設為七天後中午12點
+    endDate: dayjs().add(7, 'day').hour(17).minute(0), // 預設為七天後下午5點（開始時間後5小時）
+    signupDeadline: dayjs().add(4, 'day').hour(12).minute(0), // 預設為四天後中午12點（開始時間前3天）
+    workerId: user?.workerId || 0, // 從登入使用者取得workerId
     targetAudience: 'case',
     category: '',
     status: 'open',
@@ -292,22 +294,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
     }
   };
 
-  /**
-   * 測試 Azure OpenAI 連接
-   */
-  const handleTestAiConnection = async () => {
-    try {
-      const result = await imageGenerationService.testConnection();
-      if (result.success) {
-        alert('Azure OpenAI 連接測試成功！');
-      } else {
-        alert(`連接測試失敗：${result.message}`);
-      }
-    } catch (error: any) {
-      console.error('連接測試失敗:', error);
-      alert('連接測試失敗，請檢查服務配置');
-    }
-  };
+
 
   /**
    * 處理活動類別變更
@@ -483,9 +470,10 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
         return;
       }
 
-      // 準備提交資料
+      // 準備提交資料 (移除workerId，後端會從JWT Token取得)
+      const { workerId, ...dataWithoutWorkerId } = formData;
       const submitData = {
-        ...formData,
+        ...dataWithoutWorkerId,
         startDate: formData.startDate?.toISOString() || '',
         endDate: formData.endDate?.toISOString() || '',
         signupDeadline: formData.signupDeadline?.toISOString() || '',
@@ -504,10 +492,10 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
         imageUrl: '',
         location: '',
         maxParticipants: 0,
-        startDate: dayjs(),
-        endDate: dayjs().add(2, 'hour'),
-        signupDeadline: dayjs().subtract(1, 'day'),
-        workerId: 1,
+        startDate: dayjs().add(7, 'day').hour(12).minute(0),
+        endDate: dayjs().add(7, 'day').hour(17).minute(0),
+        signupDeadline: dayjs().add(4, 'day').hour(12).minute(0),
+        workerId: user?.workerId || 0,
         targetAudience: 'case',
         category: '',
         status: 'open',
@@ -649,7 +637,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
               color: THEME_COLORS.TEXT_SECONDARY,
               fontStyle: 'italic'
             }}>
-              💡 開始時間預設為當下時間，結束時間會自動設為開始時間後5小時
+              💡 開始時間預設為七天後中午12點，結束時間會自動設為開始時間後5小時
             </Typography>
             <Box sx={{ 
               display: 'flex', 
@@ -697,7 +685,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
               color: THEME_COLORS.TEXT_SECONDARY,
               fontStyle: 'italic'
             }}>
-              💡 報名截止日會自動設為開始時間前3天
+              💡 報名截止日會自動設為開始時間前3天（四天後中午12點）
             </Typography>
             <DateTimePicker
               label="報名截止日 *"
@@ -841,14 +829,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
                 >
                   AI 生成
                 </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={handleTestAiConnection}
-                  sx={{ fontSize: '0.75rem', py: 0.5 }}
-                >
-                  測試 AI 連接
-                </Button>
+
                 <Button
                   size="small"
                   variant="outlined"
