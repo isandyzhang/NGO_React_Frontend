@@ -86,6 +86,8 @@ interface RegionChartProps {
 export default function RegionChart({ data, loading = false }: RegionChartProps) {
   const theme = useTheme();
   
+  console.log('🗺️ RegionChart 接收到的資料:', { data, loading, dataLength: data?.length });
+  
   if (loading) {
     return (
       <Card
@@ -98,22 +100,59 @@ export default function RegionChart({ data, loading = false }: RegionChartProps)
       </Card>
     );
   }
+  
+  // 檢查資料是否為空
+  if (!data || data.length === 0) {
+    return (
+      <Card
+        variant="outlined"
+        sx={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1 }}
+      >
+        <CardContent>
+          <Typography 
+            component="h2" 
+            variant="subtitle2" 
+            sx={{ 
+              mb: 2,
+              ...theme.customTypography.cardTitle,
+              fontSize: '1.125rem'
+            }}
+          >
+            個案地區分佈
+          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: 300,
+            flexDirection: 'column',
+            gap: 2
+          }}>
+            <LocationOn sx={{ fontSize: 48, color: theme.palette.text.secondary, opacity: 0.5 }} />
+            <Typography color="textSecondary">
+              暫無地區分佈資料
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // 準備圖表數據
   const chartData = data.map((item, index) => ({
     id: index,
-    value: item.Count,
-    label: item.County,
+    value: item.count,
+    label: item.county,
   }));
 
   // 計算總數
-  const totalCount = data.reduce((sum, item) => sum + item.Count, 0);
+  const totalCount = data.reduce((sum, item) => sum + item.count, 0);
 
   // 準備地區數據，包含百分比計算
   const regions = data.map((item, index) => ({
-    name: item.County,
-    value: totalCount > 0 ? Math.round((item.Count / totalCount) * 100) : 0,
-    count: item.Count,
+    name: item.county,
+    value: totalCount > 0 ? Math.round((item.count / totalCount) * 100) : 0,
+    count: item.count,
     color: colors[index % colors.length],
   }));
 
@@ -127,9 +166,8 @@ export default function RegionChart({ data, loading = false }: RegionChartProps)
           component="h2" 
           variant="subtitle2" 
           sx={{ 
-            mb: 2,
-            ...theme.customTypography.cardTitle,
-            fontSize: '1.125rem'
+            ...theme.customTypography.dashboardTitle,
+            mb: 2
           }}
         >
           個案地區分佈

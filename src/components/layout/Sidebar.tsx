@@ -110,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
   const { user, logout, loginMethod } = useAuth();
-  const { counts, hasSupplyNotifications, hasDistributionNotifications } = useNotificationContext();
+  const { counts, hasSupplyNotifications, hasDistributionNotifications, hasRegistrationNotifications } = useNotificationContext();
 
   // 用戶權限檢查
   const userRole = user?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
@@ -258,6 +258,13 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
               {item.text === '物資管理' ? (
                 <NotificationBadge 
                   showBadge={counts.totalPending > 0}
+                  size="small"
+                >
+                  {item.icon}
+                </NotificationBadge>
+              ) : item.text === '活動管理' ? (
+                <NotificationBadge 
+                  showBadge={hasRegistrationNotifications}
                   size="small"
                 >
                   {item.icon}

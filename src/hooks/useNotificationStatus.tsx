@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supplyService, distributionBatchService } from '../services';
+import registrationService from '../services/registrationService';
 import { useAuth } from './useAuth';
 
 interface NotificationCounts {
   pendingSupplyRequests: number;
   pendingSuperApproval: number;
   pendingBatchApproval: number;
+  pendingRegistrations: number;
   totalPending: number;
 }
 
@@ -15,6 +17,7 @@ export const useNotificationStatus = () => {
     pendingSupplyRequests: 0,
     pendingSuperApproval: 0,
     pendingBatchApproval: 0,
+    pendingRegistrations: 0,
     totalPending: 0
   });
   const [loading, setLoading] = useState(true);
@@ -29,10 +32,12 @@ export const useNotificationStatus = () => {
 
       const [
         regularSupplyNeeds,
-        distributionBatches
+        distributionBatches,
+        registrationCounts
       ] = await Promise.all([
         supplyService.getRegularSuppliesNeeds(workerId),
-        distributionBatchService.getDistributionBatches(workerId)
+        distributionBatchService.getDistributionBatches(workerId),
+        registrationService.getPendingCount()
       ]);
 
       // 計算待審核的物資申請
@@ -50,7 +55,8 @@ export const useNotificationStatus = () => {
         pendingSupplyRequests: pendingRequests,
         pendingSuperApproval: pendingSuperRequests,
         pendingBatchApproval: pendingBatches,
-        totalPending: pendingRequests + pendingSuperRequests + pendingBatches
+        pendingRegistrations: registrationCounts.totalPendingRegistrations,
+        totalPending: pendingRequests + pendingSuperRequests + pendingBatches + registrationCounts.totalPendingRegistrations
       };
 
       setCounts(newCounts);
@@ -79,6 +85,7 @@ export const useNotificationStatus = () => {
     // 便捷的判斷方法
     hasSupplyNotifications: counts.pendingSupplyRequests > 0 || counts.pendingSuperApproval > 0,
     hasDistributionNotifications: counts.pendingBatchApproval > 0,
+    hasRegistrationNotifications: counts.pendingRegistrations > 0,
     hasTotalNotifications: counts.totalPending > 0
   };
 };

@@ -58,8 +58,7 @@ export default function DifficultyRadarChart({ loading = false }: DifficultyRada
         <Typography 
           gutterBottom 
           sx={{
-            ...theme.customTypography.cardTitle,
-            fontSize: '1.125rem',
+            ...theme.customTypography.dashboardTitle,
             mb: 2
           }}
         >
@@ -90,6 +89,7 @@ export default function DifficultyRadarChart({ loading = false }: DifficultyRada
                 {
                   label: '困難程度',
                   data: mockDifficultyData.map(item => item.value),
+                  color: THEME_COLORS.CHART_COLOR_1 // 主題綠色
                 },
               ]}
               radar={{
@@ -165,7 +165,7 @@ export default function DifficultyRadarChart({ loading = false }: DifficultyRada
                     <Typography sx={{ 
                       fontWeight: '700',
                       fontSize: '1rem',
-                      color: difficulty.color,
+                      color: '#222', // 統一主題黑色
                       minWidth: '35px',
                       textAlign: 'right'
                     }}>
@@ -186,11 +186,7 @@ export default function DifficultyRadarChart({ loading = false }: DifficultyRada
                           : difficulty.trend.startsWith('-')
                           ? '#ffebee'
                           : '#f5f5f5',
-                        color: difficulty.trend.startsWith('+') 
-                          ? '#2e7d32' 
-                          : difficulty.trend.startsWith('-')
-                          ? '#d32f2f'
-                          : '#666666',
+                        color: '#222', // 統一主題黑色
                         '& .MuiChip-label': {
                           px: 1
                         }

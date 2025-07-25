@@ -35,12 +35,15 @@ import PageHeader from '../components/shared/PageHeader';
 import NewActivityForm from '../components/ActivityManagementPage/NewActivityForm';
 import ActivityManagement from '../components/ActivityManagementPage/ActivityManagement';
 import RegistrationReviewMain from '../components/ActivityManagementPage/RegistrationReviewMain';
+import NotificationBadge from '../components/shared/NotificationBadge';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 /**
  * 活動管理頁面主組件
  */
 const ActivityManagementPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
+  const { hasRegistrationNotifications } = useNotificationContext();
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -60,7 +63,14 @@ const ActivityManagementPage: React.FC = () => {
     },
     {
       label: '報名審核',
-      icon: <People sx={{ fontSize: 20 }} />,
+      icon: (
+        <NotificationBadge 
+          showBadge={hasRegistrationNotifications}
+          size="small"
+        >
+          <People sx={{ fontSize: 20 }} />
+        </NotificationBadge>
+      ),
       component: <RegistrationReviewMain />
     }
   ];

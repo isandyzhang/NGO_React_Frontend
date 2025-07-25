@@ -89,15 +89,15 @@ const CaseRegistrationReview: React.FC = () => {
             Id: Number(item.Id || item.id),
             CaseName: String(item.CaseName || item.caseName || '未知個案'),
             ActivityName: String(item.ActivityName || item.activityName || '未知活動'),
-            Status: String(item.Status || item.status || 'Pending')
+            Status: String(item.Status || item.status || 'Pending'),
+            RegisterTime: String(item.RegisterTime || item.registerTime || new Date().toISOString())
           };
           
           
           return normalizedItem;
         }).filter(item => item !== null) as CaseRegistration[];
         
-        
-        
+        // 後端已經處理了排序：待審核優先，然後按報名時間排序（越早越前面）
         setRegistrations(validData);
         setFilteredRegistrations(validData);
         
@@ -237,15 +237,6 @@ const CaseRegistrationReview: React.FC = () => {
       default: 
         return status;
     }
-  };
-
-  // 調試資訊顯示
-  const debugInfo = {
-    registrationsCount: registrations.length,
-    filteredCount: filteredRegistrations.length,
-    loading,
-    error,
-    hasData: filteredRegistrations.length > 0
   };
 
   

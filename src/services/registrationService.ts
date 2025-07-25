@@ -8,6 +8,7 @@ export interface CaseRegistration {
   CaseName: string;
   ActivityName: string;
   Status: string;
+  RegisterTime: string;
 }
 
 /**
@@ -20,6 +21,16 @@ export interface PublicRegistration {
   ActivityName: string;
   NumberOfCompanions: number;
   Status: string;
+  RegisterTime: string;
+}
+
+/**
+ * 待審核報名統計介面
+ */
+export interface PendingRegistrationCount {
+  pendingCaseRegistrations: number;
+  pendingUserRegistrations: number;
+  totalPendingRegistrations: number;
 }
 
 /**
@@ -79,6 +90,31 @@ class RegistrationService {
       await api.put(`/RegistrationReview/user/${id}/status`, { status });
     } catch (error) {
       console.error('更新民眾報名狀態失敗:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 獲取待審核報名數量統計
+   */
+  async getPendingCount(): Promise<PendingRegistrationCount> {
+    try {
+      const response = await api.get<PendingRegistrationCount>('/RegistrationReview/pending-count');
+      return response || {
+        pendingCaseRegistrations: 0,
+        pendingUserRegistrations: 0,
+        totalPendingRegistrations: 0
+      };
+    } catch (error: any) {
+      console.error('獲取待審核報名數量失敗:', error);
+      // 對於統計數據，404/204 表示沒有數據，返回默認值
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        return {
+          pendingCaseRegistrations: 0,
+          pendingUserRegistrations: 0,
+          totalPendingRegistrations: 0
+        };
+      }
       throw error;
     }
   }

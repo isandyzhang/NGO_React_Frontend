@@ -111,8 +111,7 @@ export default function GenderChart({ data, loading = false }: GenderChartProps)
         <Typography 
           gutterBottom 
           sx={{
-            ...theme.customTypography.cardTitle,
-            fontSize: '1.125rem',
+            ...theme.customTypography.dashboardTitle,
             mb: 2
           }}
         >

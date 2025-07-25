@@ -86,10 +86,12 @@ const PublicRegistrationReview: React.FC = () => {
             UserName: String(item.UserName || item.userName || '未知用戶'),
             ActivityName: String(item.ActivityName || item.activityName || '未知活動'),
             NumberOfCompanions: Number(item.NumberOfCompanions || item.numberOfCompanions || 0),
-            Status: String(item.Status || item.status || 'Pending')
+            Status: String(item.Status || item.status || 'Pending'),
+            RegisterTime: String(item.RegisterTime || item.registerTime || new Date().toISOString())
           };
         }).filter(item => item !== null) as PublicRegistration[];
         
+        // 後端已經處理了排序：待審核優先，然後按報名時間排序（越早越前面）
         setRegistrations(validData);
         setFilteredRegistrations(validData);
       } else {

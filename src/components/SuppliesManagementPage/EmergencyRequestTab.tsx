@@ -37,12 +37,10 @@ import {
   Delete,
   Warning,
   Add,
+  ArrowUpward,
+  ArrowDownward,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
-import { 
-  getStatusStyle,
-  getResponsiveSpacing
-} from '../../styles/commonStyles';
 import { supplyService, EmergencySupplyNeed, authService, caseService } from '../../services';
 import { WorkerInfo } from '../../services/authService';
 
@@ -50,6 +48,8 @@ const EmergencyRequestTab: React.FC = () => {
   const [searchType, setSearchType] = useState('物品名稱');
   const [searchContent, setSearchContent] = useState('');
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
+  const [sortField, setSortField] = useState<string>('requestDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // 權限控制狀態
   const [currentWorker, setCurrentWorker] = useState<WorkerInfo | null>(null);
@@ -60,13 +60,9 @@ const EmergencyRequestTab: React.FC = () => {
   const [stats, setStats] = useState({
     totalRequests: 0,
     pendingRequests: 0,
-    approvedRequests: 0,
+    fundraisingRequests: 0,
     rejectedRequests: 0,
-    totalEstimatedCost: 0,
-    completedRequests: 0,
-    highPriorityRequests: 0,
-    totalQuantity: 0,
-    collectedQuantity: 0
+    completedRequests: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +125,8 @@ const EmergencyRequestTab: React.FC = () => {
         supplyService.getEmergencySupplyNeedStats()
       ]);
       
+      console.log('📊 緊急物資統計原始數據:', requestStats);
+      
       // 根據用戶角色過濾資料
       let filteredRequests = requests;
       if (currentWorker && userRole === 'staff') {
@@ -143,7 +141,17 @@ const EmergencyRequestTab: React.FC = () => {
       // 主管和管理員可以看到所有資料
       
       setRequestData(filteredRequests);
-      setStats(requestStats);
+      // 映射後端統計數據到用戶指定的5個欄位
+      const finalStats = {
+        totalRequests: requestStats.totalRequests || 0,
+        pendingRequests: requestStats.pendingRequests || 0,
+        fundraisingRequests: requestStats.approvedRequests || 0, // 將"已批准"重新命名為"募集中"
+        rejectedRequests: requestStats.rejectedRequests || 0,
+        completedRequests: requestStats.completedRequests || 0
+      };
+      
+      console.log('📊 最終統計數據:', finalStats);
+      setStats(finalStats);
       
       console.log(`載入緊急物資需求: ${filteredRequests.length} 筆資料 (角色: ${userRole})`);
     } catch (err) {
@@ -184,11 +192,70 @@ const EmergencyRequestTab: React.FC = () => {
   };
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'pending': return '待媒合';
-      case 'completed': return '已完成媒合';
-      default: return '未知';
+    // 清理狀態值 - 移除空白並轉小寫
+    const cleanStatus = status?.trim().toLowerCase();
+    
+    // 調試輸出 - 在開發環境顯示實際狀態值
+    if (cleanStatus && !['pending', 'approved', 'rejected', 'completed'].includes(cleanStatus)) {
+      console.warn('未知狀態值:', status, '清理後:', cleanStatus);
     }
+    
+    switch (cleanStatus) {
+      case 'pending': return '待處理';
+      case 'approved': return '已批准';
+      case 'rejected': return '已拒絕';
+      case 'completed': return '已完成';
+      case 'fundraising': return '募集中';
+      case 'reviewing': return '待主管確認';
+      default: return `未知(${status})`;
+    }
+  };
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'high': return '高';
+      case 'medium': return '中';
+      case 'low': return '低';
+      case 'urgent': return '緊急';
+      default: return '中';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return THEME_COLORS.ERROR;
+      case 'urgent': return '#FF4444';
+      case 'low': return THEME_COLORS.SUCCESS;
+      case 'medium':
+      default: return THEME_COLORS.WARNING;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const cleanStatus = status?.trim().toLowerCase();
+    switch (cleanStatus) {
+      case 'pending': return THEME_COLORS.WARNING;
+      case 'approved': return THEME_COLORS.INFO;
+      case 'rejected': return THEME_COLORS.ERROR;
+      case 'completed': return THEME_COLORS.SUCCESS;
+      case 'fundraising': return '#9C27B0'; // 紫色
+      case 'reviewing': return '#FF9800'; // 橙色
+      default: return THEME_COLORS.TEXT_MUTED;
+    }
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return null;
+    return sortDirection === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />;
   };
 
   const handleApprove = (item: EmergencySupplyNeed) => {
@@ -221,7 +288,14 @@ const EmergencyRequestTab: React.FC = () => {
     try {
       switch (confirmDialog.type) {
         case 'approve':
-          await supplyService.approveEmergencySupplyNeed(confirmDialog.item.emergencyNeedId);
+          // 如果是 reviewing 狀態批准，應該變成 fundraising
+          if (confirmDialog.item.status === 'reviewing') {
+            // 這裡需要專門的 API 來將 reviewing 改為 fundraising
+            // 暫時使用通用的 approve API，後端需要處理這個邏輯
+            await supplyService.approveEmergencySupplyNeed(confirmDialog.item.emergencyNeedId);
+          } else {
+            await supplyService.approveEmergencySupplyNeed(confirmDialog.item.emergencyNeedId);
+          }
           break;
         case 'reject':
           await supplyService.rejectEmergencySupplyNeed(confirmDialog.item.emergencyNeedId);
@@ -293,8 +367,6 @@ const EmergencyRequestTab: React.FC = () => {
       switch (searchType) {
         case '物品名稱':
           return item.itemName.toLowerCase().includes(searchContent.toLowerCase());
-        case '分類':
-          return item.category.toLowerCase().includes(searchContent.toLowerCase());
         case '申請人':
           return item.requestedBy.toLowerCase().includes(searchContent.toLowerCase());
         case '個案名稱':
@@ -304,8 +376,53 @@ const EmergencyRequestTab: React.FC = () => {
       }
     })
     .sort((a, b) => {
-      // 按申請日期排序：最新的在前
-      return new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime();
+      let aValue: any, bValue: any;
+      
+      switch (sortField) {
+        case 'itemName':
+          aValue = a.itemName || '';
+          bValue = b.itemName || '';
+          break;
+        case 'quantity':
+          aValue = a.quantity || 0;
+          bValue = b.quantity || 0;
+          break;
+        case 'priority':
+          const priorityOrder = { 'urgent': 4, 'high': 3, 'medium': 2, 'low': 1 };
+          aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 2;
+          bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 2;
+          break;
+        case 'requestedBy':
+          aValue = a.requestedBy || '';
+          bValue = b.requestedBy || '';
+          break;
+        case 'caseName':
+          aValue = a.caseName || '';
+          bValue = b.caseName || '';
+          break;
+        case 'requestDate':
+          aValue = new Date(a.requestDate || 0).getTime();
+          bValue = new Date(b.requestDate || 0).getTime();
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        default:
+          aValue = new Date(a.requestDate || 0).getTime();
+          bValue = new Date(b.requestDate || 0).getTime();
+          break;
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else {
+        return sortDirection === 'asc' 
+          ? aValue - bValue
+          : bValue - aValue;
+      }
     });
 
   const getActionText = (type: 'approve' | 'reject' | 'delete') => {
@@ -358,10 +475,10 @@ const EmergencyRequestTab: React.FC = () => {
           </Box>
           <Box>
             <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
-              已批准
+              募集中
             </Typography>
-            <Typography variant="h4" sx={{ color: THEME_COLORS.SUCCESS }}>
-              {stats.approvedRequests}
+            <Typography variant="h4" sx={{ color: THEME_COLORS.INFO }}>
+              {stats.fundraisingRequests}
             </Typography>
           </Box>
           <Box>
@@ -378,30 +495,6 @@ const EmergencyRequestTab: React.FC = () => {
             </Typography>
             <Typography variant="h4" sx={{ color: THEME_COLORS.SUCCESS }}>
               {stats.completedRequests}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
-              高優先級
-            </Typography>
-            <Typography variant="h4" sx={{ color: THEME_COLORS.ERROR }}>
-              {stats.highPriorityRequests}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
-              總數量
-            </Typography>
-            <Typography variant="h4" sx={{ color: THEME_COLORS.INFO }}>
-              {stats.totalQuantity}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
-              已領取
-            </Typography>
-            <Typography variant="h4" sx={{ color: THEME_COLORS.SUCCESS }}>
-              {stats.collectedQuantity}
             </Typography>
           </Box>
         </Box>
@@ -426,7 +519,6 @@ const EmergencyRequestTab: React.FC = () => {
               label="搜尋類型"
             >
               <MenuItem value="物品名稱">物品名稱</MenuItem>
-              <MenuItem value="分類">分類</MenuItem>
               <MenuItem value="申請人">申請人</MenuItem>
               <MenuItem value="個案名稱">個案名稱</MenuItem>
             </Select>
@@ -436,13 +528,15 @@ const EmergencyRequestTab: React.FC = () => {
             placeholder={`請輸入${searchType}關鍵字`}
             value={searchContent}
             onChange={(e) => setSearchContent(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search sx={{ color: THEME_COLORS.TEXT_SECONDARY }} />
-                </InputAdornment>
-              ),
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search sx={{ color: THEME_COLORS.TEXT_SECONDARY }} />
+                  </InputAdornment>
+                ),
+              },
             }}
             sx={{ flex: 1 }}
           />
@@ -464,21 +558,24 @@ const EmergencyRequestTab: React.FC = () => {
             {loading ? '搜尋中...' : '搜尋'}
           </Button>
           
-          <Button
-            variant="contained"
-            onClick={() => setAddDialog({ open: true, loading: false })}
-            startIcon={<Add />}
-            sx={{
-              minWidth: 120,
-              backgroundColor: THEME_COLORS.SUCCESS,
-              color: 'white',
-              '&:hover': {
-                backgroundColor: THEME_COLORS.SUCCESS_DARK,
-              },
-            }}
-          >
-            新增需求
-          </Button>
+          {/* 只有 admin 或 supervisor 可以新增需求 */}
+          {(userRole === 'admin' || userRole === 'supervisor') && (
+            <Button
+              variant="contained"
+              onClick={() => setAddDialog({ open: true, loading: false })}
+              startIcon={<Add />}
+              sx={{
+                minWidth: 120,
+                backgroundColor: THEME_COLORS.SUCCESS,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: THEME_COLORS.SUCCESS_DARK,
+                },
+              }}
+            >
+              新增需求
+            </Button>
+          )}
         </Box>
       </Paper>
 
@@ -494,29 +591,110 @@ const EmergencyRequestTab: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: THEME_COLORS.BACKGROUND_SECONDARY }}>
-              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
-                物品名稱
+              <TableCell 
+                sx={{ 
+                  fontWeight: 600, 
+                  color: THEME_COLORS.TEXT_SECONDARY,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': { backgroundColor: THEME_COLORS.HOVER_LIGHT }
+                }}
+                onClick={() => handleSort('itemName')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  物品名稱
+                  {getSortIcon('itemName')}
+                </Box>
               </TableCell>
-              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
-                分類
+              <TableCell 
+                sx={{ 
+                  fontWeight: 600, 
+                  color: THEME_COLORS.TEXT_SECONDARY,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': { backgroundColor: THEME_COLORS.HOVER_LIGHT }
+                }}
+                onClick={() => handleSort('quantity')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  數量
+                  {getSortIcon('quantity')}
+                </Box>
               </TableCell>
-              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
-                數量
+              <TableCell 
+                sx={{ 
+                  fontWeight: 600, 
+                  color: THEME_COLORS.TEXT_SECONDARY,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': { backgroundColor: THEME_COLORS.HOVER_LIGHT }
+                }}
+                onClick={() => handleSort('priority')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  優先級
+                  {getSortIcon('priority')}
+                </Box>
               </TableCell>
-              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
-                優先級
+              <TableCell 
+                sx={{ 
+                  fontWeight: 600, 
+                  color: THEME_COLORS.TEXT_SECONDARY,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': { backgroundColor: THEME_COLORS.HOVER_LIGHT }
+                }}
+                onClick={() => handleSort('requestedBy')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  申請人
+                  {getSortIcon('requestedBy')}
+                </Box>
               </TableCell>
-              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
-                申請人
+              <TableCell 
+                sx={{ 
+                  fontWeight: 600, 
+                  color: THEME_COLORS.TEXT_SECONDARY,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': { backgroundColor: THEME_COLORS.HOVER_LIGHT }
+                }}
+                onClick={() => handleSort('caseName')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  個案名稱
+                  {getSortIcon('caseName')}
+                </Box>
               </TableCell>
-              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
-                個案名稱
+              <TableCell 
+                sx={{ 
+                  fontWeight: 600, 
+                  color: THEME_COLORS.TEXT_SECONDARY,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': { backgroundColor: THEME_COLORS.HOVER_LIGHT }
+                }}
+                onClick={() => handleSort('requestDate')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  申請日期
+                  {getSortIcon('requestDate')}
+                </Box>
               </TableCell>
-              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
-                申請日期
-              </TableCell>
-              <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
-                狀態
+              <TableCell 
+                sx={{ 
+                  fontWeight: 600, 
+                  color: THEME_COLORS.TEXT_SECONDARY,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': { backgroundColor: THEME_COLORS.HOVER_LIGHT }
+                }}
+                onClick={() => handleSort('status')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  狀態
+                  {getSortIcon('status')}
+                </Box>
               </TableCell>
               <TableCell sx={{ fontWeight: 600, color: THEME_COLORS.TEXT_SECONDARY }}>
                 操作
@@ -526,14 +704,14 @@ const EmergencyRequestTab: React.FC = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
                   <CircularProgress />
                   <Typography sx={{ mt: 2 }}>載入中...</Typography>
                 </TableCell>
               </TableRow>
             ) : filteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>
+                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
                   <Typography color="textSecondary">
                     暫無緊急物資需求資料
                   </Typography>
@@ -556,9 +734,6 @@ const EmergencyRequestTab: React.FC = () => {
                       </Typography>
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
-                      {row.category}
-                    </TableCell>
-                    <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
                       {row.quantity} {row.unit}
                       {row.collectedQuantity > 0 && (
                         <Typography variant="caption" sx={{ color: THEME_COLORS.SUCCESS, ml: 1 }}>
@@ -568,13 +743,10 @@ const EmergencyRequestTab: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={row.priority || 'medium'}
+                        label={getPriorityLabel(row.priority || 'medium')}
                         size="small"
                         sx={{
-                          backgroundColor: row.priority === 'high' ? THEME_COLORS.ERROR : 
-                                         row.priority === 'urgent' ? '#FF4444' :
-                                         row.priority === 'low' ? THEME_COLORS.SUCCESS : 
-                                         THEME_COLORS.WARNING,
+                          backgroundColor: getPriorityColor(row.priority || 'medium'),
                           color: 'white',
                           fontWeight: 600
                         }}
@@ -588,22 +760,35 @@ const EmergencyRequestTab: React.FC = () => {
                         </Typography>
                       </Box>
                     </TableCell>
-                    <TableCell sx={{ color: THEME_COLORS.TEXT_PRIMARY }}>
-                      {row.caseName}
+                    <TableCell>
+                      <Box>
+                        <Typography sx={{ color: THEME_COLORS.TEXT_PRIMARY, fontWeight: 500 }}>
+                          {row.caseName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
+                          ID: {row.caseId}
+                        </Typography>
+                      </Box>
                     </TableCell>
                     <TableCell sx={{ color: THEME_COLORS.TEXT_SECONDARY }}>
-                      {row.requestDate ? new Date(row.requestDate).toLocaleDateString() : '未知日期'}
+                      {row.requestDate ? new Date(row.requestDate).toISOString().split('T')[0] : '未知日期'}
                     </TableCell>
                     <TableCell>
                       <Chip 
                         label={getStatusLabel(row.status)}
                         size="small"
-                        sx={getStatusStyle(row.status)}
+                        sx={{
+                          backgroundColor: getStatusColor(row.status),
+                          color: 'white',
+                          fontWeight: 600
+                        }}
                       />
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1 }}>
-                        {row.status === 'pending' && (
+                        {/* 只有 admin 或 supervisor 才能批准/拒絕 */}
+                        {(userRole === 'admin' || userRole === 'supervisor') && 
+                         (row.status === 'pending' || row.status === 'reviewing') && (
                           <>
                             <IconButton
                               onClick={(e) => {
@@ -611,6 +796,7 @@ const EmergencyRequestTab: React.FC = () => {
                                 handleApprove(row);
                               }}
                               sx={{ color: THEME_COLORS.SUCCESS }}
+                              title="批准"
                             >
                               <CheckCircle />
                             </IconButton>
@@ -620,26 +806,32 @@ const EmergencyRequestTab: React.FC = () => {
                                 handleReject(row);
                               }}
                               sx={{ color: THEME_COLORS.ERROR }}
+                              title="拒絕"
                             >
                               <Cancel />
                             </IconButton>
                           </>
                         )}
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(row);
-                          }}
-                          sx={{ color: THEME_COLORS.TEXT_MUTED }}
-                        >
-                          <Delete />
-                        </IconButton>
+                        {/* 只有 admin 或 supervisor 才能刪除 */}
+                        {(userRole === 'admin' || userRole === 'supervisor') && (
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(row);
+                            }}
+                            sx={{ color: THEME_COLORS.TEXT_MUTED }}
+                            title="刪除"
+                          >
+                            <Delete />
+                          </IconButton>
+                        )}
                         <IconButton
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleRowExpansion(row.emergencyNeedId);
                           }}
                           sx={{ color: THEME_COLORS.TEXT_SECONDARY }}
+                          title="展開詳細資訊"
                         >
                           {expandedRows.includes(row.emergencyNeedId) ? <ExpandLess /> : <ExpandMore />}
                         </IconButton>
@@ -649,7 +841,7 @@ const EmergencyRequestTab: React.FC = () => {
 
                   {/* 展開的詳細資訊 */}
                   <TableRow>
-                    <TableCell colSpan={9} sx={{ py: 0 }}>
+                    <TableCell colSpan={8} sx={{ py: 0 }}>
                       <Collapse 
                         in={expandedRows.includes(row.emergencyNeedId)} 
                         timeout="auto" 
@@ -676,14 +868,6 @@ const EmergencyRequestTab: React.FC = () => {
                               </Typography>
                               <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
                                 {row.description || '無'}
-                              </Typography>
-                            </Box>
-                            <Box>
-                              <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
-                                緊急原因
-                              </Typography>
-                              <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
-                                {row.emergencyReason || '無'}
                               </Typography>
                             </Box>
                             <Box>
@@ -715,26 +899,10 @@ const EmergencyRequestTab: React.FC = () => {
                             )}
                             <Box>
                               <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
-                                需求數量
-                              </Typography>
-                              <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
-                                {row.quantity} {row.unit}
-                              </Typography>
-                            </Box>
-                            <Box>
-                              <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
                                 個案編號
                               </Typography>
                               <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
                                 {row.caseId}
-                              </Typography>
-                            </Box>
-                            <Box>
-                              <Typography variant="subtitle2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, fontWeight: 600 }}>
-                                配對狀態
-                              </Typography>
-                              <Typography sx={{ mt: 1, color: THEME_COLORS.TEXT_PRIMARY }}>
-                                {row.matched ? '已配對' : '未配對'}
                               </Typography>
                             </Box>
                           </Box>
@@ -758,11 +926,22 @@ const EmergencyRequestTab: React.FC = () => {
           <DialogContentText>
             {confirmDialog.item && (
               <>
-                確定要{getActionText(confirmDialog.type)}物品「{confirmDialog.item.itemName}」的申請嗎？
-                {confirmDialog.type === 'delete' && (
-                  <Typography color="error" sx={{ mt: 1 }}>
-                    此操作無法復原！
-                  </Typography>
+                {confirmDialog.type === 'approve' && confirmDialog.item.status === 'reviewing' ? (
+                  <>
+                    確定要批准物品「{confirmDialog.item.itemName}」的申請嗎？
+                    <Typography color="info" sx={{ mt: 1 }}>
+                      批准後狀態將變更為「募集中」
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    確定要{getActionText(confirmDialog.type)}物品「{confirmDialog.item.itemName}」的申請嗎？
+                    {confirmDialog.type === 'delete' && (
+                      <Typography color="error" sx={{ mt: 1 }}>
+                        此操作無法復原！
+                      </Typography>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -849,8 +1028,8 @@ const EmergencyRequestTab: React.FC = () => {
               type="number"
               value={formData.quantity}
               onChange={(e) => handleFormChange('quantity', parseInt(e.target.value) || 1)}
-              InputProps={{
-                inputProps: { min: 1 }
+              slotProps={{
+                htmlInput: { min: 1 }
               }}
               fullWidth
             />
@@ -861,8 +1040,10 @@ const EmergencyRequestTab: React.FC = () => {
               type="date"
               value={formData.requestDate}
               onChange={(e) => handleFormChange('requestDate', e.target.value)}
-              InputLabelProps={{
-                shrink: true,
+              slotProps={{
+                inputLabel: {
+                  shrink: true,
+                },
               }}
               fullWidth
             />

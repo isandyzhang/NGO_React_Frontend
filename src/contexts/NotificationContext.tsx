@@ -6,12 +6,14 @@ interface NotificationContextType {
     pendingSupplyRequests: number;
     pendingSuperApproval: number;
     pendingBatchApproval: number;
+    pendingRegistrations: number;
     totalPending: number;
   };
   loading: boolean;
   refreshNotifications: () => void;
   hasSupplyNotifications: boolean;
   hasDistributionNotifications: boolean;
+  hasRegistrationNotifications: boolean;
   hasTotalNotifications: boolean;
 }
 

@@ -149,10 +149,25 @@ export const dashboardService = {
   // 獲取個案縣市分佈數據 (用於地圖顯示)
   getCountyDistribution: async (): Promise<CountyDistribution[]> => {
     try {
+      console.log('🌍 發送縣市分佈 API 請求...');
       const response = await api.get<CountyDistribution[]>('/Dashboard/county-distribution');
-      return response;
-    } catch (error) {
-      console.error('獲取縣市分佈數據失敗:', error);
+      console.log('✅ 縣市分佈 API 回應:', response);
+      return response || [];
+    } catch (error: any) {
+      console.error('❌ 獲取縣市分佈數據失敗:', error);
+      console.error('錯誤詳情:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      // 區分真正的錯誤和空結果
+      if (error.response?.status === 404 || error.response?.status === 204) {
+        console.log('📍 沒有找到縣市分佈資料，返回空陣列');
+        return [];
+      }
+      
       throw error;
     }
   }

@@ -5,9 +5,7 @@ import {
   CardContent, 
   Typography, 
   useTheme,
-  Chip,
-  CircularProgress,
-  Stack
+  Chip
 } from '@mui/material';
 import { PieChart, BarChart } from '@mui/x-charts';
 import PageHeader from '../components/shared/PageHeader';
@@ -131,7 +129,7 @@ const Dashboard: React.FC = () => {
   /**
    * 將活動轉換為日曆事件
    */
-  const convertActivityToCalendarEvent = (activity: any): CalendarEvent & { eventSource: 'activity' } => {
+  const convertActivityToCalendarEvent = (activity: any): CalendarEvent & { eventSource: 'activity'; imageUrl?: string } => {
     return {
       id: `activity_${activity.activityId}`,
       title: activity.activityName,
@@ -141,8 +139,9 @@ const Dashboard: React.FC = () => {
       description: activity.description,
       workerId: activity.workerId,
       status: activity.status,
-      eventSource: 'activity'
-    } as CalendarEvent & { eventSource: 'activity' };
+      eventSource: 'activity',
+      imageUrl: activity.imageUrl
+    } as CalendarEvent & { eventSource: 'activity'; imageUrl?: string };
   };
 
   /**
@@ -167,7 +166,15 @@ const Dashboard: React.FC = () => {
       
       // 載入行程資料
       try {
-        const schedules = await scheduleService.getSchedulesByWorker(workerId);
+        let schedules;
+        if (userRole === 'admin') {
+          // admin 看全部行程
+          schedules = await scheduleService.getAllSchedules();
+        } else {
+          // 其他角色只看自己的行程
+          schedules = await scheduleService.getSchedulesByWorker(workerId);
+        }
+        
         const scheduleEvents = schedules
           .map(schedule => {
             const event = scheduleService.convertToCalendarEvent(schedule);
@@ -180,7 +187,7 @@ const Dashboard: React.FC = () => {
             return diffDays >= 0 && diffDays <= 14; // 未來14天內
           });
         allEvents.push(...scheduleEvents);
-        console.log(`載入了 ${scheduleEvents.length} 筆行程資料`);
+        console.log(`載入了 ${scheduleEvents.length} 筆行程資料 (${userRole === 'admin' ? '全部' : '個人'})`);
       } catch (scheduleError) {
         console.error('載入行程失敗:', scheduleError);
       }
@@ -190,8 +197,10 @@ const Dashboard: React.FC = () => {
         const activityResponse = await activityService.getActivities();
         const activities = activityResponse.activities || [];
         
-        // 過濾當前用戶的活動
-        const userActivities = activities.filter(activity => activity.workerId === workerId);
+        // admin 看全部活動，其他角色只看自己的活動
+        const userActivities = userRole === 'admin' 
+          ? activities // admin 看全部
+          : activities.filter(activity => activity.workerId === workerId); // 其他角色只看自己的
         
         const activityEvents = userActivities
           .map(convertActivityToCalendarEvent)
@@ -202,7 +211,7 @@ const Dashboard: React.FC = () => {
             return diffDays >= 0 && diffDays <= 14; // 未來14天內
           });
         allEvents.push(...activityEvents);
-        console.log(`載入了 ${activityEvents.length} 筆活動資料`);
+        console.log(`載入了 ${activityEvents.length} 筆活動資料 (${userRole === 'admin' ? '全部' : '個人'})`);
       } catch (activityError) {
         console.error('載入活動失敗:', activityError);
       }
@@ -327,6 +336,15 @@ const Dashboard: React.FC = () => {
   // 載入圖表數據
   const loadChartData = async () => {
     try {
+      // 獲取當前用戶資訊
+      const currentWorker = authService.getCurrentWorker();
+      if (!currentWorker) {
+        console.warn('未找到登入工作人員資訊');
+        return;
+      }
+      
+      const userRole = currentWorker.role;
+      console.log(`載入圖表數據 - 用戶: ${currentWorker.name}, 角色: ${userRole}`);
       // 載入性別分佈數據
       try {
         setGenderDistributionLoading(true);
@@ -349,53 +367,80 @@ const Dashboard: React.FC = () => {
       }
 
       // 載入個案城市分佈數據
-      const caseDistribution = await dashboardService.getCaseDistribution();
-      const regionChartData = caseDistribution.map(item => ({
-        region: item.city,
-        count: item.count
-      }));
-      setRegionDistributionData(regionChartData);
+      let caseDistribution: any[] = [];
+      try {
+        caseDistribution = await dashboardService.getCaseDistribution();
+        const regionChartData = caseDistribution.map(item => ({
+          region: item.city,
+          count: item.count
+        }));
+        setRegionDistributionData(regionChartData);
+        console.log('個案城市分佈數據載入成功:', caseDistribution);
+      } catch (caseDistError) {
+        console.error('載入個案城市分佈數據失敗:', caseDistError);
+        setRegionDistributionData([]);
+      }
 
       // 載入困難類型分析數據
-      const difficultyAnalysis = await dashboardService.getDifficultyAnalysis();
-      const difficultyChartData = difficultyAnalysis.map(item => ({
-        difficulty: item.difficultyType,
-        count: item.count
-      }));
-      setDifficultyData(difficultyChartData);
+      try {
+        const difficultyAnalysis = await dashboardService.getDifficultyAnalysis();
+        const difficultyChartData = difficultyAnalysis.map(item => ({
+          difficulty: item.difficultyType,
+          count: item.count
+        }));
+        setDifficultyData(difficultyChartData);
+        console.log('困難類型分析數據載入成功:', difficultyAnalysis);
+      } catch (difficultyError) {
+        console.error('載入困難類型分析數據失敗:', difficultyError);
+        setDifficultyData([]);
+      }
 
       // 載入縣市分佈數據 (用於地圖顯示)
       try {
         setCountyDistributionLoading(true);
+        console.log('🌍 開始載入縣市分佈數據...');
+        
         const countyDistributionResponse = await dashboardService.getCountyDistribution();
         
-        // 為新的 RegionChart 組件設置數據
-        setCountyDistribution(countyDistributionResponse.map(item => ({
-          County: item.county,
-          Count: item.count
-        })));
+        console.log('✅ 縣市分佈數據載入成功:', countyDistributionResponse);
+        console.log('📊 縣市分佈資料筆數:', countyDistributionResponse.length);
         
-        // 為舊的地圖顯示保留原有邏輯
-        const countyMapData = countyDistributionResponse.map(item => ({
+        if (countyDistributionResponse.length === 0) {
+          console.warn('⚠️ 縣市分佈資料為空，檢查資料庫是否有個案資料');
+        }
+        
+        // 為新的 RegionChart 組件設置數據
+        const mappedData = countyDistributionResponse.map(item => ({
           county: item.county,
           count: item.count
         }));
-        setCountyDistributionData(countyMapData);
+        
+        console.log('🗺️ 設置 RegionChart 資料:', mappedData);
+        setCountyDistribution(mappedData);
+        
         setCountyDistributionLoading(false);
       } catch (countyError) {
-        console.warn('縣市分佈API尚未實作，使用城市資料模擬:', countyError);
-        // 如果縣市API還沒實作，使用現有的城市資料作為模擬
-        const simulatedCountyData = caseDistribution.map(item => ({
-          county: item.city.replace('市', '').replace('縣', '') + (item.city.includes('市') ? '市' : '縣'),
-          count: item.count
-        }));
-        setCountyDistributionData(simulatedCountyData);
+        console.error('❌ 縣市分佈API失敗:', countyError);
         
-        // 為新組件也設置模擬數據
-        setCountyDistribution(simulatedCountyData.map(item => ({
-          County: item.county,
-          Count: item.count
-        })));
+        // 如果縣市API失敗且有城市資料，使用城市資料作為模擬
+        if (caseDistribution.length > 0) {
+          console.log('🔄 使用城市資料模擬縣市分佈...');
+          
+          const simulatedCountyData = caseDistribution.map(item => ({
+            county: item.city.includes('市') || item.city.includes('縣') ? item.city : item.city + '市',
+            count: item.count
+          }));
+          
+          console.log('🌏 使用模擬縣市數據:', simulatedCountyData);
+          
+          setCountyDistribution(simulatedCountyData.map(item => ({
+            county: item.county,
+            count: item.count
+          })));
+        } else {
+          console.error('💥 沒有城市資料可以用於模擬縣市分佈');
+          setCountyDistribution([]);
+        }
         setCountyDistributionLoading(false);
       }
 
@@ -406,9 +451,26 @@ const Dashboard: React.FC = () => {
 
   // 組件載入時載入資料
   useEffect(() => {
-    loadRecentEvents();
-    loadStatistics();
-    loadChartData();
+    console.log('🔄 Dashboard 組件載入，開始載入資料');
+    
+    const loadAllData = async () => {
+      try {
+        console.log('📊 開始載入統計資料...');
+        await loadStatistics();
+        
+        console.log('📈 開始載入圖表資料...');
+        await loadChartData();
+        
+        console.log('📅 開始載入近期活動...');
+        await loadRecentEvents();
+        
+        console.log('✅ 所有資料載入完成');
+      } catch (error) {
+        console.error('❌ 載入資料時發生錯誤:', error);
+      }
+    };
+    
+    loadAllData();
   }, []);
 
   /**
@@ -566,139 +628,15 @@ const Dashboard: React.FC = () => {
               display: 'flex'
             }}
           >
-            {card.loading ? (
-              <Card sx={{ 
-                width: '100%',
-                height: { xs: 102, sm: 110, md: 119 }, // 調整高度與StatCard的85%保持一致
-                borderRadius: 2,
-                border: '1px solid #e0e0e0',
-                backgroundColor: '#ffffff',
-                transition: 'all 0.2s ease-in-out'
-              }}>
-                <CardContent sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  p: 3,
-                  pb: 1,
-                  justifyContent: 'flex-start'
-                }}>
-                  {/* 標題和趨勢標籤 - 載入時也顯示 */}
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'flex-start', 
-                    mb: 1,
-                    width: '100%'
-                  }}>
-                    <Typography 
-                      component="h2" 
-                      variant="subtitle2" 
-                      sx={{ 
-                        mb: 0,
-                        fontWeight: 600,
-                        color: '#333333',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      {card.title}
-                    </Typography>
-                    <Chip 
-                      size="small" 
-                      color="default"
-                      label="載入中..."
-                      sx={{
-                        height: 28,
-                        fontSize: '0.875rem',
-                        fontWeight: 600,
-                        borderRadius: '14px',
-                        '& .MuiChip-label': {
-                          px: 2
-                        }
-                      }}
-                    />
-                  </Box>
-
-                  {/* 載入中的數字和圖表區域 */}
-                  <Stack
-                    direction="row"
-                    sx={{ 
-                      justifyContent: 'space-between', 
-                      flexGrow: '1', 
-                      gap: 2,
-                      alignItems: 'flex-start'
-                    }}
-                  >
-                    {/* 左邊：載入中的數字 */}
-                    <Stack sx={{ gap: 0.5, alignItems: 'flex-start', flex: 1 }}>
-                      <Typography 
-                        variant="h3" 
-                        component="p" 
-                        sx={{ 
-                          fontSize: '2.5rem',
-                          fontWeight: 700,
-                          color: '#333333',
-                          letterSpacing: '-0.02em',
-                          lineHeight: 1.1,
-                          pl: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          minHeight: '3rem' // 確保最小高度
-                        }}
-                      >
-                        <CircularProgress 
-                          size={20}
-                          thickness={4}
-                          sx={{ color: card.color }}
-                        />
-                        --
-                      </Typography>
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          fontSize: '0.875rem',
-                          fontWeight: 400,
-                          color: '#999999',
-                          letterSpacing: '0.01em',
-                          lineHeight: 1.4,
-                          pl: 1,
-                          minHeight: '1.2rem' // 確保最小高度
-                        }}
-                      >
-                        載入中...
-                      </Typography>
-                    </Stack>
-                    
-                    {/* 右邊：載入中的圖表 */}
-                    <Box sx={{ 
-                      minWidth: '200px', // 確保最小寬度
-                      height: 100,
-                      flexShrink: 0,
-                      minHeight: 100,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <CircularProgress 
-                        size={24}
-                        thickness={3}
-                        sx={{ color: card.color }}
-                      />
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            ) : (
-              <StatCard
-                title={card.title}
-                value={card.value}
-                interval={card.subtitle}
-                trend={card.trend}
-                data={card.data}
-                icon={card.icon}
-              />
-            )}
+            <StatCard
+              title={card.title}
+              value={card.loading ? '' : card.value}
+              interval={card.loading ? '' : card.subtitle}
+              trend={card.trend}
+              data={card.data}
+              icon={card.icon}
+              loading={card.loading}
+            />
           </Box>
         ))}
       </Box>
@@ -719,8 +657,8 @@ const Dashboard: React.FC = () => {
             flexBasis: { 
               xs: '100%', 
               sm: '100%', 
-              md: 'calc(50% - 12px)',
-              lg: 'calc(33.333% - 16px)' 
+              md: 'calc(25% - 12px)',
+              lg: 'calc(25% - 16px)' 
             },
             minWidth: 0,
             order: { xs: 1, md: 1, lg: 1 }
@@ -732,37 +670,53 @@ const Dashboard: React.FC = () => {
           />
         </Box>
 
-
-
         {/* 近期活動 */}
         <Box 
           sx={{
             flexBasis: { 
               xs: '100%', 
               sm: '100%', 
-              md: 'calc(50% - 12px)',
-              lg: 'calc(33.333% - 16px)' 
+              md: 'calc(75% - 12px)',
+              lg: 'calc(75% - 16px)' 
             },
             minWidth: 0,
-            order: { xs: 2, md: 2, lg: 2 }
+            order: { xs: 2, md: 2, lg: 2 },
+            height: 'fit-content'
           }}
         >
-          <Card sx={{ boxShadow: { xs: 1, sm: 2 } }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
+          <Card sx={{ 
+            boxShadow: { xs: 1, sm: 2 },
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <CardContent sx={{ 
+              p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
               <Typography 
                 gutterBottom 
                 sx={{
                   ...commonStyles.cardTitle,
-                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' }
+                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.125rem' },
+                  mb: 2
                 }}
               >
                 近期活動
               </Typography>
-              <Box sx={{ mt: 2, maxHeight: { xs: 300, sm: 320, md: 320, lg: 300 }, overflowY: 'auto' }}>
+              <Box sx={{ 
+                flex: 1,
+                overflowY: 'auto',
+                minHeight: { xs: 300, sm: 320, md: 350, lg: 400 },
+                maxHeight: { xs: 400, sm: 450, md: 500, lg: 550 },
+                pr: 1 // 為滾動條留空間
+              }}>
                 {recentEvents.length > 0 ? (
                   recentEvents.map((event, index) => {
                     const { date, time } = formatEventDateTime(event.start);
-                    const eventWithSource = event as CalendarEvent & { eventSource?: 'activity' | 'schedule' };
+                    const eventWithSource = event as CalendarEvent & { eventSource?: 'activity' | 'schedule'; imageUrl?: string };
                     
                     // 根據事件來源決定顏色和標籤
                     let chipColor, chipLabel, chipTextColor;
@@ -784,73 +738,114 @@ const Dashboard: React.FC = () => {
                     
                     return (
                       <Box key={event.id} sx={{ 
-                        mb: { xs: 1.5, sm: 2, md: 2.5 }, 
-                        p: { xs: 1.5, sm: 2, md: 2.5 }, // 平板增加內邊距
+                        mb: { xs: 1.5, sm: 2 }, 
+                        p: { xs: 1.5, sm: 2, md: 2, lg: 2.5 },
                         borderRadius: 2,
                         bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
                         border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
                         '&:hover': {
                           bgcolor: THEME_COLORS.PRIMARY_LIGHT_BG,
-                          borderColor: THEME_COLORS.PRIMARY
+                          borderColor: THEME_COLORS.PRIMARY,
+                          transform: 'translateY(-1px)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                         },
                         transition: 'all 0.2s ease',
-                        minHeight: { md: '80px' }, // 平板增加最小高度提升觸摸友好性
+                        minHeight: { xs: '80px', sm: '85px', md: '90px', lg: '95px' },
                         display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center'
+                        gap: { xs: 1.5, sm: 2 },
+                        cursor: 'pointer'
                       }}>
+                        {/* 活動圖片 - 只有活動才顯示 */}
+                        {eventWithSource.eventSource === 'activity' && eventWithSource.imageUrl && (
+                          <Box sx={{
+                            width: { xs: '60px', sm: '70px', md: '80px', lg: '90px' },
+                            height: { xs: '60px', sm: '65px', md: '70px', lg: '75px' },
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                            bgcolor: THEME_COLORS.BACKGROUND_CARD
+                          }}>
+                            <img 
+                              src={eventWithSource.imageUrl} 
+                              alt={event.title}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </Box>
+                        )}
+                        
+                        {/* 活動內容 */}
                         <Box sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'flex-start',
-                          mb: { xs: 0.5, sm: 1 }
+                          flex: 1, 
+                          minWidth: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center'
                         }}>
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'flex-start',
+                            mb: { xs: 0.5, sm: 1 }
+                          }}>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography sx={{ 
+                                fontWeight: 600,
+                                fontSize: { xs: '0.875rem', sm: '0.9rem', md: '0.95rem', lg: '1rem' },
+                                color: THEME_COLORS.TEXT_PRIMARY,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                lineHeight: 1.3
+                              }}>
+                                {event.title}
+                              </Typography>
+                              <Typography sx={{ 
+                                fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.82rem', lg: '0.85rem' },
+                                color: THEME_COLORS.TEXT_MUTED,
+                                mt: { xs: 0.25, sm: 0.5 },
+                                lineHeight: 1.2
+                              }}>
+                                {date} {time}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={chipLabel}
+                              size="small"
+                              sx={{
+                                backgroundColor: chipColor,
+                                color: chipTextColor,
+                                border: chipColor === '#FFFFFF' ? '2px solid #E0E0E0' : 'none',
+                                fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.775rem', lg: '0.8rem' },
+                                height: { xs: 20, sm: 22, md: 24, lg: 26 },
+                                ml: { xs: 1, sm: 1.5 },
+                                fontWeight: 500,
+                                flexShrink: 0
+                              }}
+                            />
+                          </Box>
+                          {event.description && (
                             <Typography sx={{ 
-                              fontWeight: 600,
-                              fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                              color: THEME_COLORS.TEXT_PRIMARY,
+                              fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem', lg: '0.82rem' },
+                              color: THEME_COLORS.TEXT_SECONDARY,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              lineHeight: 1.3,
+                              mt: { xs: 0.25, sm: 0.5 }
                             }}>
-                              {event.title}
+                              {event.description}
                             </Typography>
-                            <Typography sx={{ 
-                              fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                              color: THEME_COLORS.TEXT_MUTED,
-                              mt: 0.5
-                            }}>
-                              {date} {time}
-                            </Typography>
-                          </Box>
-                          <Chip
-                            label={chipLabel}
-                            size="small"
-                            sx={{
-                              backgroundColor: chipColor,
-                              color: chipTextColor,
-                              border: chipColor === '#FFFFFF' ? '2px solid #E0E0E0' : 'none',
-                              fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                              height: { xs: 20, sm: 22 },
-                              ml: 1,
-                              fontWeight: 500
-                            }}
-                          />
+                          )}
                         </Box>
-                        {event.description && (
-                          <Typography sx={{ 
-                            fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
-                            color: THEME_COLORS.TEXT_SECONDARY,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical'
-                          }}>
-                            {event.description}
-                          </Typography>
-                        )}
                       </Box>
                     );
                   })

@@ -6,6 +6,7 @@ import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 import { SparkLineChart } from '@mui/x-charts/SparkLineChart';
 import { areaElementClasses } from '@mui/x-charts/LineChart';
 
@@ -16,6 +17,7 @@ export type StatCardProps = {
   trend: 'up' | 'down' | 'neutral';
   data: number[];
   icon?: React.ReactElement;
+  loading?: boolean;
 };
 
 function getDaysInMonth(month: number, year: number) {
@@ -51,6 +53,7 @@ export default function StatCard({
   trend,
   data,
   icon,
+  loading = false,
 }: StatCardProps) {
   const theme = useTheme();
   const daysInWeek = getDaysInMonth(4, 2024);
@@ -133,7 +136,23 @@ export default function StatCard({
           >
             {title}
           </Typography>
-                      <Chip 
+          {loading ? (
+            <Chip 
+              size="small" 
+              color="default"
+              label="載入中..."
+              sx={{
+                height: 28,
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                borderRadius: '14px',
+                '& .MuiChip-label': {
+                  px: 2
+                }
+              }}
+            />
+          ) : (
+            <Chip 
               size="small" 
               color={color} 
               label={trendValue}
@@ -147,6 +166,7 @@ export default function StatCard({
                 }
               }}
             />
+          )}
         </Box>
 
         <Stack
@@ -160,91 +180,122 @@ export default function StatCard({
         >
           {/* 左邊：數字信息 */}
           <Stack sx={{ gap: 0.5, alignItems: 'flex-start', flex: 1 }}> {/* 改為左對齊，flex: 1讓它佔據剩餘空間 */}
-            <Typography 
-              variant="h3" 
-              component="p" 
-              sx={{ 
-                ...theme.customTypography.dashboardValue,
-                textAlign: 'left', // 確保文字左對齊
-                pl: 0, // 增加左邊距
-                mb: 0.5 // 減少底部間距
-              }}
-            >
-              {value}
-            </Typography>
+            {loading ? (
+              <Typography 
+                variant="h3" 
+                component="p" 
+                sx={{ 
+                  ...theme.customTypography.dashboardValue,
+                  textAlign: 'left',
+                  pl: 0,
+                  mb: 0.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
+                <CircularProgress 
+                  size={20}
+                  thickness={4}
+                  sx={{ color: chartColor }}
+                />
+                --
+              </Typography>
+            ) : (
+              <Typography 
+                variant="h3" 
+                component="p" 
+                sx={{ 
+                  ...theme.customTypography.dashboardValue,
+                  textAlign: 'left',
+                  pl: 0,
+                  mb: 0.5
+                }}
+              >
+                {value}
+              </Typography>
+            )}
             <Typography 
               variant="caption" 
               sx={{ 
                 ...theme.customTypography.dashboardSubtitle,
-                textAlign: 'left', // 確保文字左對齊
-                pl: 1, // 增加左邊距
-                mb: 1 // 減少底部間距
+                textAlign: 'left',
+                pl: 1,
+                mb: 1
               }}
             >
-              {interval}
+              {loading ? '載入中...' : interval}
             </Typography>
           </Stack>
           
           {/* 右邊：迷你圖表 */}
           <Box sx={{ 
-            width: '250px', // 增加寬度讓圖表更寬
-            height: 100, // 增加高度
-            flexShrink: 0, // 防止縮小
-            minHeight: 100, // 確保最小高度
-            overflow: 'hidden', // 隱藏溢出內容
-            position: 'relative', // 相對定位
+            width: '250px',
+            height: 100,
+            flexShrink: 0,
+            minHeight: 100,
+            overflow: 'hidden',
+            position: 'relative',
             display: 'flex',
-            justifyContent: 'flex-end', // 靠右對齊
-            alignItems: 'center' // 垂直置中
+            justifyContent: 'flex-end',
+            alignItems: 'center'
           }}>
-            <SparkLineChart
-              color={chartColor}
-              data={data} // 使用從props傳入的data
-              area
-              showHighlight={false}
-              showTooltip={false}
-              margin={{ top: 0, bottom: 10, left: 0, right:-20 }} // 移除所有邊距
-              width={300} // 明確設定寬度
-              height={110} // 明確設定高度
-              xAxis={{
-                scaleType: 'band',
-                data: Array.from({length: data.length}, (_, i) => (i + 1).toString()) // 根據data長度動態調整
-              }}
-              sx={{
-                [`& .${areaElementClasses.root}`]: {
-                  fill: `url(#area-gradient-${value})`,
-                },
-                width: '100%',
-                height: '100%',
-                '& .MuiChartsAxis-root': {
-                  display: 'none'
-                },
-                '& .MuiChartsLine-root': {
-                  strokeWidth: 2.5,
-                  stroke: chartColor
-                },
-                '& .MuiChartsAxis-line': {
-                  display: 'none'
-                },
-                '& .MuiChartsAxis-tick': {
-                  display: 'none'
-                },
-                '& .MuiChartsAxis-label': {
-                  display: 'none'
-                },
-                '& .MuiChartsAxis-tickLabel': {
-                  display: 'none'
-                },
-                '& .MuiChartsAxis-tickMark': {
-                  display: 'none'
-                },
-                '& .MuiChartsAxis-grid': {
-                  display: 'none'
-                }
-              }}
-            >
-              <AreaGradient color={chartColor} id={`area-gradient-${value}`} />
-            </SparkLineChart>
+            {loading ? (
+              <CircularProgress 
+                size={24}
+                thickness={3}
+                sx={{ color: chartColor }}
+              />
+            ) : (
+              <SparkLineChart
+                color={chartColor}
+                data={data}
+                area
+                showHighlight={false}
+                showTooltip={false}
+                margin={{ top: 0, bottom: 10, left: 0, right:-20 }}
+                width={300}
+                height={110}
+                xAxis={{
+                  scaleType: 'band',
+                  data: Array.from({length: data.length}, (_, i) => (i + 1).toString())
+                }}
+                sx={{
+                  [`& .${areaElementClasses.root}`]: {
+                    fill: `url(#area-gradient-${value})`,
+                  },
+                  width: '100%',
+                  height: '100%',
+                  '& .MuiChartsAxis-root': {
+                    display: 'none'
+                  },
+                  '& .MuiChartsLine-root': {
+                    strokeWidth: 2.5,
+                    stroke: chartColor
+                  },
+                  '& .MuiChartsAxis-line': {
+                    display: 'none'
+                  },
+                  '& .MuiChartsAxis-tick': {
+                    display: 'none'
+                  },
+                  '& .MuiChartsAxis-label': {
+                    display: 'none'
+                  },
+                  '& .MuiChartsAxis-tickLabel': {
+                    display: 'none'
+                  },
+                  '& .MuiChartsAxis-tickMark': {
+                    display: 'none'
+                  },
+                  '& .MuiChartsAxis-grid': {
+                    display: 'none'
+                  }
+                }}
+              >
+                <AreaGradient color={chartColor} id={`area-gradient-${value || 'loading'}`} />
+              </SparkLineChart>
+            )}
           </Box>
         </Stack>
       </CardContent>

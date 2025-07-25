@@ -65,7 +65,7 @@ export interface EmergencySupplyNeed {
   unit: string;                 // 對應後端 Unit
   requestedBy: string;          // 對應後端 RequestedBy
   requestDate: string;          // 對應後端 RequestDate (DateTime -> string)
-  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'collected' | 'pending_super';
+  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'collected' | 'pending_super' | 'reviewing' | 'fundraising';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   description: string;          // 對應後端 Description
   imageUrl: string;             // 對應後端 ImageUrl
@@ -466,16 +466,7 @@ class SupplyService {
   /**
    * 取得緊急物資需求統計 - 匹配後端 EmergencySupplyNeedStatistics
    */
-  async getEmergencySupplyNeedStats(): Promise<{
-    totalRequests: number;
-    pendingRequests: number;
-    approvedRequests: number;
-    rejectedRequests: number;
-    completedRequests: number;
-    highPriorityRequests: number;
-    totalQuantity: number;
-    collectedQuantity: number;
-  }> {
+  async getEmergencySupplyNeedStats(): Promise<any> {
     try {
       console.log('正在請求緊急物資需求統計...');
       const response = await api.get('/EmergencySupplyNeed/statistics');
@@ -483,16 +474,13 @@ class SupplyService {
       return response;
     } catch (error) {
       console.error('取得緊急物資需求統計失敗:', error);
-      // 返回預設值，匹配後端結構
+      // 返回預設值，匹配前端需要的5個欄位
       return {
         totalRequests: 0,
         pendingRequests: 0,
-        approvedRequests: 0,
+        approvedRequests: 0, // 這個會被映射為 fundraisingRequests
         rejectedRequests: 0,
-        completedRequests: 0,
-        highPriorityRequests: 0,
-        totalQuantity: 0,
-        collectedQuantity: 0
+        completedRequests: 0
       };
     }
   }

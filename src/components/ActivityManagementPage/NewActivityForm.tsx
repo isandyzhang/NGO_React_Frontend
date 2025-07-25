@@ -816,38 +816,23 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
                   variant="outlined"
                   startIcon={<AutoAwesome />}
                   onClick={() => setAiImageDialogOpen(true)}
-                  sx={{ 
-                    fontSize: '0.75rem', 
-                    py: 0.5,
-                    borderColor: dynamicColors.primary,
-                    color: dynamicColors.primary,
+                  sx={{
+                    borderColor: THEME_COLORS.PRIMARY,
+                    color: THEME_COLORS.PRIMARY,
                     '&:hover': {
-                      borderColor: dynamicColors.primaryHover,
-                      bgcolor: dynamicColors.primaryLightBg,
+                      borderColor: THEME_COLORS.PRIMARY_HOVER,
+                      backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG
+                    },
+                    '&.Mui-disabled': {
+                      borderColor: 'rgba(0, 0, 0, 0.12)',
+                      color: 'rgba(0, 0, 0, 0.26)'
                     }
                   }}
                 >
                   AI 生成
                 </Button>
 
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={async () => {
-                    try {
-                      console.log('🧪 開始測試 Azure 連接');
-                      const result = await activityService.testAzureConnection();
-                      console.log('✅ Azure 連接測試結果:', result);
-                      alert(`Azure 連接測試成功！\n容器: ${result.containerName}\n容器存在: ${result.containerExists}`);
-                    } catch (error: any) {
-                      console.error('❌ Azure 連接測試失敗:', error);
-                      alert(`Azure 連接測試失敗：${error.message}`);
-                    }
-                  }}
-                  sx={{ fontSize: '0.75rem', py: 0.5 }}
-                >
-                  測試 Azure 連接
-                </Button>
+                
               </Box>
             </Box>
             <Box sx={{ 
