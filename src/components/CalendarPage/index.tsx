@@ -129,6 +129,7 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
 
   // 日曆視圖狀態
   const [currentView, setCurrentView] = useState<View>('month');
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   /**
    * 重置表單
@@ -405,6 +406,24 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
             borderColor: THEME_COLORS.PRIMARY,
           },
         },
+        // 強制設定日期文字為黑色
+        '& .rbc-date-cell': {
+          color: '#000000 !important',
+        },
+        '& .rbc-button-link': {
+          color: '#000000 !important',
+        },
+        '& .rbc-month-view .rbc-date-cell > a': {
+          color: '#000000 !important',
+        },
+        '& .rbc-month-view .rbc-date-cell button': {
+          color: '#000000 !important',
+        },
+        '& .rbc-month-view .rbc-off-range-bg': {
+          '& .rbc-button-link': {
+            color: '#666666 !important',
+          },
+        },
       }}>
         <Calendar
           localizer={localizer}
@@ -419,6 +438,8 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
           popup
           view={currentView}
           onView={setCurrentView}
+          date={currentDate}
+          onNavigate={setCurrentDate}
           messages={{
             next: '下一頁',
             previous: '上一頁',
@@ -432,6 +453,112 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
             event: '事件',
             noEventsInRange: '此期間沒有事件',
             allDay: '全天',
+          }}
+          components={{
+            toolbar: (props) => (
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                mb: 2,
+                flexWrap: 'wrap',
+                gap: 1
+              }}>
+                {/* 左側：導航按鈕 */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={() => props.onNavigate('PREV')}
+                    sx={{
+                      border: `1px solid ${THEME_COLORS.BORDER_DEFAULT}`,
+                      bgcolor: THEME_COLORS.BACKGROUND_CARD,
+                      color: THEME_COLORS.TEXT_SECONDARY,
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      minWidth: 'auto',
+                      '&:hover': {
+                        bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
+                      },
+                    }}
+                  >
+                    上一頁
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    onClick={() => props.onNavigate('TODAY')}
+                    sx={{
+                      border: `1px solid ${THEME_COLORS.BORDER_DEFAULT}`,
+                      bgcolor: THEME_COLORS.BACKGROUND_CARD,
+                      color: THEME_COLORS.TEXT_SECONDARY,
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      minWidth: 'auto',
+                      '&:hover': {
+                        bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
+                      },
+                    }}
+                  >
+                    今天
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    onClick={() => props.onNavigate('NEXT')}
+                    sx={{
+                      border: `1px solid ${THEME_COLORS.BORDER_DEFAULT}`,
+                      bgcolor: THEME_COLORS.BACKGROUND_CARD,
+                      color: THEME_COLORS.TEXT_SECONDARY,
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      minWidth: 'auto',
+                      '&:hover': {
+                        bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
+                      },
+                    }}
+                  >
+                    下一頁
+                  </Button>
+                  
+                  {/* 當前月份顯示 */}
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      ml: 2,
+                      fontWeight: 600,
+                      color: THEME_COLORS.PRIMARY,
+                      fontSize: '1.1rem',
+                    }}
+                  >
+                    {format(currentDate, 'yyyy年M月', { locale: zhTW })}
+                  </Typography>
+                </Box>
+
+                {/* 右側：視圖切換按鈕 */}
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {['month', 'week', 'day'].map((viewName) => (
+                    <Button
+                      key={viewName}
+                      variant={props.view === viewName ? 'contained' : 'outlined'}
+                      onClick={() => props.onView(viewName as View)}
+                      sx={{
+                        border: `1px solid ${THEME_COLORS.BORDER_DEFAULT}`,
+                        bgcolor: props.view === viewName ? THEME_COLORS.PRIMARY : THEME_COLORS.BACKGROUND_CARD,
+                        color: props.view === viewName ? 'white' : THEME_COLORS.TEXT_SECONDARY,
+                        borderRadius: '6px',
+                        padding: '6px 12px',
+                        minWidth: 'auto',
+                        '&:hover': {
+                          bgcolor: props.view === viewName ? THEME_COLORS.PRIMARY : THEME_COLORS.BACKGROUND_PRIMARY,
+                        },
+                      }}
+                    >
+                      {viewName === 'month' ? '月' : viewName === 'week' ? '週' : '日'}
+                    </Button>
+                  ))}
+                </Box>
+              </Box>
+            ),
           }}
         />
       </Box>
