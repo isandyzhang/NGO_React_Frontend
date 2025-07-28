@@ -22,8 +22,10 @@ import {
   Checkbox,
   Divider,
   Autocomplete,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
-import { Add, Event, Person, Business, School, PersonAdd, Home, Phone, LocationOn } from '@mui/icons-material';
+import { Add, Event, Person, Business, School, PersonAdd, Home, Phone, LocationOn, AccessTime } from '@mui/icons-material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../../styles/commonStyles';
@@ -50,6 +52,196 @@ const eventTypes = {
   'case-visit': { label: '個案訪問', color: THEME_COLORS.WARNING, icon: Person },
   training: { label: '培訓', color: THEME_COLORS.PRIMARY_LIGHT, icon: School },
   other: { label: '其他', color: THEME_COLORS.TEXT_MUTED, icon: Event },
+};
+
+// 自定義時間選擇器組件
+interface TimePickerFieldProps {
+  label: string;
+  value: string;
+  onChange: (time: string) => void;
+}
+
+const TimePickerField: React.FC<TimePickerFieldProps> = ({ label, value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedHour, setSelectedHour] = useState('09');
+  const [selectedMinute, setSelectedMinute] = useState('00');
+  const [selectedPeriod, setSelectedPeriod] = useState('上午');
+
+  // 從 value 解析時間
+  React.useEffect(() => {
+    if (value) {
+      const [hour, minute] = value.split(':');
+      const hourNum = parseInt(hour);
+      if (hourNum === 0) {
+        setSelectedHour('12');
+        setSelectedPeriod('上午');
+      } else if (hourNum <= 12) {
+        setSelectedHour(hourNum.toString().padStart(2, '0'));
+        setSelectedPeriod('上午');
+      } else {
+        setSelectedHour((hourNum - 12).toString().padStart(2, '0'));
+        setSelectedPeriod('下午');
+      }
+      setSelectedMinute(minute);
+    }
+  }, [value]);
+
+  const handleTimeSelect = () => {
+    let hour = parseInt(selectedHour);
+    if (selectedPeriod === '下午' && hour !== 12) {
+      hour += 12;
+    } else if (selectedPeriod === '上午' && hour === 12) {
+      hour = 0;
+    }
+    const timeString = `${hour.toString().padStart(2, '0')}:${selectedMinute}`;
+    onChange(timeString);
+    setIsOpen(false);
+  };
+
+  const formatDisplayTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [hour, minute] = timeStr.split(':');
+    const hourNum = parseInt(hour);
+    const period = hourNum >= 12 ? '下午' : '上午';
+    const displayHour = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
+    return `${period} ${displayHour.toString().padStart(2, '0')}:${minute}`;
+  };
+
+  const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+  const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0'));
+
+  return (
+    <Box sx={{ flex: 1 }}>
+      <TextField
+        label={label}
+        value={formatDisplayTime(value)}
+        onClick={() => setIsOpen(true)}
+        InputProps={{
+          readOnly: true,
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton onClick={() => setIsOpen(true)} edge="end">
+                <AccessTime />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
+        sx={{ 
+          ...commonStyles.formDatePicker,
+          width: '100%',
+          '& .MuiInputBase-input': {
+            cursor: 'pointer',
+          },
+          '& .MuiInputBase-root': {
+            cursor: 'pointer',
+          }
+        }}
+        InputLabelProps={{ shrink: true }}
+      />
+
+      {/* 時間選擇對話框 */}
+      <Dialog
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+          選擇{label}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            gap: 2,
+            py: 2
+          }}>
+            {/* 小時選擇 */}
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                小時
+              </Typography>
+              <Select
+                value={selectedHour}
+                onChange={(e) => setSelectedHour(e.target.value)}
+                size="small"
+                sx={{ minWidth: 70 }}
+              >
+                {hours.map((hour) => (
+                  <MenuItem key={hour} value={hour}>
+                    {hour}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+
+            <Typography variant="h5" sx={{ mt: 3 }}>:</Typography>
+
+            {/* 分鐘選擇 */}
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                分鐘
+              </Typography>
+              <Select
+                value={selectedMinute}
+                onChange={(e) => setSelectedMinute(e.target.value)}
+                size="small"
+                sx={{ minWidth: 70 }}
+              >
+                {minutes.map((minute) => (
+                  <MenuItem key={minute} value={minute}>
+                    {minute}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+
+            {/* 上午/下午選擇 */}
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                時段
+              </Typography>
+              <Select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                size="small"
+                sx={{ minWidth: 70 }}
+              >
+                <MenuItem value="上午">上午</MenuItem>
+                <MenuItem value="下午">下午</MenuItem>
+              </Select>
+            </Box>
+          </Box>
+
+          {/* 預覽 */}
+          <Box sx={{ 
+            textAlign: 'center', 
+            mt: 2, 
+            p: 2, 
+            bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
+            borderRadius: 1,
+            border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
+          }}>
+            <Typography variant="body2" color="text.secondary">
+              預覽時間
+            </Typography>
+            <Typography variant="h6" sx={{ color: THEME_COLORS.PRIMARY }}>
+              {selectedPeriod} {selectedHour}:{selectedMinute}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsOpen(false)}>
+            取消
+          </Button>
+          <Button onClick={handleTimeSelect} variant="contained">
+            確認
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
 };
 
 // 模擬個案資料庫（與物資管理頁面共用）
@@ -793,7 +985,17 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
                 type="date"
                 value={formData.start}
                 onChange={(e) => setFormData(prev => ({ ...prev, start: e.target.value }))}
-                sx={{ ...commonStyles.formInput, flex: 1 }}
+                sx={{ 
+                  ...commonStyles.formDatePicker, 
+                  flex: 1,
+                  '& .MuiInputBase-input': {
+                    ...commonStyles.formDatePicker['& .MuiInputBase-input'],
+                    cursor: 'pointer', // 確保可點擊
+                  },
+                  '& .MuiInputBase-root': {
+                    cursor: 'pointer',
+                  }
+                }}
                 InputLabelProps={{ shrink: true }}
               />
               <TextField
@@ -801,28 +1003,32 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
                 type="date"
                 value={formData.end}
                 onChange={(e) => setFormData(prev => ({ ...prev, end: e.target.value }))}
-                sx={{ ...commonStyles.formInput, flex: 1 }}
+                sx={{ 
+                  ...commonStyles.formDatePicker, 
+                  flex: 1,
+                  '& .MuiInputBase-input': {
+                    ...commonStyles.formDatePicker['& .MuiInputBase-input'],
+                    cursor: 'pointer', // 確保可點擊
+                  },
+                  '& .MuiInputBase-root': {
+                    cursor: 'pointer',
+                  }
+                }}
                 InputLabelProps={{ shrink: true }}
               />
             </Box>
 
             {/* 時間範圍 */}
             <Box sx={{ display: 'flex', gap: getResponsiveSpacing('md') }}>
-              <TextField
+              <TimePickerField
                 label="開始時間"
-                type="time"
                 value={formData.startTime}
-                onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-                sx={{ ...commonStyles.formInput, flex: 1 }}
-                InputLabelProps={{ shrink: true }}
+                onChange={(time) => setFormData(prev => ({ ...prev, startTime: time }))}
               />
-              <TextField
+              <TimePickerField
                 label="結束時間"
-                type="time"
                 value={formData.endTime}
-                onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
-                sx={{ ...commonStyles.formInput, flex: 1 }}
-                InputLabelProps={{ shrink: true }}
+                onChange={(time) => setFormData(prev => ({ ...prev, endTime: time }))}
               />
             </Box>
 
