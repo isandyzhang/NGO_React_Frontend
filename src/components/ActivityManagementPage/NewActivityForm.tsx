@@ -77,7 +77,7 @@ const getDynamicThemeColors = (activityType: 'public' | 'case') => {
       primaryTransparent: THEME_COLORS.PRIMARY_TRANSPARENT,
     };
   } else {
-    // 志工活動使用淡藍色系
+    // 民眾活動使用淡藍色系
     return {
       primary: THEME_COLORS.INFO,
       primaryLight: '#64b5f6',
@@ -548,14 +548,14 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
               mb: 1,
               color: dynamicColors.primaryDark
             }}>
-              新增活動 - {formData.targetAudience === 'case' ? '個案活動' : '志工活動'}
+              新增活動 - {formData.targetAudience === 'case' ? '個案活動' : '民眾活動'}
             </Typography>
             
             <Typography variant="body2" sx={{ 
               color: THEME_COLORS.TEXT_MUTED,
               ...theme.customTypography?.legendLabel
             }}>
-              請輸入各欄位及參加人數，系統預設為{formData.targetAudience === 'case' ? '個案活動模式' : '志工活動模式'}
+              請輸入各欄位及參加人數，系統預設為{formData.targetAudience === 'case' ? '個案活動模式' : '民眾活動模式'}
             </Typography>
           </Box>
 
@@ -599,9 +599,9 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
                 },
               }}
             >
-              <ToggleButton value="public" aria-label="志工活動">
+              <ToggleButton value="public" aria-label="民眾活動">
                 <People sx={{ mr: 0.5, fontSize: { xs: 16, sm: 18 } }} />
-                志工
+                民眾
               </ToggleButton>
               <ToggleButton value="case" aria-label="個案活動">
                 <Person sx={{ mr: 0.5, fontSize: { xs: 16, sm: 18 } }} />
@@ -1043,7 +1043,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
             multiline
             rows={3}
             label="圖片描述"
-            placeholder="例如：一個溫馨的志工活動場景，人們圍坐在一起聊天，背景是溫暖的陽光..."
+            placeholder="例如：一個溫馨的活動場景，人們圍坐在一起聊天，背景是溫暖的陽光..."
             value={imagePrompt}
             onChange={(e) => setImagePrompt(e.target.value)}
             sx={{ mb: 2 }}

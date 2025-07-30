@@ -274,8 +274,7 @@ const ActivityManagement: React.FC = () => {
   const getAudienceLabel = (audience: string) => {
     const audienceMap: { [key: string]: string } = {
       'case': '個案',
-      'public': '一般民眾',
-      'user': '志工'
+      'public': '民眾'
     };
     return audienceMap[audience] || audience;
   };

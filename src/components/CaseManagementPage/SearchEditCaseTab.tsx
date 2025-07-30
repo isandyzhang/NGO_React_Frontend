@@ -53,34 +53,59 @@ import { authService } from '../../services/authService';
 import { formatDate } from '../../utils/dateHelper';
 import { speechService } from '../../services/speechService';
 
-interface CaseRecord {
+// 基本資訊介面 - 用於列表顯示
+interface CaseBasicInfo {
   caseId: number;
   name: string;
   gender: string;
   birthday?: string;
-  identityNumber: string;
   phone: string;
   city: string;
-  district: string;
-  address: string;
-  email: string;
   description: string;
   createdAt: string;
   status: string;
   profileImage?: string;
+}
+
+// 詳細資訊介面 - 展開時載入
+interface CaseDetailInfo {
+  identityNumber: string;
+  district: string;
+  address: string;
+  email: string;
   detailAddress: string;
   workerName?: string;
   speechToTextAudioUrl?: string;
+}
+
+// 完整個案記錄
+interface CaseRecord extends CaseBasicInfo {
+  details?: CaseDetailInfo; // 詳細資訊可選，用於 lazy loading
+  detailsLoaded?: boolean; // 標記詳細資訊是否已載入
+  detailsLoading?: boolean; // 標記詳細資訊載入中
 }
 
 const SearchEditCaseTab: React.FC = () => {
   const [searchContent, setSearchContent] = useState('');
   const [expandedRows, setExpandedRows] = useState<number[]>([]);
   const [editingRow, setEditingRow] = useState<number | null>(null);
-  const [editFormData, setEditFormData] = useState<CaseRecord | null>(null);
+  // 編輯表單資料類型 - 包含完整資訊
+  interface EditFormData extends CaseBasicInfo {
+    identityNumber: string;
+    email: string;
+    district: string;
+    address: string;
+    detailAddress: string;
+    workerName?: string;
+    speechToTextAudioUrl?: string;
+  }
+  
+  // 🔧 修正：為每個個案維護獨立的編輯資料
+  const [editFormDataMap, setEditFormDataMap] = useState<Map<number, EditFormData>>(new Map());
   const [showIdRows, setShowIdRows] = useState<number[]>([]);
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: boolean }>({});
   const [caseRecords, setCaseRecords] = useState<CaseRecord[]>([]);
+  const [detailsCache, setDetailsCache] = useState<Map<number, CaseDetailInfo>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,6 +136,76 @@ const SearchEditCaseTab: React.FC = () => {
 
   // 圖片上傳相關狀態
   const [imageUploadLoading, setImageUploadLoading] = useState<number | null>(null);
+
+  // 🚀 Lazy Loading: 載入個案詳細資料
+  const loadCaseDetails = async (caseId: number): Promise<CaseDetailInfo | null> => {
+    // 先檢查快取
+    const cachedDetails = detailsCache.get(caseId);
+    if (cachedDetails) {
+      console.log(`✅ 從快取載入個案 ${caseId} 詳細資料`);
+      return cachedDetails;
+    }
+
+    try {
+      console.log(`🔄 從 API 載入個案 ${caseId} 詳細資料`);
+      
+      // 標記載入中
+      setCaseRecords(prev => 
+        prev.map(record => 
+          record.caseId === caseId 
+            ? { ...record, detailsLoading: true }
+            : record
+        )
+      );
+
+      const response = await caseService.getCaseById(caseId);
+      
+      const details: CaseDetailInfo = {
+        identityNumber: response.identityNumber,
+        district: response.district,
+        address: response.address,
+        email: response.email,
+        detailAddress: response.detailAddress,
+        workerName: response.workerName,
+        speechToTextAudioUrl: response.speechToTextAudioUrl
+      };
+
+      // 更新快取
+      const newCache = new Map(detailsCache);
+      newCache.set(caseId, details);
+      setDetailsCache(newCache);
+
+      // 更新記錄狀態
+      setCaseRecords(prev => 
+        prev.map(record => 
+          record.caseId === caseId 
+            ? { 
+                ...record, 
+                details, 
+                detailsLoaded: true, 
+                detailsLoading: false 
+              }
+            : record
+        )
+      );
+
+      console.log(`✅ 成功載入個案 ${caseId} 詳細資料`);
+      return details;
+    } catch (error) {
+      console.error(`❌ 載入個案 ${caseId} 詳細資料失敗:`, error);
+      
+      // 標記載入失敗
+      setCaseRecords(prev => 
+        prev.map(record => 
+          record.caseId === caseId 
+            ? { ...record, detailsLoading: false }
+            : record
+        )
+      );
+      
+      return null;
+    }
+  };
 
 
 
@@ -143,31 +238,43 @@ const SearchEditCaseTab: React.FC = () => {
       }
       console.log('API 回應:', response);
       
-      // 處理 PagedResponse<CaseResponse> 格式
+      // 🚀 Lazy Loading: 只載入基本資訊
       const transformedData: CaseRecord[] = response.data.map(item => ({
+        // 基本資訊 - 立即載入
         caseId: item.caseId,
         name: item.name,
         gender: item.gender,
         birthday: item.birthday,
-        identityNumber: item.identityNumber,
         phone: item.phone,
         city: item.city,
-        district: item.district,
-        address: item.address,
-        email: item.email,
         description: item.description,
         createdAt: item.createdAt,
         status: item.status,
         profileImage: item.profileImage,
-        detailAddress: item.detailAddress,
-        workerName: item.workerName,
-        speechToTextAudioUrl: item.speechToTextAudioUrl
+        // Lazy loading 相關標記
+        detailsLoaded: false,
+        detailsLoading: false
       }));
       
-      console.log('🎵 音檔檢查:', transformedData.map(caseItem => ({ 
-        caseId: caseItem.caseId, 
-        name: caseItem.name, 
-        speechToTextAudioUrl: caseItem.speechToTextAudioUrl 
+      // 同時將詳細資訊存入快取，避免重複載入
+      const newDetailsCache = new Map(detailsCache);
+      response.data.forEach(item => {
+        newDetailsCache.set(item.caseId, {
+          identityNumber: item.identityNumber,
+          district: item.district,
+          address: item.address,
+          email: item.email,
+          detailAddress: item.detailAddress,
+          workerName: item.workerName,
+          speechToTextAudioUrl: item.speechToTextAudioUrl
+        });
+      });
+      setDetailsCache(newDetailsCache);
+      
+      console.log('🎵 音檔檢查:', response.data.map(item => ({ 
+        caseId: item.caseId, 
+        name: item.name, 
+        speechToTextAudioUrl: item.speechToTextAudioUrl 
       })));
       
       setCaseRecords(transformedData);
@@ -225,26 +332,38 @@ const SearchEditCaseTab: React.FC = () => {
       
       const response = await caseService.searchCases(searchParams);
       
-      // 轉換搜尋結果為 CaseRecord[] 格式
+      // 🚀 Lazy Loading: 搜尋結果只載入基本資訊
       const transformedData: CaseRecord[] = response.data.map(item => ({
+        // 基本資訊 - 立即載入
         caseId: item.caseId,
         name: item.name,
         gender: item.gender,
         birthday: item.birthday,
-        identityNumber: item.identityNumber,
         phone: item.phone,
         city: item.city,
-        district: item.district,
-        address: item.address,
-        email: item.email,
         description: item.description,
         createdAt: item.createdAt,
         status: item.status,
         profileImage: item.profileImage,
-        detailAddress: item.detailAddress,
-        workerName: item.workerName,
-        speechToTextAudioUrl: item.speechToTextAudioUrl
+        // Lazy loading 相關標記
+        detailsLoaded: false,
+        detailsLoading: false
       }));
+      
+      // 同時將詳細資訊存入快取
+      const newDetailsCache = new Map(detailsCache);
+      response.data.forEach(item => {
+        newDetailsCache.set(item.caseId, {
+          identityNumber: item.identityNumber,
+          district: item.district,
+          address: item.address,
+          email: item.email,
+          detailAddress: item.detailAddress,
+          workerName: item.workerName,
+          speechToTextAudioUrl: item.speechToTextAudioUrl
+        });
+      });
+      setDetailsCache(newDetailsCache);
       
       setCaseRecords(transformedData);
       setTotalCount(response.total);
@@ -305,26 +424,38 @@ const SearchEditCaseTab: React.FC = () => {
       
       const response = await caseService.searchCases(searchParams);
       
-      // 轉換搜尋結果為 CaseRecord[] 格式
+      // 🚀 Lazy Loading: 搜尋結果只載入基本資訊
       const transformedData: CaseRecord[] = response.data.map(item => ({
+        // 基本資訊 - 立即載入
         caseId: item.caseId,
         name: item.name,
         gender: item.gender,
         birthday: item.birthday,
-        identityNumber: item.identityNumber,
         phone: item.phone,
         city: item.city,
-        district: item.district,
-        address: item.address,
-        email: item.email,
         description: item.description,
         createdAt: item.createdAt,
         status: item.status,
         profileImage: item.profileImage,
-        detailAddress: item.detailAddress,
-        workerName: item.workerName,
-        speechToTextAudioUrl: item.speechToTextAudioUrl
+        // Lazy loading 相關標記
+        detailsLoaded: false,
+        detailsLoading: false
       }));
+      
+      // 同時將詳細資訊存入快取
+      const newDetailsCache = new Map(detailsCache);
+      response.data.forEach(item => {
+        newDetailsCache.set(item.caseId, {
+          identityNumber: item.identityNumber,
+          district: item.district,
+          address: item.address,
+          email: item.email,
+          detailAddress: item.detailAddress,
+          workerName: item.workerName,
+          speechToTextAudioUrl: item.speechToTextAudioUrl
+        });
+      });
+      setDetailsCache(newDetailsCache);
       
       setCaseRecords(transformedData);
       setTotalCount(response.total);
@@ -342,35 +473,77 @@ const SearchEditCaseTab: React.FC = () => {
     }
   };
 
-  const toggleRowExpansion = (id: number) => {
+  const toggleRowExpansion = async (id: number) => {
     if (expandedRows.includes(id)) {
       setExpandedRows(prev => prev.filter(rowId => rowId !== id));
       if (editingRow === id) {
         setEditingRow(null);
-        setEditFormData(null);
+        // 清除該個案的編輯資料
+        setEditFormDataMap(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(id);
+          return newMap;
+        });
       }
     } else {
       setExpandedRows(prev => [...prev, id]);
-      // 預設進入編輯模式
+      
+      // 🚀 Lazy Loading: 展開時載入詳細資料
       const record = caseRecords.find(r => r.caseId === id);
       if (record) {
-        setEditingRow(id);
-        setEditFormData({ ...record });
-        setFieldErrors({});
+        // 檢查是否已載入詳細資料
+        if (!record.detailsLoaded && !record.detailsLoading) {
+          await loadCaseDetails(id);
+        }
+        
+        // 獲取最新的記錄（可能已經更新）
+        const updatedRecord = caseRecords.find(r => r.caseId === id);
+        if (updatedRecord) {
+          // 建立編輯表單資料，合併基本資訊和詳細資訊
+          const cachedDetails = detailsCache.get(id);
+          const formData: EditFormData = {
+            // 基本資訊
+            caseId: updatedRecord.caseId,
+            name: updatedRecord.name,
+            gender: updatedRecord.gender,
+            birthday: updatedRecord.birthday,
+            phone: updatedRecord.phone,
+            city: updatedRecord.city,
+            description: updatedRecord.description,
+            createdAt: updatedRecord.createdAt,
+            status: updatedRecord.status,
+            profileImage: updatedRecord.profileImage,
+            // 詳細資訊 - 從快取或詳細資訊中獲取
+            identityNumber: updatedRecord.details?.identityNumber || cachedDetails?.identityNumber || '',
+            email: updatedRecord.details?.email || cachedDetails?.email || '',
+            district: updatedRecord.details?.district || cachedDetails?.district || '',
+            address: updatedRecord.details?.address || cachedDetails?.address || '',
+            detailAddress: updatedRecord.details?.detailAddress || cachedDetails?.detailAddress || '',
+            workerName: updatedRecord.details?.workerName || cachedDetails?.workerName || '',
+            speechToTextAudioUrl: updatedRecord.details?.speechToTextAudioUrl || cachedDetails?.speechToTextAudioUrl || ''
+          };
+          
+          setEditingRow(id);
+          // 將編輯資料存入對應的個案 Map 中
+          setEditFormDataMap(prev => {
+            const newMap = new Map(prev);
+            newMap.set(id, formData);
+            return newMap;
+          });
+          setFieldErrors({});
+        }
       }
     }
   };
 
-  const handleEdit = (record: CaseRecord) => {
-    setEditingRow(record.caseId);
-    setEditFormData({ ...record });
-    setFieldErrors({});
-    if (!expandedRows.includes(record.caseId)) {
-      setExpandedRows(prev => [...prev, record.caseId]);
-    }
-  };
+  // 這個函數已經不需要，因為展開邏輯已整合到 toggleRowExpansion 中
+  // const handleEdit = (record: CaseRecord) => {
+  //   // 已棄用 - 使用 toggleRowExpansion 代替
+  // };
 
   const handleSave = async () => {
+    if (!editingRow) return;
+    const editFormData = editFormDataMap.get(editingRow);
     if (!editFormData) return;
 
     const errors: { [key: string]: boolean } = {};
@@ -407,13 +580,25 @@ const SearchEditCaseTab: React.FC = () => {
       setCaseRecords(prev => 
         prev.map(record => 
           record.caseId === editFormData.caseId 
-            ? { ...editFormData }
+            ? { 
+                ...record,
+                name: editFormData.name,
+                phone: editFormData.phone,
+                city: editFormData.city,
+                description: editFormData.description,
+                profileImage: editFormData.profileImage
+              }
             : record
         )
       );
       
       setEditingRow(null);
-      setEditFormData(null);
+      // 清除該個案的編輯資料
+      setEditFormDataMap(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(editFormData.caseId);
+        return newMap;
+      });
       setFieldErrors({});
       alert('個案資料已成功更新！');
     } catch (err) {
@@ -425,15 +610,29 @@ const SearchEditCaseTab: React.FC = () => {
   };
 
   const handleCancel = () => {
+    if (editingRow) {
+      // 清除該個案的編輯資料
+      setEditFormDataMap(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(editingRow);
+        return newMap;
+      });
+    }
     setEditingRow(null);
-    setEditFormData(null);
     setFieldErrors({});
   };
 
   const handleEditInputChange = (field: string, value: any) => {
-    setEditFormData(prev => 
-      prev ? { ...prev, [field]: value } : null
-    );
+    if (editingRow) {
+      setEditFormDataMap(prev => {
+        const newMap = new Map(prev);
+        const currentData = newMap.get(editingRow);
+        if (currentData) {
+          newMap.set(editingRow, { ...currentData, [field]: value });
+        }
+        return newMap;
+      });
+    }
     if (fieldErrors[field]) {
       setFieldErrors(prev => ({
         ...prev,
@@ -971,7 +1170,9 @@ const SearchEditCaseTab: React.FC = () => {
                             詳細資料
                           </Typography>
                           
-                                                                                  {expandedRows.includes(record.caseId) && editFormData && (
+                                                                                  {expandedRows.includes(record.caseId) && editFormDataMap.get(record.caseId) && (() => {
+                            const editFormData = editFormDataMap.get(record.caseId);
+                            return editFormData && (
                               // 編輯模式
                             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
                               {/* 圖片上傳區域 */}
@@ -1336,7 +1537,8 @@ const SearchEditCaseTab: React.FC = () => {
                                 )}
                               </Box>
                             </Box>
-                          )}
+                            );
+                          })()}
                         </Box>
                       </Collapse>
                     </TableCell>
@@ -1403,7 +1605,7 @@ const SearchEditCaseTab: React.FC = () => {
             }}>
               <Typography variant="subtitle2" color="textSecondary">個案資訊：</Typography>
               <Typography><strong>姓名：</strong>{deleteRecord.name}</Typography>
-              <Typography><strong>身分證字號：</strong>{deleteRecord.identityNumber}</Typography>
+              <Typography><strong>身分證字號：</strong>{detailsCache.get(deleteRecord.caseId)?.identityNumber || '未載入'}</Typography>
               <Typography><strong>電話：</strong>{deleteRecord.phone}</Typography>
             </Box>
           )}
