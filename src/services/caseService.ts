@@ -118,6 +118,15 @@ export interface PagedResponse<T> {
   hasPreviousPage: boolean;
 }
 
+// 統一 API 回應格式
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  errors?: string[];
+  timestamp: string;
+}
+
 // 個案管理 API 服務
 export const caseService = {
   // 獲取所有個案（支援分頁和WorkerId過濾）
@@ -127,8 +136,8 @@ export const caseService = {
       if (workerId) {
         params.workerId = workerId;
       }
-      const response = await api.get<PagedResponse<CaseResponse>>('/Case', params);
-      return response;
+      const response = await api.get<ApiResponse<PagedResponse<CaseResponse>>>('/case-new', params);
+      return response.data || { data: [], page, pageSize, totalCount: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false };
     } catch (error: any) {
       // 區分真正的錯誤和空結果
       if (error.response?.status === 404 || error.response?.status === 204) {
@@ -139,7 +148,9 @@ export const caseService = {
           totalCount: 0,
           page: page,
           pageSize: pageSize,
-          totalPages: 0
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
         };
       }
       // 其他錯誤（網路錯誤、500錯誤等）才拋出異常
@@ -151,8 +162,8 @@ export const caseService = {
   // 根據 ID 獲取個案詳情
   getCaseById: async (id: number): Promise<CaseResponse> => {
     try {
-      const response = await api.get<CaseResponse>(`/Case/${id}`);
-      return response;
+      const response = await api.get<ApiResponse<CaseResponse>>(`/case-new/${id}`);
+      return response.data!;
     } catch (error) {
       console.error(`獲取案例 ${id} 失敗:`, error);
       throw error;
@@ -162,8 +173,15 @@ export const caseService = {
   // 搜尋個案
   searchCases: async (params: CaseSearchParams): Promise<{ data: CaseResponse[]; total: number; page: number; pageSize: number; totalPages: number }> => {
     try {
-      const response = await api.get<{ data: CaseResponse[]; total: number; page: number; pageSize: number; totalPages: number }>('/Case/search', params);
-      return response;
+      const response = await api.get<ApiResponse<PagedResponse<CaseResponse>>>('/case-new/search', params);
+      const pageData = response.data!;
+      return {
+        data: pageData.data,
+        total: pageData.totalCount,
+        page: pageData.page,
+        pageSize: pageData.pageSize,
+        totalPages: pageData.totalPages
+      };
     } catch (error: any) {
       // 區分真正的錯誤和空結果
       if (error.response?.status === 404 || error.response?.status === 204) {
@@ -190,7 +208,7 @@ export const caseService = {
     try {
       const apiBaseUrl = config.apiBaseUrl;
       const token = localStorage.getItem('authToken');
-      const uploadUrl = `${apiBaseUrl}/Case/upload/profile-image`;
+      const uploadUrl = `${apiBaseUrl}/case-new/upload/profile-image`;
       
       console.log('🚀 開始上傳個案圖片');
       console.log('📡 API URL:', uploadUrl);
@@ -235,6 +253,10 @@ export const caseService = {
 
       const result = await response.json();
       console.log('✅ 個案圖片上傳成功:', result);
+      // 如果是統一 API 格式，則返回 data 中的內容
+      if (result.success && result.data) {
+        return result.data;
+      }
       return result;
     } catch (error: any) {
       console.error('💥 上傳個案圖片失敗:', error);
@@ -250,8 +272,8 @@ export const caseService = {
   // 創建新個案
   createCase: async (caseData: CreateCaseRequest): Promise<CaseResponse> => {
     try {
-      const response = await api.post<CaseResponse>('/Case', caseData);
-      return response;
+      const response = await api.post<ApiResponse<CaseResponse>>('/case-new', caseData);
+      return response.data!;
     } catch (error) {
       console.error('創建案例失敗:', error);
       throw error;
@@ -261,7 +283,7 @@ export const caseService = {
   // 更新個案資料
   updateCase: async (id: number, caseData: Partial<CreateCaseRequest>): Promise<void> => {
     try {
-      await api.put<void>(`/Case/${id}`, caseData);
+      await api.put<ApiResponse<any>>(`/case-new/${id}`, caseData);
     } catch (error) {
       console.error(`更新案例 ${id} 失敗:`, error);
       throw error;
@@ -271,7 +293,7 @@ export const caseService = {
   // 刪除個案
   deleteCase: async (id: number): Promise<void> => {
     try {
-      await api.delete<void>(`/Case/${id}`);
+      await api.delete<ApiResponse<any>>(`/case-new/${id}`);
     } catch (error) {
       console.error(`刪除案例 ${id} 失敗:`, error);
       throw error;
