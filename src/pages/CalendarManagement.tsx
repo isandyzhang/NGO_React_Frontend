@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Alert, Snackbar, Tabs, Tab, Typography } from "@mui/material";
+import { Box, Alert, Snackbar } from "@mui/material";
 import { Event } from "@mui/icons-material";
 import PageHeader from "../components/shared/PageHeader";
 import PageContainer from "../components/shared/PageContainer";
@@ -25,9 +25,6 @@ import { authService } from "../services/authService";
  * - 中文本地化顯示
  */
 const CalendarManagement: React.FC = () => {
-  // 標籤頁狀態
-  const [tabValue, setTabValue] = useState(0);
-
   // 事件資料狀態
   const [events, setEvents] = useState<CalendarEvent[]>([]);
 
@@ -193,27 +190,14 @@ const CalendarManagement: React.FC = () => {
         ]}
       />
 
-      {/* 標籤頁導航 */}
-      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-        <Tabs
-          value={tabValue}
-          onChange={(_, newValue) => setTabValue(newValue)}
-          aria-label="行事曆管理標籤頁"
-        >
-          <Tab icon={<Event />} label="行事曆" iconPosition="start" />
-        </Tabs>
-      </Box>
-
       {/* 主要內容區域 */}
-      <Box sx={{ mt: 2, height: "calc(100vh - 280px)", minHeight: 600 }}>
-        {tabValue === 0 && (
-          <CalendarComponent
-            events={events}
-            onEventCreate={handleEventCreate}
-            onEventUpdate={handleEventUpdate}
-            onEventDelete={handleEventDelete}
-          />
-        )}
+      <Box sx={{ mt: 2, height: "calc(100vh - 200px)", minHeight: 600 }}>
+        <CalendarComponent
+          events={events}
+          onEventCreate={handleEventCreate}
+          onEventUpdate={handleEventUpdate}
+          onEventDelete={handleEventDelete}
+        />
       </Box>
 
       {/* 操作結果提示訊息 */}
