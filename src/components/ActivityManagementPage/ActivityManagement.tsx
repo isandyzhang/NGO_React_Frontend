@@ -31,6 +31,7 @@ import {
   Save,
   Cancel,
   Delete,
+  PhotoCamera,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import activityService from '../../services/activityService';
@@ -54,6 +55,8 @@ const ActivityManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<{value: string, label: string}[]>([]);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
   
   // 載入活動資料
   const loadActivities = async () => {
@@ -244,6 +247,25 @@ const ActivityManagement: React.FC = () => {
     }
   };
 
+  // 處理圖片變更（模擬功能）
+  const handleImageChange = () => {
+    // 模擬圖片上傳成功
+    const newImageUrl = 'https://res.cloudinary.com/dblw3jamh/image/upload/v1705123456/activity_images/new_activity_image.jpg';
+    setEditFormData(prev => 
+      prev ? { ...prev, imageUrl: newImageUrl } : null
+    );
+    setImagePreview(newImageUrl);
+    
+    // 顯示成功訊息
+    alert('圖片已成功更新！');
+  };
+
+  // 處理圖片預覽
+  const handleImagePreview = (imageUrl: string) => {
+    setImagePreview(imageUrl);
+    setShowImageModal(true);
+  };
+
 
 
   // 狀態標籤顏色
@@ -315,10 +337,10 @@ const ActivityManagement: React.FC = () => {
               label="狀態"
             >
               <MenuItem value="all">全部狀態</MenuItem>
-              <MenuItem value="open">open</MenuItem>
-              <MenuItem value="full">full</MenuItem>
-              <MenuItem value="closed">closed</MenuItem>
-              <MenuItem value="completed">completed</MenuItem>
+              <MenuItem value="open">開放報名</MenuItem>
+              <MenuItem value="full">人數已滿</MenuItem>
+              <MenuItem value="closed">已關閉</MenuItem>
+              <MenuItem value="completed">已完成</MenuItem>
             </Select>
           </FormControl>
           
@@ -331,8 +353,8 @@ const ActivityManagement: React.FC = () => {
               label="對象"
             >
               <MenuItem value="all">全部對象</MenuItem>
-              <MenuItem value="public">public</MenuItem>
-              <MenuItem value="case">case</MenuItem>
+              <MenuItem value="public">民眾</MenuItem>
+              <MenuItem value="case">個案</MenuItem>
             </Select>
           </FormControl>
           
@@ -550,12 +572,159 @@ const ActivityManagement: React.FC = () => {
                                   helperText={fieldErrors.location ? '請輸入地點' : ''}
                                   fullWidth
                                 />
-                                <TextField
-                                  label="圖片URL"
-                                  value={editFormData.imageUrl || ''}
-                                  onChange={(e) => handleEditInputChange('imageUrl', e.target.value)}
-                                  fullWidth
-                                />
+                                {/* 圖片預覽和變更區域 */}
+                                <Box sx={{ gridColumn: '1 / -1' }}>
+                                  <Typography variant="subtitle2" sx={{ mb: 1, color: THEME_COLORS.TEXT_SECONDARY }}>
+                                    活動圖片
+                                  </Typography>
+                                  
+                                  {/* 圖片預覽 */}
+                                  {editFormData.imageUrl && (
+                                    <Box sx={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      gap: 2, 
+                                      mb: 2,
+                                      p: 2,
+                                      border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                                      borderRadius: 1,
+                                      bgcolor: THEME_COLORS.BACKGROUND_PRIMARY
+                                    }}>
+                                      <Box sx={{ 
+                                        position: 'relative',
+                                        width: 120,
+                                        height: 80,
+                                        borderRadius: 1,
+                                        overflow: 'hidden',
+                                        border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                          transform: 'scale(1.05)',
+                                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                          borderColor: THEME_COLORS.PRIMARY
+                                        }
+                                      }}
+                                      onClick={() => handleImagePreview(editFormData.imageUrl!)}
+                                    >
+                                        <img 
+                                          src={editFormData.imageUrl} 
+                                          alt="活動圖片預覽"
+                                          style={{ 
+                                            width: '100%', 
+                                            height: '100%', 
+                                            objectFit: 'cover',
+                                            display: 'block'
+                                          }}
+                                          onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.nextElementSibling!.style.display = 'flex';
+                                          }}
+                                        />
+                                        <Box sx={{
+                                          display: 'none',
+                                          width: '100%',
+                                          height: '100%',
+                                          bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          color: THEME_COLORS.TEXT_MUTED
+                                        }}>
+                                          <Typography variant="caption">圖片載入失敗</Typography>
+                                        </Box>
+                                      </Box>
+                                      
+                                      <Box sx={{ flex: 1 }}>
+                                        <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, mb: 1 }}>
+                                          點擊圖片可放大預覽
+                                        </Typography>
+                                        <TextField
+                                          label="圖片URL"
+                                          value={editFormData.imageUrl || ''}
+                                          onChange={(e) => handleEditInputChange('imageUrl', e.target.value)}
+                                          size="small"
+                                          fullWidth
+                                        />
+                                      </Box>
+                                      
+                                      <Button
+                                        variant="outlined"
+                                        onClick={handleImageChange}
+                                        startIcon={<PhotoCamera />}
+                                        size="small"
+                                        sx={{ 
+                                          borderColor: THEME_COLORS.PRIMARY,
+                                          color: THEME_COLORS.PRIMARY,
+                                          '&:hover': {
+                                            borderColor: THEME_COLORS.PRIMARY_HOVER,
+                                            bgcolor: THEME_COLORS.PRIMARY_LIGHT_BG
+                                          }
+                                        }}
+                                      >
+                                        變更圖片
+                                      </Button>
+                                    </Box>
+                                  )}
+                                  
+                                  {/* 無圖片時的顯示 */}
+                                  {!editFormData.imageUrl && (
+                                    <Box sx={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      gap: 2,
+                                      p: 2,
+                                      border: `2px dashed ${THEME_COLORS.BORDER_LIGHT}`,
+                                      borderRadius: 1,
+                                      bgcolor: THEME_COLORS.BACKGROUND_SECONDARY
+                                    }}>
+                                      <Box sx={{ 
+                                        width: 120,
+                                        height: 80,
+                                        borderRadius: 1,
+                                        bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
+                                      }}>
+                                        <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_MUTED }}>
+                                          無圖片
+                                        </Typography>
+                                      </Box>
+                                      
+                                      <Box sx={{ flex: 1 }}>
+                                        <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, mb: 1 }}>
+                                          尚未設定活動圖片
+                                        </Typography>
+                                        <TextField
+                                          label="圖片URL"
+                                          placeholder="請輸入圖片網址"
+                                          value={editFormData.imageUrl || ''}
+                                          onChange={(e) => handleEditInputChange('imageUrl', e.target.value)}
+                                          size="small"
+                                          fullWidth
+                                        />
+                                      </Box>
+                                      
+                                      <Button
+                                        variant="outlined"
+                                        onClick={handleImageChange}
+                                        startIcon={<PhotoCamera />}
+                                        size="small"
+                                        sx={{ 
+                                          borderColor: THEME_COLORS.PRIMARY,
+                                          color: THEME_COLORS.PRIMARY,
+                                          '&:hover': {
+                                            borderColor: THEME_COLORS.PRIMARY_HOVER,
+                                            bgcolor: THEME_COLORS.PRIMARY_LIGHT_BG
+                                          }
+                                        }}
+                                      >
+                                        新增圖片
+                                      </Button>
+                                    </Box>
+                                  )}
+                                </Box>
                                 <TextField
                                   label="最大人數"
                                   type="number"
@@ -598,8 +767,8 @@ const ActivityManagement: React.FC = () => {
                                     onChange={(e) => handleEditInputChange('targetAudience', e.target.value)}
                                     label="對象"
                                   >
-                                    <MenuItem value="public">public</MenuItem>
-                                    <MenuItem value="case">case</MenuItem>
+                                    <MenuItem value="public">民眾</MenuItem>
+                                    <MenuItem value="case">個案</MenuItem>
                                   </Select>
                                 </FormControl>
                                 <FormControl fullWidth>
@@ -609,10 +778,10 @@ const ActivityManagement: React.FC = () => {
                                     onChange={(e) => handleEditInputChange('status', e.target.value)}
                                     label="狀態"
                                   >
-                                    <MenuItem value="open">open</MenuItem>
-                                    <MenuItem value="full">full</MenuItem>
-                                    <MenuItem value="closed">closed</MenuItem>
-                                    <MenuItem value="completed">completed</MenuItem>
+                                    <MenuItem value="open">開放報名</MenuItem>
+                                    <MenuItem value="full">人數已滿</MenuItem>
+                                    <MenuItem value="closed">已關閉</MenuItem>
+                                    <MenuItem value="completed">已完成</MenuItem>
                                   </Select>
                                 </FormControl>
                               </Box>
@@ -672,6 +841,71 @@ const ActivityManagement: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* 圖片預覽模態框 */}
+      {showImageModal && imagePreview && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            p: 2
+          }}
+          onClick={() => setShowImageModal(false)}
+        >
+          <Box
+            sx={{
+              position: 'relative',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              bgcolor: 'white',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={imagePreview} 
+              alt="活動圖片放大預覽" 
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'contain', 
+                display: 'block', 
+                maxWidth: '90vw', 
+                maxHeight: '90vh' 
+              }} 
+            />
+            <Button 
+              onClick={() => setShowImageModal(false)} 
+              sx={{ 
+                position: 'absolute', 
+                top: 8, 
+                right: 8, 
+                minWidth: 'auto', 
+                width: 40, 
+                height: 40, 
+                borderRadius: '50%', 
+                bgcolor: 'rgba(0,0,0,0.5)', 
+                color: 'white', 
+                '&:hover': { 
+                  bgcolor: 'rgba(0,0,0,0.7)' 
+                } 
+              }}
+            >
+              ×
+            </Button>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 };

@@ -71,7 +71,6 @@ interface CaseBasicInfo {
 interface CaseDetailInfo {
   identityNumber: string;
   district: string;
-  address: string;
   email: string;
   detailAddress: string;
   workerName?: string;
@@ -94,8 +93,7 @@ const SearchEditCaseTab: React.FC = () => {
     identityNumber: string;
     email: string;
     district: string;
-    address: string;
-    detailAddress: string;
+    detailAddress: string;  // 街道地址，如：文心路一段216號
     workerName?: string;
     speechToTextAudioUrl?: string;
   }
@@ -108,6 +106,7 @@ const SearchEditCaseTab: React.FC = () => {
   const [detailsCache, setDetailsCache] = useState<Map<number, CaseDetailInfo>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // 分頁相關狀態
   const [currentPage, setCurrentPage] = useState(1);
@@ -163,7 +162,6 @@ const SearchEditCaseTab: React.FC = () => {
       const details: CaseDetailInfo = {
         identityNumber: response.identityNumber,
         district: response.district,
-        address: response.address,
         email: response.email,
         detailAddress: response.detailAddress,
         workerName: response.workerName,
@@ -239,7 +237,17 @@ const SearchEditCaseTab: React.FC = () => {
       console.log('API 回應:', response);
       
       // 🚀 Lazy Loading: 只載入基本資訊
-      const transformedData: CaseRecord[] = response.data.map(item => ({
+      // 檢查 response 是否為陣列或包含 data 屬性
+      const apiData = Array.isArray(response) ? response : response.data;
+      if (!apiData || !Array.isArray(apiData)) {
+        console.error('API 回應格式錯誤:', response);
+        setCaseRecords([]);
+        setTotalCount(0);
+        setLoading(false);
+        return;
+      }
+      
+      const transformedData: CaseRecord[] = apiData.map(item => ({
         // 基本資訊 - 立即載入
         caseId: item.caseId,
         name: item.name,
@@ -258,7 +266,7 @@ const SearchEditCaseTab: React.FC = () => {
       
       // 同時將詳細資訊存入快取，避免重複載入
       const newDetailsCache = new Map(detailsCache);
-      response.data.forEach(item => {
+      apiData.forEach(item => {
         newDetailsCache.set(item.caseId, {
           identityNumber: item.identityNumber,
           district: item.district,
@@ -271,7 +279,7 @@ const SearchEditCaseTab: React.FC = () => {
       });
       setDetailsCache(newDetailsCache);
       
-      console.log('🎵 音檔檢查:', response.data.map(item => ({ 
+      console.log('🎵 音檔檢查:', apiData.map(item => ({ 
         caseId: item.caseId, 
         name: item.name, 
         speechToTextAudioUrl: item.speechToTextAudioUrl 
@@ -333,7 +341,9 @@ const SearchEditCaseTab: React.FC = () => {
       const response = await caseService.searchCases(searchParams);
       
       // 🚀 Lazy Loading: 搜尋結果只載入基本資訊
-      const transformedData: CaseRecord[] = response.data.map(item => ({
+      // 檢查搜尋回應格式
+      const searchData = Array.isArray(response.data) ? response.data : [];
+      const transformedData: CaseRecord[] = searchData.map(item => ({
         // 基本資訊 - 立即載入
         caseId: item.caseId,
         name: item.name,
@@ -352,7 +362,7 @@ const SearchEditCaseTab: React.FC = () => {
       
       // 同時將詳細資訊存入快取
       const newDetailsCache = new Map(detailsCache);
-      response.data.forEach(item => {
+      searchData.forEach(item => {
         newDetailsCache.set(item.caseId, {
           identityNumber: item.identityNumber,
           district: item.district,
@@ -425,7 +435,9 @@ const SearchEditCaseTab: React.FC = () => {
       const response = await caseService.searchCases(searchParams);
       
       // 🚀 Lazy Loading: 搜尋結果只載入基本資訊
-      const transformedData: CaseRecord[] = response.data.map(item => ({
+      // 檢查搜尋回應格式
+      const searchData = Array.isArray(response.data) ? response.data : [];
+      const transformedData: CaseRecord[] = searchData.map(item => ({
         // 基本資訊 - 立即載入
         caseId: item.caseId,
         name: item.name,
@@ -444,7 +456,7 @@ const SearchEditCaseTab: React.FC = () => {
       
       // 同時將詳細資訊存入快取
       const newDetailsCache = new Map(detailsCache);
-      response.data.forEach(item => {
+      searchData.forEach(item => {
         newDetailsCache.set(item.caseId, {
           identityNumber: item.identityNumber,
           district: item.district,
@@ -475,6 +487,15 @@ const SearchEditCaseTab: React.FC = () => {
 
   const toggleRowExpansion = async (id: number) => {
     if (expandedRows.includes(id)) {
+      // 關閉下拉選單時，如果正在播放音檔，則暫停播放
+      if (currentPlayingCaseId === id && isPlaying && audioPlayer) {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+        setIsPlaying(false);
+        setCurrentPlayingCaseId(null);
+        setAudioPlayer(null);
+      }
+      
       setExpandedRows(prev => prev.filter(rowId => rowId !== id));
       if (editingRow === id) {
         setEditingRow(null);
@@ -517,7 +538,6 @@ const SearchEditCaseTab: React.FC = () => {
             identityNumber: updatedRecord.details?.identityNumber || cachedDetails?.identityNumber || '',
             email: updatedRecord.details?.email || cachedDetails?.email || '',
             district: updatedRecord.details?.district || cachedDetails?.district || '',
-            address: updatedRecord.details?.address || cachedDetails?.address || '',
             detailAddress: updatedRecord.details?.detailAddress || cachedDetails?.detailAddress || '',
             workerName: updatedRecord.details?.workerName || cachedDetails?.workerName || '',
             speechToTextAudioUrl: updatedRecord.details?.speechToTextAudioUrl || cachedDetails?.speechToTextAudioUrl || ''
@@ -552,6 +572,21 @@ const SearchEditCaseTab: React.FC = () => {
     if (!editFormData.email.trim()) errors.email = true;
     if (!editFormData.identityNumber.trim()) errors.identityNumber = true;
     
+    // 驗證身分證字號格式
+    if (editFormData.identityNumber.trim()) {
+      const idNumber = editFormData.identityNumber.trim();
+      if (idNumber.length !== 10) {
+        errors.identityNumber = true;
+        setError('身分證字號必須為10位數字');
+        return;
+      }
+      if (!/^[A-Z][0-9]{9}$/.test(idNumber)) {
+        errors.identityNumber = true;
+        setError('身分證字號格式錯誤：應為1個英文字母後接9個數字');
+        return;
+      }
+    }
+    
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -560,8 +595,20 @@ const SearchEditCaseTab: React.FC = () => {
     try {
       setLoading(true);
       
-      // 轉換為 CreateCaseRequest 格式
-      const updateData: Partial<import('../../services/caseService').CreateCaseRequest> = {
+      // 轉換為更新格式，只包含有變更的字段
+      const updateData: {
+        Name?: string;
+        Phone?: string;
+        Email?: string;
+        IdentityNumber?: string;
+        Gender?: string;
+        City?: string;
+        District?: string;
+        DetailAddress?: string;
+        Description?: string;
+        Birthday?: Date;
+        ProfileImage?: string;
+      } = {
         Name: editFormData.name,
         Phone: editFormData.phone,
         Email: editFormData.email,
@@ -569,28 +616,28 @@ const SearchEditCaseTab: React.FC = () => {
         Gender: editFormData.gender,
         City: editFormData.city,
         District: editFormData.district,
-        DetailAddress: editFormData.address,
+        DetailAddress: editFormData.detailAddress,
         Description: editFormData.description,
         Birthday: editFormData.birthday ? new Date(editFormData.birthday) : undefined,
         ProfileImage: editFormData.profileImage
       };
       
+      // 調試信息
+      console.log('🔍 準備更新的資料:', {
+        caseId: editFormData.caseId,
+        updateData,
+        identityNumber: editFormData.identityNumber,
+        identityNumberLength: editFormData.identityNumber?.length
+      });
+      
       await caseService.updateCase(editFormData.caseId, updateData);
 
-      setCaseRecords(prev => 
-        prev.map(record => 
-          record.caseId === editFormData.caseId 
-            ? { 
-                ...record,
-                name: editFormData.name,
-                phone: editFormData.phone,
-                city: editFormData.city,
-                description: editFormData.description,
-                profileImage: editFormData.profileImage
-              }
-            : record
-        )
-      );
+      // 重新載入當前頁面的數據，確保顯示最新資料
+      console.log('🔄 更新成功，重新載入數據...');
+      await loadCases(currentPage);
+      
+      // 收起編輯的 row
+      setExpandedRows(prev => prev.filter(rowId => rowId !== editFormData.caseId));
       
       setEditingRow(null);
       // 清除該個案的編輯資料
@@ -600,10 +647,35 @@ const SearchEditCaseTab: React.FC = () => {
         return newMap;
       });
       setFieldErrors({});
-      alert('個案資料已成功更新！');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '更新時發生錯誤');
+      
+      // 顯示成功訊息
+      setSubmitMessage({
+        type: 'success',
+        text: '個案資料已成功更新！'
+      });
+      
+      // 3秒後清除成功訊息
+      setTimeout(() => {
+        setSubmitMessage(null);
+      }, 3000);
+    } catch (err: any) {
       console.error('更新錯誤:', err);
+      
+      // 處理後端回傳的詳細錯誤訊息
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.message) {
+          setError(errorData.message);
+        } else if (errorData.errors && Array.isArray(errorData.errors)) {
+          setError(errorData.errors.join(', '));
+        } else {
+          setError('更新失敗，請檢查輸入資料');
+        }
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('更新時發生錯誤');
+      }
     } finally {
       setLoading(false);
     }
@@ -668,12 +740,26 @@ const SearchEditCaseTab: React.FC = () => {
       // 重新載入資料
       await loadCases(currentPage);
       
+      // 收起被刪除的 row（如果它之前是展開的）
+      if (deleteRecord) {
+        setExpandedRows(prev => prev.filter(rowId => rowId !== deleteRecord.caseId));
+      }
+      
       // 重置狀態
       setDeleteDialogOpen(false);
       setDeleteRecord(null);
       setDeleteConfirmName('');
       
-      alert('個案已成功刪除！');
+      // 顯示成功訊息
+      setSubmitMessage({
+        type: 'success',
+        text: '個案已成功刪除！'
+      });
+      
+      // 3秒後清除成功訊息
+      setTimeout(() => {
+        setSubmitMessage(null);
+      }, 3000);
     } catch (err: any) {
       console.error('刪除錯誤:', err);
       
@@ -840,8 +926,29 @@ const SearchEditCaseTab: React.FC = () => {
   // 格式化日期為 yyyy-mm-dd
   const formatDateForInput = (dateString: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+    
+    try {
+      const date = new Date(dateString);
+      
+      // 檢查日期是否有效
+      if (isNaN(date.getTime())) {
+        console.warn('無效的日期格式:', dateString);
+        return '';
+      }
+      
+      // 使用本地時間而不是 UTC 時間
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      const formattedDate = `${year}-${month}-${day}`;
+      console.log('日期格式化:', { input: dateString, output: formattedDate });
+      
+      return formattedDate;
+    } catch (error) {
+      console.error('日期格式化錯誤:', error, dateString);
+      return '';
+    }
   };
 
   // 圖片上傳功能
@@ -949,6 +1056,17 @@ const SearchEditCaseTab: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+
+      {/* 成功訊息 */}
+      {submitMessage && (
+        <Alert 
+          severity={submitMessage.type} 
+          sx={{ mb: 2 }} 
+          onClose={() => setSubmitMessage(null)}
+        >
+          {submitMessage.text}
         </Alert>
       )}
 
@@ -1260,8 +1378,17 @@ const SearchEditCaseTab: React.FC = () => {
                                 label="出生日期"
                                 type="date"
                                 value={formatDateForInput(editFormData.birthday || '')}
-                                onChange={(e) => handleEditInputChange('birthday', e.target.value)}
+                                onChange={(e) => {
+                                  console.log('日期變更:', e.target.value);
+                                  handleEditInputChange('birthday', e.target.value);
+                                }}
                                 InputLabelProps={{ shrink: true }}
+                                inputProps={{
+                                  min: '1900-01-01',
+                                  max: new Date().toISOString().split('T')[0]
+                                }}
+                                placeholder="請選擇生日"
+                                helperText="請選擇 1900 年至今的日期"
                               />
 
                               <TextField
@@ -1338,7 +1465,7 @@ const SearchEditCaseTab: React.FC = () => {
 
                                 <TextField
                                   label="詳細地址"
-                                  value={editFormData.detailAddress || editFormData.address}
+                                  value={editFormData.detailAddress}
                                   onChange={(e) => handleEditInputChange('detailAddress', e.target.value)}
                                   placeholder="請輸入詳細地址"
                                   sx={{ flex: 2 }}

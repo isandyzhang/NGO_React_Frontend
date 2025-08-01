@@ -136,7 +136,7 @@ export const caseService = {
       if (workerId) {
         params.workerId = workerId;
       }
-      const response = await api.get<ApiResponse<PagedResponse<CaseResponse>>>('/case-new', params);
+      const response = await api.get<ApiResponse<PagedResponse<CaseResponse>>>('/case', params);
       return response.data || { data: [], page, pageSize, totalCount: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false };
     } catch (error: any) {
       // 區分真正的錯誤和空結果
@@ -162,7 +162,7 @@ export const caseService = {
   // 根據 ID 獲取個案詳情
   getCaseById: async (id: number): Promise<CaseResponse> => {
     try {
-      const response = await api.get<ApiResponse<CaseResponse>>(`/case-new/${id}`);
+      const response = await api.get<ApiResponse<CaseResponse>>(`/case/${id}`);
       return response.data!;
     } catch (error) {
       console.error(`獲取案例 ${id} 失敗:`, error);
@@ -173,7 +173,7 @@ export const caseService = {
   // 搜尋個案
   searchCases: async (params: CaseSearchParams): Promise<{ data: CaseResponse[]; total: number; page: number; pageSize: number; totalPages: number }> => {
     try {
-      const response = await api.get<ApiResponse<PagedResponse<CaseResponse>>>('/case-new/search', params);
+      const response = await api.get<ApiResponse<PagedResponse<CaseResponse>>>('/case/search', params);
       const pageData = response.data!;
       return {
         data: pageData.data,
@@ -208,7 +208,7 @@ export const caseService = {
     try {
       const apiBaseUrl = config.apiBaseUrl;
       const token = localStorage.getItem('authToken');
-      const uploadUrl = `${apiBaseUrl}/case-new/upload/profile-image`;
+      const uploadUrl = `${apiBaseUrl}/case/upload/profile-image`;
       
       console.log('🚀 開始上傳個案圖片');
       console.log('📡 API URL:', uploadUrl);
@@ -272,7 +272,7 @@ export const caseService = {
   // 創建新個案
   createCase: async (caseData: CreateCaseRequest): Promise<CaseResponse> => {
     try {
-      const response = await api.post<ApiResponse<CaseResponse>>('/case-new', caseData);
+      const response = await api.post<ApiResponse<CaseResponse>>('/case', caseData);
       return response.data!;
     } catch (error) {
       console.error('創建案例失敗:', error);
@@ -283,9 +283,26 @@ export const caseService = {
   // 更新個案資料
   updateCase: async (id: number, caseData: Partial<CreateCaseRequest>): Promise<void> => {
     try {
-      await api.put<ApiResponse<any>>(`/case-new/${id}`, caseData);
-    } catch (error) {
-      console.error(`更新案例 ${id} 失敗:`, error);
+      console.log('🚀 開始更新個案:', id);
+      console.log('📦 更新資料:', caseData);
+      
+      const response = await api.put<ApiResponse<any>>(`/case/${id}`, caseData);
+      console.log('✅ 更新成功:', response.data);
+    } catch (error: any) {
+      console.error(`❌ 更新案例 ${id} 失敗:`, error);
+      
+      // 如果是 400 錯誤，嘗試解析詳細錯誤信息
+      if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        console.error('📋 詳細錯誤信息:', errorData);
+        
+        if (errorData.message) {
+          throw new Error(errorData.message);
+        } else if (errorData.errors && Array.isArray(errorData.errors)) {
+          throw new Error(errorData.errors.join(', '));
+        }
+      }
+      
       throw error;
     }
   },

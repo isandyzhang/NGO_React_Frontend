@@ -30,10 +30,10 @@ export function parsePersonInfoFromSpeech(text: string): ParsedPersonInfo {
   
   // 1. 解析姓名
   const namePatterns = [
-    /我是([^，。！？\s]{2,4})/,
-    /我叫([^，。！？\s]{2,4})/,
+    /我的名字是([^，。！？\s]{2,4})/,
     /名字是([^，。！？\s]{2,4})/,
-    /我的名字是([^，。！？\s]{2,4})/
+    /我是([^，。！？\s]{2,4})/,
+    /我叫([^，。！？\s]{2,4})/
   ];
   
   for (const pattern of namePatterns) {
@@ -75,6 +75,7 @@ export function parsePersonInfoFromSpeech(text: string): ParsedPersonInfo {
   
   // 4. 解析身分證字號
   const idPatterns = [
+    /身份?證[字號碼]*是?([A-Z]\d{9})/,
     /身分[字號碼]{1,3}是?([A-Z]\d{9})/,
     /ID.*?([A-Z]\d{9})/,
     /([A-Z]\d{9})/
@@ -91,6 +92,7 @@ export function parsePersonInfoFromSpeech(text: string): ParsedPersonInfo {
   
   // 5. 解析電話號碼
   const phonePatterns = [
+    /手機號碼是?(09\d{8})/,
     /[聯絡電話]{3,4}是?(09\d{8})/,
     /手機.*?(09\d{8})/,
     /電話.*?(09\d{8})/,
@@ -108,6 +110,9 @@ export function parsePersonInfoFromSpeech(text: string): ParsedPersonInfo {
   
   // 6. 解析 Email
   const emailPatterns = [
+    /[eE]?[mM]ail.*?([a-zA-Z0-9._-]+[嚇小]?老鼠[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
+    /信箱.*?([a-zA-Z0-9._-]+[嚇小]?老鼠[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
+    /([a-zA-Z0-9._-]+[嚇小]?老鼠[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
     /[eE]?[mM]ail.*?([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
     /信箱.*?([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
     /([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/
@@ -116,7 +121,10 @@ export function parsePersonInfoFromSpeech(text: string): ParsedPersonInfo {
   for (const pattern of emailPatterns) {
     const emailMatch = cleanText.match(pattern);
     if (emailMatch) {
-      result.email = emailMatch[1].toLowerCase();
+      let email = emailMatch[1].toLowerCase();
+      // 修正語音辨識的 @ 符號錯誤
+      email = email.replace(/嚇老鼠/g, '@').replace(/小老鼠/g, '@');
+      result.email = email;
       console.log('解析到Email:', result.email);
       break;
     }
@@ -124,20 +132,115 @@ export function parsePersonInfoFromSpeech(text: string): ParsedPersonInfo {
   
   // 7. 解析地址
   const addressPatterns = [
-    /地址是?(.{2,}市).*?(.{2,}區)/,
-    /住在(.{2,}市).*?(.{2,}區)/,
-    /(.{2,}市).*?(.{2,}區)/
+    // 包含詳細地址的模式
+    /地址是?.*?在([^，。！？\s]{2,4}市).*?([^，。！？\s]{2,4}區)([^，。！？]*)/,
+    /我住在([^，。！？\s]{2,4}市).*?([^，。！？\s]{2,4}區)([^，。！？]*)/,
+    // 基本城市區域模式  
+    /地址是?([^，。！？\s]{2,4}市).*?([^，。！？\s]{2,4}區)/,
+    /住在([^，。！？\s]{2,4}市).*?([^，。！？\s]{2,4}區)/,
+    /我住在([^，。！？\s的]{2,4})[市的].*?([^，。！？\s的]{2,4})/,
+    /([^，。！？\s]{2,4}市).*?([^，。！？\s]{2,4}區)/
+  ];
+  
+  // 精確的地址模式，只匹配真正的地址格式
+  const detailAddressPatterns = [
+    /(文心路[一二三四五六七八九十]*段?[0-9]+號?)/g,
+    /(溫馨路[一二三四五六七八九十]*段?[0-9]+號?)/g,
+    /([A-Za-z\u4e00-\u9fa5]{2,6}路[一二三四五六七八九十]*段?[0-9]+號?)/g,
+    /([A-Za-z\u4e00-\u9fa5]{2,6}街[一二三四五六七八九十]*段?[0-9]+號?)/g,
+    /([A-Za-z\u4e00-\u9fa5]{2,6}巷[一二三四五六七八九十]*段?[0-9]+號?)/g,
+    /([A-Za-z\u4e00-\u9fa5]{2,6}弄[一二三四五六七八九十]*段?[0-9]+號?)/g
   ];
   
   for (const pattern of addressPatterns) {
     const addressMatch = cleanText.match(pattern);
     if (addressMatch) {
-      result.city = addressMatch[1];
-      result.district = addressMatch[2];
+      let city = addressMatch[1];
+      let district = addressMatch[2];
+      let detailAddress = addressMatch[3] || '';
+      
+      // 清理城市名稱（移除前綴介詞）
+      city = city.replace(/^在/, '').replace(/^的/, '');
+      if (!city.includes('市') && !city.includes('縣')) {
+        city = city + '市'; // 自動補全
+      }
+      
+      // 清理區域名稱（移除前綴介詞）
+      district = district.replace(/^在/, '').replace(/^的/, '');
+      if (!district.includes('區')) {
+        district = district + '區'; // 自動補全
+      }
+      
+      result.city = city;
+      result.district = district;
+      
+      // 清理詳細地址
+      if (detailAddress) {
+        detailAddress = detailAddress.trim();
+        // 移除開頭的標點符號或空格
+        detailAddress = detailAddress.replace(/^[，。！？\s的在]+/, '');
+      }
+      
       console.log('解析到城市:', result.city);
       console.log('解析到區域:', result.district);
+      console.log('詳細地址片段:', detailAddress);
       break;
     }
+  }
+  
+  // 單獨搜尋所有詳細地址，並選擇最佳匹配
+  const allAddresses: string[] = [];
+  for (const pattern of detailAddressPatterns) {
+    const matches = [...cleanText.matchAll(pattern)];
+    matches.forEach(match => {
+      let address = match[1].trim();
+      // 清理地址，移除前綴文字
+      address = address.replace(/.*?([A-Za-z\u4e00-\u9fa5]{2,6}[路街巷弄].*?)$/, '$1');
+      // 確保地址以路/街/巷/弄開頭，並且有門牌號碼
+      if (address && /^[A-Za-z\u4e00-\u9fa5]{2,6}[路街巷弄].*[0-9]+號?$/.test(address) && !allAddresses.includes(address)) {
+        allAddresses.push(address);
+      }
+    });
+  }
+  
+  console.log('找到的所有地址:', allAddresses);
+  
+  if (allAddresses.length > 0) {
+    // 選擇最佳地址：優先選擇乾淨的地址片段（不含區域前綴）
+    let bestAddress = allAddresses[0];
+    
+    // 優先選擇不含區域前綴的地址
+    for (const addr of allAddresses) {
+      // 如果地址不含"區"等前綴，優先選擇
+      if (!addr.includes('區') && !addr.includes('市') && !addr.includes('的') && !addr.includes('在')) {
+        bestAddress = addr;
+        break;
+      }
+    }
+    
+    // 如果沒找到乾淨的地址，再考慮包含段數的地址
+    if (bestAddress.includes('區') || bestAddress.includes('的')) {
+      for (const addr of allAddresses) {
+        if (!addr.includes('區') && !addr.includes('的')) {
+          bestAddress = addr;
+          break;
+        }
+        // 如果包含段數，也優先選擇
+        if (addr.includes('段') || addr.includes('一') || addr.includes('二') || addr.includes('三')) {
+          bestAddress = addr;
+          break;
+        }
+      }
+    }
+    
+    // 清除地址前綴
+    bestAddress = bestAddress.replace(/^.*?的/, '').replace(/^.*?區/, '').replace(/^在/, '');
+    
+    console.log('選擇的最佳地址:', bestAddress);
+    
+    // 詳細地址欄位只填入地址片段，不包含城市區域
+    result.address = bestAddress;
+    console.log('詳細地址:', result.address);
   }
   
   console.log('解析結果:', result);

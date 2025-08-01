@@ -34,9 +34,16 @@ export default function DifficultyRadarChart({ loading = false }: DifficultyRada
         width: '100%', 
         display: 'flex', 
         flexDirection: 'column',
-        boxShadow: { xs: 1, sm: 2 }
+        boxShadow: { xs: 1, sm: 2 },
+        height: '100%'
       }}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+        <CardContent sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          flex: 1,
+          minHeight: 400
+        }}>
           <Typography>載入中...</Typography>
         </CardContent>
       </Card>
@@ -52,9 +59,15 @@ export default function DifficultyRadarChart({ loading = false }: DifficultyRada
       width: '100%', 
       display: 'flex', 
       flexDirection: 'column',
-      boxShadow: { xs: 1, sm: 2 }
+      boxShadow: { xs: 1, sm: 2 },
+      height: '100%'
     }}>
-      <CardContent sx={{ flex: 1, p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
+      <CardContent sx={{ 
+        flex: 1, 
+        p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
         <Typography 
           gutterBottom 
           sx={{

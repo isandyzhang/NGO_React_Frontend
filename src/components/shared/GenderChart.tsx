@@ -80,8 +80,19 @@ export default function GenderChart({ data, loading = false }: GenderChartProps)
   
   if (loading) {
     return (
-      <Card sx={{ boxShadow: { xs: 1, sm: 2 } }}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+      <Card sx={{ 
+        boxShadow: { xs: 1, sm: 2 },
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <CardContent sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          flex: 1,
+          minHeight: 300
+        }}>
           <Typography>載入中...</Typography>
         </CardContent>
       </Card>
@@ -106,8 +117,18 @@ export default function GenderChart({ data, loading = false }: GenderChartProps)
   });
 
   return (
-    <Card sx={{ boxShadow: { xs: 1, sm: 2 } }}>
-      <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
+    <Card sx={{ 
+      boxShadow: { xs: 1, sm: 2 },
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      <CardContent sx={{ 
+        p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
         <Typography 
           gutterBottom 
           sx={{

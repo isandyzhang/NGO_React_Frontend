@@ -543,7 +543,7 @@ const Dashboard: React.FC = () => {
         gap={{ xs: 2, sm: 2, md: 3 }}
         sx={{ 
           mb: { xs: 3, md: 4 },
-          px: { xs: 1, sm: 0 }
+          px: { xs: 0, sm: 0 }
         }}
       >
         {statsCards.map((card, index) => (
@@ -564,7 +564,7 @@ const Dashboard: React.FC = () => {
             {card.loading ? (
               <Card sx={{ 
                 width: '100%',
-                height: { xs: 102, sm: 110, md: 119 }, // 調整高度與StatCard的85%保持一致
+                height: '85%', // 與StatCard保持一致的高度
                 borderRadius: 2,
                 border: '1px solid #e0e0e0',
                 backgroundColor: '#ffffff',
@@ -705,7 +705,7 @@ const Dashboard: React.FC = () => {
         gap={{ xs: 2, sm: 2, md: 3 }}
         sx={{ 
           mb: { xs: 3, md: 4 },
-          px: { xs: 1, sm: 0 }
+          px: { xs: 0, sm: 0 }
         }}
       >
         {/* 性別分布 - 半圓甜甜圈圖 */}
@@ -715,7 +715,7 @@ const Dashboard: React.FC = () => {
               xs: '100%', 
               sm: '100%', 
               md: 'calc(50% - 12px)',
-              lg: 'calc(33.333% - 16px)' 
+              lg: 'calc(50% - 16px)' 
             },
             minWidth: 0,
             order: { xs: 1, md: 1, lg: 1 }
@@ -736,14 +736,26 @@ const Dashboard: React.FC = () => {
               xs: '100%', 
               sm: '100%', 
               md: 'calc(50% - 12px)',
-              lg: 'calc(33.333% - 16px)' 
+              lg: 'calc(50% - 16px)' 
             },
             minWidth: 0,
-            order: { xs: 2, md: 2, lg: 2 }
+            order: { xs: 2, md: 2, lg: 2 },
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
-          <Card sx={{ boxShadow: { xs: 1, sm: 2 } }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 } }}>
+          <Card sx={{ 
+            boxShadow: { xs: 1, sm: 2 },
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <CardContent sx={{ 
+              p: { xs: 1.5, sm: 2, md: 2.5, lg: 3 },
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
               <Typography 
                 gutterBottom 
                 sx={{
@@ -753,7 +765,15 @@ const Dashboard: React.FC = () => {
               >
                 近期活動
               </Typography>
-              <Box sx={{ mt: 2, maxHeight: { xs: 300, sm: 320, md: 320, lg: 300 }, overflowY: 'auto' }}>
+              <Box sx={{ 
+                mt: 2, 
+                flex: 1,
+                maxHeight: { xs: 300, sm: 320, md: 320, lg: 300 }, 
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center'
+              }}>
                 {recentEvents.length > 0 ? (
                   recentEvents.map((event, index) => {
                     const { date, time } = formatEventDateTime(event.start);
@@ -853,7 +873,13 @@ const Dashboard: React.FC = () => {
                   <Box sx={{ 
                     textAlign: 'center', 
                     py: 3,
-                    color: THEME_COLORS.TEXT_MUTED
+                    color: THEME_COLORS.TEXT_MUTED,
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    minHeight: { xs: 200, sm: 220, md: 240, lg: 260 }
                   }}>
                     <CalendarToday sx={{ 
                       fontSize: { xs: 28, sm: 32, md: 36 }, 
@@ -881,7 +907,7 @@ const Dashboard: React.FC = () => {
         gap={{ xs: 2, sm: 2, md: 3 }}
         sx={{ 
           mb: { xs: 3, md: 4 },
-          px: { xs: 1, sm: 0 }
+          px: { xs: 0, sm: 0 }
         }}
       >
         <Box 
@@ -905,7 +931,7 @@ const Dashboard: React.FC = () => {
         gap={{ xs: 2, sm: 2, md: 3 }}
         sx={{ 
           mb: { xs: 3, md: 4 },
-          px: { xs: 1, sm: 0 }
+          px: { xs: 0, sm: 0 }
         }}
         alignItems="stretch"
       >

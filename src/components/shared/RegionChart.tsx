@@ -90,9 +90,21 @@ export default function RegionChart({ data, loading = false }: RegionChartProps)
     return (
       <Card
         variant="outlined"
-        sx={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1 }}
+        sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '8px', 
+          flexGrow: 1,
+          height: '100%'
+        }}
       >
-        <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+        <CardContent sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          flex: 1,
+          minHeight: 400
+        }}>
           <Typography>載入中...</Typography>
         </CardContent>
       </Card>
@@ -120,9 +132,15 @@ export default function RegionChart({ data, loading = false }: RegionChartProps)
   return (
     <Card
       variant="outlined"
-      sx={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1 }}
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '8px', 
+        flexGrow: 1,
+        height: '100%'
+      }}
     >
-      <CardContent>
+      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Typography 
           component="h2" 
           variant="subtitle2" 

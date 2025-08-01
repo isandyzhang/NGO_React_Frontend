@@ -34,6 +34,7 @@ import { speechService } from '../../services/speechService';
 import { validateIdNumber, validatePhone, validateEmail, validateRequired } from '../../utils/validation';
 import SpeechToText from '../shared/SpeechToText';
 import { type ParsedPersonInfo } from '../../utils/speechParser';
+import { type CaseInfoSchema } from '../../types/caseAI';
 
 // 設置 dayjs 為中文
 dayjs.locale('zh-tw');
@@ -46,7 +47,7 @@ interface AddCaseFormData {
   phone: string;
   city: string;
   district: string;
-  address: string;
+  address: string;  // 街道地址，如：文心路一段216號
   email: string;
   difficulty: string;
   profileImage?: string;
@@ -74,6 +75,7 @@ const AddCaseTab: React.FC = () => {
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: boolean }>({});
   const [getAudioForUpload, setGetAudioForUpload] = useState<(() => Blob | null) | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   // 選項資料
   const genderOptions = [
@@ -154,6 +156,8 @@ const AddCaseTab: React.FC = () => {
    * 處理日期變更
    */
   const handleDateChange = (value: Dayjs | null) => {
+    console.log('日期選擇變更:', value?.format('YYYY-MM-DD'));
+    
     setFormData(prev => ({
       ...prev,
       birthDate: value
@@ -256,32 +260,60 @@ const AddCaseTab: React.FC = () => {
   };
 
   /**
-   * 處理智能解析結果，自動填入表單
+   * 處理智能解析結果，自動填入表單（支援 AI 和正則表達式兩種格式）
    */
-  const handleParsedData = (parsedData: ParsedPersonInfo) => {
+  const handleParsedData = (parsedData: ParsedPersonInfo | CaseInfoSchema) => {
     console.log('收到智能解析結果:', parsedData);
+    
+    // 檢查是否為 AI 解析格式（CaseInfoSchema）還是正則表達式格式（ParsedPersonInfo）
+    // AI 格式通常有更完整的數據結構和更好的標準化
+    const hasAIStructure = parsedData.city?.includes('市') || parsedData.city?.includes('縣');
+    const isAIFormat = hasAIStructure || Object.keys(parsedData).length > 5;
+    
+    // 統一處理兩種格式
+    const normalizedData = {
+      name: parsedData.name,
+      gender: parsedData.gender,
+      birthday: isAIFormat ? (parsedData as CaseInfoSchema).birthday : (parsedData as ParsedPersonInfo).birthday,
+      idNumber: isAIFormat ? (parsedData as CaseInfoSchema).idNumber : (parsedData as ParsedPersonInfo).idNumber,
+      phone: parsedData.phone,
+      email: parsedData.email,
+      city: parsedData.city,
+      district: parsedData.district,
+      address: parsedData.address,
+      difficulty: isAIFormat ? (parsedData as CaseInfoSchema).difficulty : undefined
+    };
+    
+    console.log('標準化後的解析結果:', normalizedData);
     
     // 只填入尚未填寫的欄位
     setFormData(prev => ({
       ...prev,
-      ...(parsedData.name && !prev.name && { name: parsedData.name }),
-      ...(parsedData.gender && { gender: parsedData.gender }),
-      ...(parsedData.birthday && !prev.birthDate && { 
-        birthDate: dayjs(parsedData.birthday) 
+      ...(normalizedData.name && !prev.name && { name: normalizedData.name }),
+      ...(normalizedData.gender && { gender: normalizedData.gender }),
+      ...(normalizedData.birthday && !prev.birthDate && { 
+        birthDate: dayjs(normalizedData.birthday) 
       }),
-      ...(parsedData.idNumber && !prev.idNumber && { idNumber: parsedData.idNumber }),
-      ...(parsedData.phone && !prev.phone && { phone: parsedData.phone }),
-      ...(parsedData.email && !prev.email && { email: parsedData.email }),
-      ...(parsedData.city && !prev.city && { 
-        city: parsedData.city === '臺中市' ? '台中市' : parsedData.city 
+      ...(normalizedData.idNumber && !prev.idNumber && { idNumber: normalizedData.idNumber }),
+      ...(normalizedData.phone && !prev.phone && { phone: normalizedData.phone }),
+      ...(normalizedData.email && !prev.email && { email: normalizedData.email }),
+      ...(normalizedData.city && !prev.city && { 
+        city: normalizedData.city // AI 已經標準化，直接使用
       }),
-      ...(parsedData.district && !prev.district && { district: parsedData.district }),
+      ...(normalizedData.district && !prev.district && { district: normalizedData.district }),
+      ...(normalizedData.address && !prev.address && { address: normalizedData.address }),
+      ...(normalizedData.difficulty && !prev.difficulty && { difficulty: normalizedData.difficulty }),
     }));
+    
+    // 計算填入的欄位數量
+    const filledFields = Object.keys(normalizedData).filter(key => 
+      normalizedData[key as keyof typeof normalizedData] !== undefined
+    ).length;
     
     // 顯示成功訊息
     setSubmitMessage({
       type: 'success',
-      text: '已成功解析語音內容並自動填入表單欄位！'
+      text: `已成功使用 ${isAIFormat ? 'AI 智能解析' : '正則表達式解析'} 並自動填入 ${filledFields} 個欄位！`
     });
     
     // 3秒後清除訊息
@@ -575,8 +607,14 @@ const AddCaseTab: React.FC = () => {
                         textField: {
                           fullWidth: true,
                           required: true,
+                          placeholder: "請選擇生日",
                         },
                       }}
+                      // 設置日期範圍，允許選擇 1900 年到今天
+                      minDate={dayjs('1900-01-01')}
+                      maxDate={dayjs()}
+                      // 確保可以選擇任何有效日期
+                      disableFuture={true}
                     />
                   </Box>
                   <Box sx={{ flex: '1 1 250px', minWidth: '200px' }}>
@@ -811,6 +849,13 @@ const AddCaseTab: React.FC = () => {
                       overflow: 'hidden',
                       border: `3px solid ${THEME_COLORS.BORDER_LIGHT}`,
                       bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        borderColor: THEME_COLORS.PRIMARY
+                      }
                     }}>
                       <img
                         src={imagePreview}
@@ -821,6 +866,7 @@ const AddCaseTab: React.FC = () => {
                           objectFit: 'cover',
                           display: 'block',
                         }}
+                        onClick={() => setShowImageModal(true)}
                         onError={(e) => {
                           console.error('圖片加載失敗:', imagePreview);
                           // 加載失敗時顯示默認頭像
@@ -832,8 +878,36 @@ const AddCaseTab: React.FC = () => {
                         }}
                         onLoad={() => {
                           console.log('圖片加載成功:', imagePreview);
+                          setSubmitMessage({
+                            type: 'success',
+                            text: '圖片預覽載入成功！'
+                          });
                         }}
                       />
+                      {/* 懸停時顯示的放大鏡圖標 */}
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          opacity: 0,
+                          transition: 'opacity 0.3s ease',
+                          color: 'white',
+                          bgcolor: 'rgba(0,0,0,0.5)',
+                          borderRadius: '50%',
+                          width: 40,
+                          height: 40,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          '&:hover': {
+                            opacity: 1
+                          }
+                        }}
+                      >
+                        <PhotoCamera sx={{ fontSize: 20 }} />
+                      </Box>
                     </Box>
                   ) : (
                     <Avatar
@@ -897,7 +971,8 @@ const AddCaseTab: React.FC = () => {
                     textAlign: 'center'
                   }}>
                     支援 JPG、PNG 格式<br />
-                    檔案大小不超過 5MB
+                    檔案大小不超過 5MB<br />
+                    {imagePreview && imagePreview !== 'uploading...' && '點擊圖片可放大預覽'}
                   </Typography>
                 </Box>
               </CardContent>
@@ -907,6 +982,7 @@ const AddCaseTab: React.FC = () => {
             <Box sx={{ mt: 3 }}>
               <SpeechToText
                 enableSmartParsing={true}
+                useAIParsing={true}
                 onTextGenerated={(text) => {
                   console.log('語音轉換完成:', text);
                 }}
@@ -917,7 +993,7 @@ const AddCaseTab: React.FC = () => {
                   console.log('音檔已準備好，可在儲存個案時上傳');
                 }}
                 onParsedDataReady={handleParsedData}
-                placeholder="語音轉換的文字將顯示在這裡，或點擊「智能填入」自動填入左側欄位..."
+                placeholder="語音轉換的文字將顯示在這裡，或點擊「AI智能填入」自動填入左側欄位..."
               />
             </Box>
           </Box>
@@ -947,6 +1023,71 @@ const AddCaseTab: React.FC = () => {
           </Button>
         </Box>
       </Box>
+
+      {/* 圖片放大預覽模態框 */}
+      {showImageModal && imagePreview && imagePreview !== 'uploading...' && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            p: 2
+          }}
+          onClick={() => setShowImageModal(false)}
+        >
+          <Box
+            sx={{
+              position: 'relative',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              bgcolor: 'white',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={imagePreview}
+              alt="個案照片放大預覽"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                display: 'block',
+                maxWidth: '90vw',
+                maxHeight: '90vh'
+              }}
+            />
+            <Button
+              onClick={() => setShowImageModal(false)}
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                minWidth: 'auto',
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                bgcolor: 'rgba(0,0,0,0.5)',
+                color: 'white',
+                '&:hover': {
+                  bgcolor: 'rgba(0,0,0,0.7)'
+                }
+              }}
+            >
+              ×
+            </Button>
+          </Box>
+        </Box>
+      )}
     </LocalizationProvider>
   );
 };

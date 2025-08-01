@@ -9,7 +9,7 @@ import {
   Button,
   Alert,
 } from '@mui/material';
-import { Visibility, VisibilityOff, AccountCircle, Lock, ArrowForward } from '@mui/icons-material';
+import { Visibility, VisibilityOff, AccountCircle, Lock } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -51,9 +51,12 @@ const Login: React.FC = () => {
   
   // 載入狀態
   const [emailVerifying, setEmailVerifying] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [azureLoading, setAzureLoading] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   
   // 從身份驗證 hook 獲取混合模式登入功能
-  const { loginWithDatabase, loginWithAzure, loading, isAzureEnabled, isAuthenticated } = useAuth();
+  const { loginWithDatabase, loginWithAzure, loading, isAzureEnabled, isAuthenticated, user } = useAuth();
 
   /**
    * 組件掛載時的初始化效果
@@ -146,15 +149,25 @@ const Login: React.FC = () => {
       return;
     }
     
+    setPasswordLoading(true);
+    setError('');
+    
     try {
       const result = await loginWithDatabase(username, password);
       if (result.success) {
-        navigate('/dashboard');
+        // 顯示成功動畫
+        setShowSuccessAnimation(true);
+        // 3秒後跳轉到首頁
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 3000);
       } else {
         setError(result.message);
       }
     } catch (error) {
       setError('登入失敗，請檢查密碼');
+    } finally {
+      setPasswordLoading(false);
     }
   };
   
@@ -176,17 +189,26 @@ const Login: React.FC = () => {
       return;
     }
 
+    setAzureLoading(true);
+    setError('');
+
     try {
-      setError('');
       const result = await loginWithAzure();
       
       if (result.success) {
-        navigate('/dashboard');
+        // 顯示成功動畫
+        setShowSuccessAnimation(true);
+        // 3秒後跳轉到首頁
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 3000);
       } else {
         setError(result.message);
       }
     } catch (error: any) {
       setError('Azure AD 登入失敗，請稍後再試');
+    } finally {
+      setAzureLoading(false);
     }
   };
 
@@ -223,6 +245,84 @@ const Login: React.FC = () => {
                 style={{ width: '100%', height: '100%' }}
               />
             </Box>
+          </Box>
+        )}
+      </AnimatePresence>
+
+      {/* 登入成功動畫覆蓋層 */}
+      <AnimatePresence>
+        {showSuccessAnimation && (
+          <Box
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            sx={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: THEME_COLORS.BACKGROUND_PRIMARY,
+              zIndex: 10000,
+            }}
+          >
+            {/* 使用原本的載入動畫 */}
+            <Box sx={{ width: 300, height: 300 }}>
+              <DotLottieReact
+                src="https://lottie.host/6f8fd7f9-a149-4d2a-a15e-d54b64793df0/Vw9Cdzfb0k.lottie"
+                loop
+                autoplay
+                style={{ width: '100%', height: '100%' }}
+              />
+            </Box>
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                color: THEME_COLORS.SUCCESS, 
+                fontWeight: 600,
+                mt: 2,
+                textAlign: 'center'
+              }}
+            >
+              登入成功！
+            </Typography>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: THEME_COLORS.TEXT_PRIMARY, 
+                fontWeight: 500,
+                mt: 1,
+                textAlign: 'center'
+              }}
+            >
+              歡迎回來，{
+                (() => {
+                  if (!user) return '用戶';
+                  if (user.loginSource === 'database') {
+                    return (user as any).name || '用戶';
+                  } else if (user.loginSource === 'azure') {
+                    return (user as any).displayName || '用戶';
+                  }
+                  return '用戶';
+                })()
+              }！
+            </Typography>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: THEME_COLORS.TEXT_SECONDARY, 
+                mt: 1,
+                textAlign: 'center'
+              }}
+            >
+              正在跳轉到主頁面...
+            </Typography>
           </Box>
         )}
       </AnimatePresence>
@@ -459,13 +559,13 @@ const Login: React.FC = () => {
                       type="submit"
                       fullWidth
                       variant="contained"
-                      disabled={loading}
+                      disabled={passwordLoading}
                       sx={{ 
                         mt: 3,
                         ...commonStyles.primaryButton,
                       }}
                     >
-                      {loading ? '登入中...' : '登入'}
+                      {passwordLoading ? '登入中...' : '登入'}
                     </Button>
                     <Button
                       type="button"
@@ -522,7 +622,7 @@ const Login: React.FC = () => {
               <Button
                 fullWidth
                 variant="outlined"
-                disabled={loading}
+                disabled={azureLoading}
                 startIcon={
                   <Box
                     component="img"
@@ -551,7 +651,7 @@ const Login: React.FC = () => {
                 }}
                 onClick={handleAzureLogin}
               >
-                {loading ? '登入中...' : '使用 Azure AD 登入'}
+                {azureLoading ? '登入中...' : '使用 Azure AD 登入'}
               </Button>
             )}
 

@@ -26,12 +26,15 @@ import {
 import { THEME_COLORS } from '../../styles/theme';
 import { speechService, AudioRecordingState, AudioUploadResponse } from '../../services/speechService';
 import { parsePersonInfoFromSpeech, validateParsedInfo, type ParsedPersonInfo } from '../../utils/speechParser';
+import { aiService } from '../../services/aiService';
+import { CaseInfoSchema, normalizeAIParsingResult } from '../../types/caseAI';
 
 interface SpeechToTextProps {
   onTextGenerated?: (text: string) => void;
   onAudioReady?: (getAudio: () => Blob | null) => void; // 提供取得音檔的方法
-  onParsedDataReady?: (parsedData: ParsedPersonInfo) => void; // 智能解析結果回調
+  onParsedDataReady?: (parsedData: ParsedPersonInfo | CaseInfoSchema) => void; // 智能解析結果回調（支援兩種格式）
   enableSmartParsing?: boolean; // 是否啟用智能解析
+  useAIParsing?: boolean; // 是否使用 AI 解析（預設為 true）
   placeholder?: string;
   label?: string;
 }
@@ -41,6 +44,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
   onAudioReady,
   onParsedDataReady,
   enableSmartParsing = false,
+  useAIParsing = true,
   placeholder = "語音轉換的文字將顯示在這裡...",
   label = "語音轉文字"
 }) => {
@@ -55,8 +59,9 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
   const [copied, setCopied] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploadedAudio, setUploadedAudio] = useState<AudioUploadResponse | null>(null);
-  const [parsedData, setParsedData] = useState<ParsedPersonInfo | null>(null);
+  const [parsedData, setParsedData] = useState<ParsedPersonInfo | CaseInfoSchema | null>(null);
   const [showParseButton, setShowParseButton] = useState(false);
+  const [isAIParsing, setIsAIParsing] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const durationIntervalRef = useRef<number | null>(null);
@@ -190,14 +195,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
 
       // 智能解析語音內容
       if (enableSmartParsing && result.text) {
-        const parsed = parsePersonInfoFromSpeech(result.text);
-        setParsedData(parsed);
-        setShowParseButton(true);
-        
-        // 如果有解析到資料，立即觸發回調
-        if (Object.keys(parsed).length > 0 && onParsedDataReady) {
-          onParsedDataReady(parsed);
-        }
+        await handleSmartParseAuto(result.text);
       }
 
       // 回調函數
@@ -219,20 +217,98 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
     return recordingState.audioBlob;
   };
 
+  // 自動智能解析（在語音轉文字完成後觸發）
+  const handleSmartParseAuto = async (text: string) => {
+    if (useAIParsing) {
+      console.log('🚀 開始 AI 自動解析...');
+      setIsAIParsing(true);
+      
+      try {
+        const aiResult = await aiService.parseCaseInfo(text);
+        
+        if (aiResult.success && aiResult.data) {
+          console.log('✅ AI 解析成功:', aiResult.data);
+          setParsedData(aiResult.data);
+          setShowParseButton(true);
+          
+          if (onParsedDataReady) {
+            onParsedDataReady(aiResult.data);
+          }
+        } else {
+          console.warn('⚠️ AI 解析失敗，嘗試重試一次...');
+          // 嘗試重試一次 AI 解析（可能是暫時網路問題）
+          try {
+            const retryResult = await aiService.parseCaseInfo(text, false); // 不使用增強模式重試
+            if (retryResult.success && retryResult.data) {
+              console.log('✅ AI 重試解析成功:', retryResult.data);
+              setParsedData(retryResult.data);
+              setShowParseButton(true);
+              
+              if (onParsedDataReady) {
+                onParsedDataReady(retryResult.data);
+              }
+              return; // 成功後直接返回
+            }
+          } catch (retryError) {
+            console.warn('⚠️ AI 重試也失敗，回退到正則表達式解析');
+          }
+          
+          // 最終回退到正則表達式解析
+          console.log('📝 使用備用正則表達式解析...');
+          const regexParsed = parsePersonInfoFromSpeech(text);
+          
+          // 對正則表達式解析結果也進行標準化處理
+          const normalizedRegexData = normalizeAIParsingResult(regexParsed as CaseInfoSchema);
+          console.log('✨ 正則解析結果標準化:', normalizedRegexData);
+          
+          setParsedData(normalizedRegexData);
+          setShowParseButton(true);
+          
+          if (Object.keys(normalizedRegexData).length > 0 && onParsedDataReady) {
+            onParsedDataReady(normalizedRegexData);
+          }
+        }
+      } catch (error) {
+        console.error('❌ AI 解析過程發生錯誤:', error);
+        console.log('📝 使用備用正則表達式解析...');
+        // 發生錯誤時回退到正則表達式解析
+        const regexParsed = parsePersonInfoFromSpeech(text);
+        
+        // 對正則表達式解析結果也進行標準化處理
+        const normalizedRegexData = normalizeAIParsingResult(regexParsed as CaseInfoSchema);
+        console.log('✨ 正則解析結果標準化:', normalizedRegexData);
+        
+        setParsedData(normalizedRegexData);
+        setShowParseButton(true);
+        
+        if (Object.keys(normalizedRegexData).length > 0 && onParsedDataReady) {
+          onParsedDataReady(normalizedRegexData);
+        }
+      } finally {
+        setIsAIParsing(false);
+      }
+    } else {
+      // 使用正則表達式解析（AI 功能被禁用時）
+      console.log('📝 使用正則表達式解析...');
+      const regexParsed = parsePersonInfoFromSpeech(text);
+      
+      // 對正則表達式解析結果也進行標準化處理
+      const normalizedRegexData = normalizeAIParsingResult(regexParsed as CaseInfoSchema);
+      console.log('✨ 正則解析結果標準化:', normalizedRegexData);
+      
+      setParsedData(normalizedRegexData);
+      setShowParseButton(true);
+      
+      if (Object.keys(normalizedRegexData).length > 0 && onParsedDataReady) {
+        onParsedDataReady(normalizedRegexData);
+      }
+    }
+  };
+
   // 手動觸發智能解析
-  const handleSmartParse = () => {
+  const handleSmartParse = async () => {
     if (transcribedText && enableSmartParsing) {
-      const parsed = parsePersonInfoFromSpeech(transcribedText);
-      setParsedData(parsed);
-      
-      const validation = validateParsedInfo(parsed);
-      if (!validation.isValid) {
-        console.warn('解析結果可能有問題:', validation.warnings);
-      }
-      
-      if (Object.keys(parsed).length > 0 && onParsedDataReady) {
-        onParsedDataReady(parsed);
-      }
+      await handleSmartParseAuto(transcribedText);
     }
   };
 
@@ -289,6 +365,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
     setIsPlaying(false);
     setParsedData(null);
     setShowParseButton(false);
+    setIsAIParsing(false);
   };
 
   // 下載音檔
@@ -426,7 +503,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
           </Box>
 
           {/* 處理中狀態 */}
-          {isProcessing && (
+          {(isProcessing || isAIParsing) && (
             <Box sx={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -439,7 +516,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
               <Typography variant="body2" color="textSecondary" sx={{
                 fontSize: { xs: '0.875rem', md: '1rem' }, // 響應式字體大小
               }}>
-                正在處理...
+                {isAIParsing ? '正在進行 AI 智能解析...' : '正在處理...'}
               </Typography>
             </Box>
           )}
@@ -557,18 +634,22 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
                       size="small"
                       variant="contained"
                       onClick={handleSmartParse}
+                      disabled={isAIParsing}
                       sx={{
                         fontSize: { xs: '0.75rem', md: '0.875rem' },
                         px: { xs: 0.5, md: 1 },
                         py: { xs: 0.25, md: 0.5 },
                         minWidth: { xs: 'auto', md: 'auto' },
-                        bgcolor: THEME_COLORS.SUCCESS,
-                        '&:hover': { bgcolor: THEME_COLORS.SUCCESS_DARK },
+                        bgcolor: useAIParsing ? THEME_COLORS.PRIMARY : THEME_COLORS.SUCCESS,
+                        '&:hover': { 
+                          bgcolor: useAIParsing ? THEME_COLORS.PRIMARY_DARK : THEME_COLORS.SUCCESS_DARK 
+                        },
                       }}
                     >
-                      智能填入
+                      {useAIParsing ? (isAIParsing ? 'AI解析中...' : 'AI智能填入') : '智能填入'}
                     </Button>
                   )}
+                  
 
                   <Button
                     size="small"

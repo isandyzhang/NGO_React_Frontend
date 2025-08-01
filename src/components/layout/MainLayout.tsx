@@ -117,10 +117,10 @@ const MainLayout: React.FC = () => {
           marginTop: isMobile ? '64px' : 0, // 行動版需要留出 AppBar 空間
           px: { 
             xs: 1.5, // 手機版：12px
-            sm: 2.5, // 小平板：20px
-            md: 3,   // 平板版：24px (針對平板優化)
-            lg: 4,   // 大螢幕：32px
-            xl: 5    // 超大螢幕：40px
+            sm: 2,   // 小平板：16px
+            md: 2.5, // 平板版：20px
+            lg: 3,   // 大螢幕：24px
+            xl: 4    // 超大螢幕：32px
           },  
           py: { xs: 2, sm: 2.5, md: 3.5, lg: 3 }, // 響應式垂直padding，平板增加間距
           bgcolor: theme.palette.background.default,
