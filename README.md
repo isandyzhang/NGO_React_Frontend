@@ -36,8 +36,11 @@ npm run preview
 cp .env.example .env.local
 
 # 配置必要的環境變量
-VITE_API_BASE_URL=http://localhost:5264
-VITE_APP_NAME=NGO案管系統
+VITE_API_BASE_URL=http://localhost:5264/api
+VITE_APP_NAME=NGO個案管理系統
+VITE_APP_ENV=development
+VITE_AZURE_CLIENT_ID=your-azure-client-id
+VITE_ENABLE_AZURE_LOGIN=false
 ```
 
 ## 🏗️ 技術架構
@@ -46,9 +49,11 @@ VITE_APP_NAME=NGO案管系統
 - **React 18** - 現代化React框架
 - **TypeScript** - 靜態類型檢查
 - **Vite** - 快速構建工具
-- **Material-UI (MUI)** - 組件庫和設計系統
+- **Ant Design** - 組件庫和設計系統
 - **React Router** - 客戶端路由
-- **MUI X Charts** - 數據可視化
+- **Recharts** - 數據可視化
+- **Axios** - HTTP 客戶端
+- **Leaflet** - 地圖組件
 
 ### 項目結構
 ```
@@ -80,8 +85,10 @@ src/
 - 系統狀態監控
 
 ### 2. 個案管理 (Case Management)
-- 個案資料新增和編輯
-- 個案搜尋和篩選
+- 個案資料新增和編輯 (CRUD)
+- 個案搜尋和篩選 (分頁支援)
+- 個案圖片上傳 (Azure Blob Storage)
+- 身分證字號驗證
 - 個案狀態追蹤
 
 ### 3. 活動管理 (Activity Management)
