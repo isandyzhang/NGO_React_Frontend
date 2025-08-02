@@ -310,7 +310,7 @@ export const caseService = {
   // 刪除個案
   deleteCase: async (id: number): Promise<void> => {
     try {
-      await api.delete<ApiResponse<any>>(`/case-new/${id}`);
+      await api.delete<ApiResponse<any>>(`/case/${id}`);
     } catch (error) {
       console.error(`刪除案例 ${id} 失敗:`, error);
       throw error;
