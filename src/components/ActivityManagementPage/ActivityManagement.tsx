@@ -35,8 +35,8 @@ import {
   PhotoCamera,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
-import activityService from '../../services/activityService';
-import { Activity } from '../../services/activityService';
+import activityService from '../../services/activityManagement/activityService';
+import { Activity } from '../../services/activityManagement/activityService';
 import { formatDate, formatDateForInput } from '../../utils/dateHelper';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';

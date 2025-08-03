@@ -15,11 +15,6 @@ import {
   CircularProgress,
   Alert,
   InputAdornment,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  DialogContentText,
 } from '@mui/material';
 import {
   Search,
@@ -29,7 +24,8 @@ import {
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles } from '../../styles/commonStyles';
-import registrationService, { CaseRegistration } from '../../services/registrationService';
+import registrationService, { CaseRegistration } from '../../services/activityManagement/registrationService';
+import { ConfirmDialog } from '../shared';
 
 const CaseRegistrationReview: React.FC = () => {
   const [searchContent, setSearchContent] = useState('');
@@ -420,44 +416,16 @@ const CaseRegistrationReview: React.FC = () => {
       </TableContainer>
 
       {/* 確認對話框 */}
-      <Dialog
+      <ConfirmDialog
         open={confirmDialog.open}
         onClose={handleCloseConfirmDialog}
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-description"
-      >
-        <DialogTitle id="confirm-dialog-title">
-          確認操作
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="confirm-dialog-description">
-            您確定要{confirmDialog.action === 'approve' ? '同意' : '不同意'}以下報名嗎？
-            <br />
-            <strong>{confirmDialog.registrationName}</strong>
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={handleCloseConfirmDialog}
-            variant="contained"
-            sx={{
-              ...commonStyles.secondaryButton
-            }}
-          >
-            取消
-          </Button>
-          <Button 
-            onClick={handleConfirmStatusUpdate} 
-            variant="contained"
-            autoFocus
-            sx={{
-              ...(confirmDialog.action === 'approve' ? commonStyles.approveButton : commonStyles.rejectButton)
-            }}
-          >
-            確定{confirmDialog.action === 'approve' ? '同意' : '不同意'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        title="確認操作"
+        message={`您確定要${confirmDialog.action === 'approve' ? '同意' : '不同意'}以下報名嗎？\n\n${confirmDialog.registrationName}`}
+        confirmText={`確定${confirmDialog.action === 'approve' ? '同意' : '不同意'}`}
+        cancelText="取消"
+        onConfirm={handleConfirmStatusUpdate}
+        confirmButtonVariant={confirmDialog.action === 'approve' ? 'approve' : 'reject'}
+      />
     </Box>
   );
 };

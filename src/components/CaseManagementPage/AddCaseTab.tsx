@@ -28,9 +28,9 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/zh-tw';
 import { commonStyles, getValidationStyle, getSelectValidationStyle, getDatePickerValidationStyle } from '../../styles/commonStyles';
 import { THEME_COLORS } from '../../styles/theme';
-import { caseService } from '../../services/caseService';
-import { authService } from '../../services/authService';
-import { speechService } from '../../services/speechService';
+import { caseService } from '../../services/caseManagement/caseService';
+import { authService } from '../../services/accountManagement/authService';
+import { caseSpeechService } from '../../services/caseManagement/caseSpeechService';
 import { validateIdNumber, validatePhone, validateEmail, validateRequired } from '../../utils/validation';
 import SpeechToText from '../shared/SpeechToText';
 import { type ParsedPersonInfo } from '../../utils/speechParser';
@@ -613,7 +613,7 @@ const AddCaseTab: React.FC = () => {
       }
 
       // 準備提交的資料（注意：欄位名稱需符合後端 CreateCaseRequest 格式）
-      const submitData = {
+      const submitData: any = {
         Name: formData.name,
         Gender: formData.gender,
         Birthday: formData.birthDate ? formData.birthDate.toDate() : undefined,
@@ -625,8 +625,17 @@ const AddCaseTab: React.FC = () => {
         DetailAddress: formData.address,  // 後端只需要 DetailAddress，不需要完整的 address
         Email: formData.email,
         Description: formData.difficulty || "其他困難",
-        ProfileImage: formData.profileImage || undefined,  // 確保空字串轉為 null
       };
+
+      // 只有當 ProfileImage 是有效的 URL 時才包含在提交數據中
+      if (formData.profileImage && formData.profileImage.trim() !== '') {
+        try {
+          new URL(formData.profileImage);
+          submitData.ProfileImage = formData.profileImage;
+        } catch (error) {
+          console.warn('⚠️ ProfileImage 不是有效的 URL，將被忽略:', formData.profileImage);
+        }
+      }
 
       // 先建立個案，取得 caseId
       console.log('開始建立個案...');
@@ -670,7 +679,7 @@ const AddCaseTab: React.FC = () => {
             
             // 上傳音檔並關聯到個案
             console.log('調用 speechService.uploadAudio 並傳遞 caseId:', newCase.caseId);
-            const uploadResult = await speechService.uploadAudio(audioFile, newCase.caseId);
+            const uploadResult = await caseSpeechService.uploadAudio(audioFile, newCase.caseId);
             console.log('音檔上傳並關聯成功，URL:', uploadResult.audioUrl);
             console.log('上傳結果:', uploadResult);
           } else {

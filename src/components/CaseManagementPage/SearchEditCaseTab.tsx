@@ -46,12 +46,13 @@ import {
   VolumeUp,
   PhotoCamera,
   Visibility as VisibilityIcon,
+  ErrorOutline,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
-import { caseService, CaseResponse } from '../../services/caseService';
-import { authService } from '../../services/authService';
+import { caseService, CaseResponse } from '../../services/caseManagement/caseService';
+import { authService } from '../../services/accountManagement/authService';
 import { formatDate } from '../../utils/dateHelper';
-import { speechService } from '../../services/speechService';
+import { caseSpeechService } from '../../services/caseManagement/caseSpeechService';
 
 // 基本資訊介面 - 用於列表顯示
 interface CaseBasicInfo {
@@ -96,6 +97,7 @@ const SearchEditCaseTab: React.FC = () => {
     detailAddress: string;  // 街道地址，如：文心路一段216號
     workerName?: string;
     speechToTextAudioUrl?: string;
+    imageFile?: File;  // 暫存的圖片檔案
   }
   
   // 🔧 修正：為每個個案維護獨立的編輯資料
@@ -135,6 +137,7 @@ const SearchEditCaseTab: React.FC = () => {
 
   // 圖片上傳相關狀態
   const [imageUploadLoading, setImageUploadLoading] = useState<number | null>(null);
+  const [imagePreviewMap, setImagePreviewMap] = useState<Map<number, string>>(new Map());
 
   // 🚀 Lazy Loading: 載入個案詳細資料
   const loadCaseDetails = async (caseId: number): Promise<CaseDetailInfo | null> => {
@@ -582,12 +585,16 @@ const SearchEditCaseTab: React.FC = () => {
       const idNumber = editFormData.identityNumber.trim();
       if (idNumber.length !== 10) {
         errors.identityNumber = true;
-        setError('身分證字號必須為10位數字');
+        setErrorMessage('身分證字號必須為10位數字');
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
         return;
       }
       if (!/^[A-Z][0-9]{9}$/.test(idNumber)) {
         errors.identityNumber = true;
-        setError('身分證字號格式錯誤：應為1個英文字母後接9個數字');
+        setErrorMessage('身分證字號格式錯誤：應為1個英文字母後接9個數字');
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
         return;
       }
     }
@@ -618,23 +625,68 @@ const SearchEditCaseTab: React.FC = () => {
         Phone: editFormData.phone,
         Email: editFormData.email,
         IdentityNumber: editFormData.identityNumber,
-        Gender: editFormData.gender,
+        Gender: editFormData.gender, // 確保傳送的是 Male/Female 格式
         City: editFormData.city,
         District: editFormData.district,
         DetailAddress: editFormData.detailAddress,
         Description: editFormData.description,
-        Birthday: editFormData.birthday ? new Date(editFormData.birthday) : undefined,
-        ProfileImage: editFormData.profileImage
+        Birthday: editFormData.birthday ? new Date(editFormData.birthday + 'T00:00:00') : undefined,
       };
+
+      // 只有當 ProfileImage 是有效的 URL 時才包含在更新數據中
+      if (editFormData.profileImage && editFormData.profileImage.trim() !== '') {
+        try {
+          new URL(editFormData.profileImage);
+          updateData.ProfileImage = editFormData.profileImage;
+        } catch (error) {
+          console.warn('⚠️ ProfileImage 不是有效的 URL，將被忽略:', editFormData.profileImage);
+        }
+      }
       
       // 調試信息
       console.log('🔍 準備更新的資料:', {
         caseId: editFormData.caseId,
         updateData,
         identityNumber: editFormData.identityNumber,
-        identityNumberLength: editFormData.identityNumber?.length
+        identityNumberLength: editFormData.identityNumber?.length,
+        gender: editFormData.gender,
+        birthday: editFormData.birthday,
+        birthdayAsDate: updateData.Birthday
       });
       
+      // 如果有新的圖片檔案，先上傳圖片
+      if (editFormData.imageFile) {
+        console.log('🖼️ 開始上傳新圖片...');
+        const formData = new FormData();
+        formData.append('file', editFormData.imageFile);
+        
+        const response = await caseService.uploadProfileImage(formData);
+        
+        // 處理不同的回應格式
+        let imageUrl = '';
+        if (response) {
+          if (typeof response === 'string') {
+            imageUrl = response;
+          } else if (typeof response === 'object') {
+            if ('imageUrl' in response && response.imageUrl) {
+              imageUrl = response.imageUrl;
+            } else if ('data' in response && typeof response.data === 'string') {
+              imageUrl = response.data;
+            }
+          }
+        }
+        
+        if (imageUrl) {
+          // 更新個案的圖片 URL
+          const imageUpdateData = { ProfileImage: imageUrl };
+          await caseService.updateCase(editFormData.caseId, imageUpdateData);
+          console.log('✅ 圖片上傳並更新成功');
+        } else {
+          throw new Error('圖片上傳失敗：無法獲取圖片URL');
+        }
+      }
+
+      // 更新其他資料
       await caseService.updateCase(editFormData.caseId, updateData);
 
       // 重新載入當前頁面的數據，確保顯示最新資料
@@ -651,6 +703,14 @@ const SearchEditCaseTab: React.FC = () => {
         newMap.delete(editFormData.caseId);
         return newMap;
       });
+      
+      // 清除預覽圖片
+      setImagePreviewMap(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(editFormData.caseId);
+        return newMap;
+      });
+      
       setFieldErrors({});
       
       // 顯示成功訊息
@@ -670,16 +730,26 @@ const SearchEditCaseTab: React.FC = () => {
       if (err.response?.data) {
         const errorData = err.response.data;
         if (errorData.message) {
-          setError(errorData.message);
+          setErrorMessage(errorData.message);
+          setErrorDetails([]);
+          setErrorDialogOpen(true);
         } else if (errorData.errors && Array.isArray(errorData.errors)) {
-          setError(errorData.errors.join(', '));
+          setErrorMessage(errorData.errors.join(', '));
+          setErrorDetails([]);
+          setErrorDialogOpen(true);
         } else {
-          setError('更新失敗，請檢查輸入資料');
+          setErrorMessage('更新失敗，請檢查輸入資料');
+          setErrorDetails([]);
+          setErrorDialogOpen(true);
         }
       } else if (err.message) {
-        setError(err.message);
+        setErrorMessage(err.message);
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
       } else {
-        setError('更新時發生錯誤');
+        setErrorMessage('更新時發生錯誤');
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
       }
     } finally {
       setLoading(false);
@@ -690,6 +760,13 @@ const SearchEditCaseTab: React.FC = () => {
     if (editingRow) {
       // 清除該個案的編輯資料
       setEditFormDataMap(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(editingRow);
+        return newMap;
+      });
+      
+      // 清除預覽圖片
+      setImagePreviewMap(prev => {
         const newMap = new Map(prev);
         newMap.delete(editingRow);
         return newMap;
@@ -795,7 +872,9 @@ const SearchEditCaseTab: React.FC = () => {
         setErrorDialogOpen(true);
       }
       
-      setError(err instanceof Error ? err.message : '刪除時發生錯誤');
+      setErrorMessage(err instanceof Error ? err.message : '刪除時發生錯誤');
+      setErrorDetails([]);
+      setErrorDialogOpen(true);
     } finally {
       setDeleteLoading(false);
     }
@@ -915,7 +994,7 @@ const SearchEditCaseTab: React.FC = () => {
       
       console.log('開始語音轉字幕:', audioUrl);
       
-      const response = await speechService.transcribeFromUrl(audioUrl);
+      const response = await caseSpeechService.transcribeFromUrl(audioUrl);
       
       console.log('語音轉字幕成功:', response);
       setTranscriptionText(response.text);
@@ -956,84 +1035,7 @@ const SearchEditCaseTab: React.FC = () => {
     }
   };
 
-  // 圖片上傳功能
-  const handleImageUpload = async (file: File, caseId: number) => {
-    try {
-      console.log('🚀 開始上傳個案圖片:', { caseId, fileName: file.name });
-      setImageUploadLoading(caseId);
-      
-      // 驗證檔案類型
-      if (!file.type.startsWith('image/')) {
-        alert('請選擇有效的圖片檔案 (JPG, PNG, GIF)');
-        return;
-      }
-      
-      // 驗證檔案大小 (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('圖片檔案大小不能超過 5MB');
-        return;
-      }
-      
-      const formData = new FormData();
-      formData.append('file', file); // 注意：後端期望的是 'file' 而不是 'imageFile'
-      
-      // 調用後端的圖片上傳 API
-      console.log('📤 調用圖片上傳 API');
-      const response = await caseService.uploadProfileImage(formData);
-      
-      console.log('📡 圖片上傳回應:', response);
-      
-      // 處理不同的回應格式
-      let imageUrl = '';
-      if (response) {
-        if (typeof response === 'string') {
-          imageUrl = response;
-        } else if (typeof response === 'object') {
-          if ('imageUrl' in response && response.imageUrl) {
-            imageUrl = response.imageUrl;
-          } else if ('data' in response && typeof response.data === 'string') {
-            imageUrl = response.data;
-          }
-        }
-      }
-      
-      if (!imageUrl) {
-        throw new Error('無法從上傳回應中獲取圖片 URL');
-      }
-      
-      console.log('✅ 解析到的圖片 URL:', imageUrl);
-      
-      // 更新個案的圖片 URL (注意：後端期望 PascalCase)
-      const updateData = { ProfileImage: imageUrl };
-      await caseService.updateCase(caseId, updateData);
-      
-      // 更新本地狀態
-      setCaseRecords(prev => 
-        prev.map(record => 
-          record.caseId === caseId 
-            ? { ...record, profileImage: imageUrl }
-            : record
-        )
-      );
-      
-      alert('圖片上傳並更新成功！');
-    } catch (error: any) {
-      console.error('❌ 圖片上傳失敗:', error);
-      
-      let errorMessage = '圖片上傳失敗：';
-      if (error.message) {
-        errorMessage += error.message;
-      } else if (error.response?.data?.message) {
-        errorMessage += error.response.data.message;
-      } else {
-        errorMessage += '請稍後再試';
-      }
-      
-      alert(errorMessage);
-    } finally {
-      setImageUploadLoading(null);
-    }
-  };
+
 
   // 處理圖片選擇
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>, caseId: number) => {
@@ -1041,17 +1043,34 @@ const SearchEditCaseTab: React.FC = () => {
     if (file) {
       // 檢查檔案類型
       if (!file.type.startsWith('image/')) {
-        alert('請選擇圖片檔案');
+        setErrorMessage('請選擇圖片檔案');
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
         return;
       }
       
       // 檢查檔案大小 (限制為 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('圖片大小不能超過 5MB');
+        setErrorMessage('圖片大小不能超過 5MB');
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
         return;
       }
       
-      handleImageUpload(file, caseId);
+      // 先預覽圖片
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const previewUrl = e.target?.result as string;
+        setImagePreviewMap(prev => new Map(prev).set(caseId, previewUrl));
+      };
+      reader.readAsDataURL(file);
+      
+      // 將檔案暫存，等待儲存時再上傳
+      const editFormData = editFormDataMap.get(caseId);
+      if (editFormData) {
+        const updatedFormData = { ...editFormData, imageFile: file };
+        setEditFormDataMap(prev => new Map(prev).set(caseId, updatedFormData));
+      }
     }
   };
 
@@ -1279,11 +1298,11 @@ const SearchEditCaseTab: React.FC = () => {
                         label={genderMapping[record.gender as keyof typeof genderMapping] || record.gender}
                         size="small"
                         sx={{
-                          backgroundColor: record.gender === 'Male' ? THEME_COLORS.PRIMARY : THEME_COLORS.PRIMARY_LIGHT,
+                          backgroundColor: record.gender === 'Male' ? THEME_COLORS.MALE_AVATAR : THEME_COLORS.FEMALE_AVATAR,
                           color: 'white',
                           fontWeight: 500,
                           '&:hover': {
-                            backgroundColor: record.gender === 'Male' ? THEME_COLORS.PRIMARY_HOVER : THEME_COLORS.PRIMARY,
+                            backgroundColor: record.gender === 'Male' ? '#1976d2' : '#d32f2f',
                           }
                         }}
                       />
@@ -1362,7 +1381,13 @@ const SearchEditCaseTab: React.FC = () => {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                   }}>
-                                    {editFormData.profileImage ? (
+                                    {imagePreviewMap.get(record.caseId) ? (
+                                      <img
+                                        src={imagePreviewMap.get(record.caseId)}
+                                        alt={`${editFormData.name}的照片預覽`}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                      />
+                                    ) : editFormData.profileImage ? (
                                       <img
                                         src={editFormData.profileImage}
                                         alt={`${editFormData.name}的照片`}
@@ -1851,12 +1876,12 @@ const SearchEditCaseTab: React.FC = () => {
       <Dialog
         open={errorDialogOpen}
         onClose={() => setErrorDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
+        maxWidth="sm"
         PaperProps={{
           sx: {
             borderRadius: 2,
-            padding: 1
+            minWidth: 400,
+            maxWidth: 500
           }
         }}
       >
@@ -1865,40 +1890,44 @@ const SearchEditCaseTab: React.FC = () => {
           fontWeight: 600,
           display: 'flex',
           alignItems: 'center',
-          gap: 1
+          gap: 1,
+          pb: 1
         }}>
           <Delete />
-          刪除失敗
+          錯誤提示
         </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
+        <DialogContent sx={{ pt: 1 }}>
+          <DialogContentText sx={{ mb: 1 }}>
             {errorMessage}
           </DialogContentText>
           {errorDetails.length > 0 && (
             <Box sx={{ 
               bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
-              p: 2,
+              p: 1.5,
               borderRadius: 1,
-              mb: 2
+              mb: 1.5
             }}>
-              <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1 }}>
+              <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 0.5 }}>
                 相關資料：
               </Typography>
               {errorDetails.map((detail, index) => (
-                <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                <Typography key={index} variant="body2" sx={{ mb: 0.25 }}>
                   • {detail}
                 </Typography>
               ))}
             </Box>
           )}
-          <Typography variant="body2" color="textSecondary">
-            請先刪除上述相關資料後，再嘗試刪除個案。
-          </Typography>
+          {errorDetails.length > 0 && (
+            <Typography variant="body2" color="textSecondary">
+              請先刪除上述相關資料後，再嘗試刪除個案。
+            </Typography>
+          )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
           <Button
             onClick={() => setErrorDialogOpen(false)}
             variant="contained"
+            size="small"
             sx={{ 
               bgcolor: THEME_COLORS.PRIMARY,
               color: 'white',

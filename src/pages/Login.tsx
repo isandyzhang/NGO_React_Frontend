@@ -16,7 +16,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { theme, THEME_COLORS } from '../styles/theme';
 import { commonStyles } from '../styles/commonStyles';
 import { useAuth } from '../hooks/useAuth';
-import { authService } from '../services/authService';
+import { authService } from '../services/accountManagement/authService';
 
 /**
  * 登入頁面組件

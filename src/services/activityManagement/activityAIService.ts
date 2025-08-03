@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../shared/api';
 import { 
   ParseCaseInfoRequest, 
   ParseCaseInfoResponse, 
@@ -6,7 +6,7 @@ import {
   validateAIParsingResult,
   AI_PARSING_PROMPTS,
   normalizeAIParsingResult
-} from '../types/caseAI';
+} from '../../types/caseAI';
 
 export interface OptimizeDescriptionRequest {
   description: string;
@@ -37,7 +37,7 @@ export const aiService = {
     try {
       console.log('發送 AI 優化請求:', { description: description.substring(0, 50) + '...' });
       
-      const response = await api.post<OptimizeDescriptionResponse>('/AI/optimize-description', {
+      const response = await api.post<OptimizeDescriptionResponse>('/ActivityAIOptimizer/optimize-description', {
         description: description.trim()
       }, {
         timeout: 30000, // AI 處理可能需要較長時間，設為 30 秒
@@ -75,7 +75,7 @@ export const aiService = {
    */
   checkServiceStatus: async (): Promise<AIServiceStatusResponse> => {
     try {
-      const response = await api.get<AIServiceStatusResponse>('/AI/status');
+      const response = await api.get<AIServiceStatusResponse>('/ActivityAIOptimizer/status');
       return response;
     } catch (error) {
       console.error('檢查 AI 服務狀態失敗:', error);
@@ -108,48 +108,16 @@ export const aiService = {
         useEnhancedParsing
       };
 
-      // 使用較長的超時時間來處理 AI 解析
-      const response = await api.post<ParseCaseInfoResponse>('/AI/parse-case-info', requestData, {
-        timeout: 45000 // 45秒超時，AI 語義理解比描述優化需要更多時間
-      });
-
-      const processingTime = Date.now() - startTime;
+      // TODO: 後端尚未實現 parse-case-info 端點，暫時返回錯誤
+      // const response = await api.post<ParseCaseInfoResponse>('/AI/parse-case-info', requestData, {
+      //   timeout: 45000 // 45秒超時，AI 語義理解比描述優化需要更多時間
+      // });
       
-      console.log('✅ AI 解析成功:', {
-        success: response.success,
-        fieldsCount: response.data ? Object.keys(response.data).length : 0,
-        confidence: response.confidence,
-        processingTime: processingTime + 'ms'
-      });
+      // 臨時實現：返回錯誤訊息
+      throw new Error('AI 個案資訊解析功能尚未實現，請聯繫開發團隊');
 
-      // 前端智能標準化和驗證解析結果
-      if (response.success && response.data) {
-        console.log('🔍 原始 AI 解析結果:', response.data);
-        
-        // 1. 智能標準化處理
-        const normalizedData = normalizeAIParsingResult(response.data);
-        response.data = normalizedData;
-        console.log('✨ 標準化後的解析結果:', normalizedData);
-        
-        // 2. 驗證標準化後的結果
-        const validationResults = validateAIParsingResult(normalizedData);
-        const invalidFields = validationResults.filter(r => !r.isValid);
-        
-        if (invalidFields.length > 0) {
-          console.warn('⚠️ AI 解析結果包含格式錯誤:', invalidFields);
-          response.warnings = [
-            ...(response.warnings || []),
-            ...invalidFields.map(f => `${f.field}: ${f.warnings.join(', ')}`)
-          ];
-        } else {
-          console.log('✅ 所有欄位格式驗證通過');
-        }
-      }
-
-      return {
-        ...response,
-        processingTime
-      };
+      // 由於功能尚未實現，直接拋出錯誤
+      throw new Error('AI 個案資訊解析功能尚未實現，請聯繫開發團隊');
     } catch (error: any) {
       console.error('❌ AI 個案資訊解析失敗:', error);
       

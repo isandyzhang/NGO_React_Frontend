@@ -31,6 +31,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
 import ChangePasswordDialog from '../shared/ChangePasswordDialog';
+import { preloadByAction } from '../../utils/preloadManager';
 
 // 組件 Props 介面定義
 interface SidebarProps {
@@ -102,6 +103,7 @@ const getLoginSourceText = (loginMethod?: LoginMethod): string => {
  * 3. 系統品牌展示 - 顯示系統 Logo 和名稱
  * 4. 登出功能 - 提供安全登出選項
  * 5. 響應式設計 - 在行動裝置上適當調整顯示方式
+ * 6. 預加載優化 - 懸停時預加載相關頁面
  * 
  * 特色：
  * - 深色主題設計，提供專業視覺效果
@@ -129,7 +131,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
 
     try {
       // 呼叫密碼變更API
-      const authService = (await import('../../services/authService')).default;
+      const authService = (await import('../../services/accountManagement/authService')).default;
       await authService.changePassword(user.workerId, currentPassword, newPassword);
     } catch (error) {
       throw error;
@@ -271,6 +273,21 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
             to={item.path}
             key={item.text}
             selected={location.pathname === item.path}
+            onMouseEnter={() => {
+              // 根據路徑觸發預加載
+              const actionMap: Record<string, string> = {
+                '/dashboard': 'hover-dashboard',
+                '/case-management': 'hover-case',
+                '/activity-management': 'hover-activity',
+                '/supplies-management': 'hover-supplies',
+                '/calendar-management': 'hover-calendar',
+                '/account-management': 'hover-account',
+              };
+              const action = actionMap[item.path];
+              if (action) {
+                preloadByAction(action);
+              }
+            }}
             sx={{
               borderRadius: '12px',
               mb: { xs: 1, md: 1.5 }, // 平板增加間距

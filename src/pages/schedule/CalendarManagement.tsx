@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Box, Alert, Snackbar } from "@mui/material";
 import { Event } from "@mui/icons-material";
-import PageHeader from "../components/shared/PageHeader";
-import PageContainer from "../components/shared/PageContainer";
-import CalendarComponent from "../components/CalendarPage";
-import { scheduleService, CalendarEvent } from "../services/scheduleService";
-import { authService } from "../services/authService";
+import PageHeader from "../../components/shared/PageHeader";
+import PageContainer from "../../components/shared/PageContainer";
+import CalendarComponent from "../../components/SchedulePage";
+import { scheduleService, CalendarEvent } from "../../services/schedule/scheduleService";
+import { authService } from "../../services/accountManagement/authService";
 
 /**
  * 行事曆管理頁面組件
@@ -24,7 +24,7 @@ import { authService } from "../services/authService";
  * - 事件類型分類和視覺區分
  * - 中文本地化顯示
  */
-const CalendarManagement: React.FC = () => {
+const schedule: React.FC = () => {
   // 事件資料狀態
   const [events, setEvents] = useState<CalendarEvent[]>([]);
 
@@ -219,4 +219,4 @@ const CalendarManagement: React.FC = () => {
   );
 };
 
-export default CalendarManagement;
+export default schedule;

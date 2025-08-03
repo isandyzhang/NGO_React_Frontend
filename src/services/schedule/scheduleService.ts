@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api } from "../shared/api";
 
 /**
  * 排程介面 - 匹配後端 Schedule 模型
@@ -210,7 +210,7 @@ class ScheduleService {
   }
 }
 
-// 行事曆事件介面（用於前端顯示）- 匹配 CalendarPage 組件的接口
+// 行事曆事件介面（用於前端顯示）- 匹配 SchedulePage 組件的接口
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -220,7 +220,7 @@ export interface CalendarEvent {
   description?: string;
   participants?: string[];
   // 個案訪問相關欄位
-  caseId?: string; // 與 CalendarPage 保持一致，使用 string 類型
+  caseId?: string; // 與 SchedulePage 保持一致，使用 string 類型
   isNewCase?: boolean;
   caseInfo?: {
     name: string;

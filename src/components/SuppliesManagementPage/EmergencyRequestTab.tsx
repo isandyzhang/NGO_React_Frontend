@@ -44,7 +44,7 @@ import {
   getResponsiveSpacing
 } from '../../styles/commonStyles';
 import { supplyService, EmergencySupplyNeed, authService, caseService } from '../../services';
-import { WorkerInfo } from '../../services/authService';
+import { WorkerInfo } from '../../services/accountManagement/authService';
 
 const EmergencyRequestTab: React.FC = () => {
   const [searchType, setSearchType] = useState('物品名稱');

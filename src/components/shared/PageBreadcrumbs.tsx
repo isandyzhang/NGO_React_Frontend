@@ -34,13 +34,17 @@ const PageBreadcrumbs: React.FC<PageBreadcrumbsProps> = ({ items, className }) =
         <Link 
           underline="hover" 
           color="inherit" 
-          href="#" 
+          component="button"
+          onClick={(e) => e.preventDefault()}
           sx={{ 
             display: 'flex', 
             alignItems: 'center',
             ...theme.customTypography?.legendLabel,
             fontSize: { xs: '0.875rem', sm: '1rem' },
             color: THEME_COLORS.TEXT_MUTED,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
             '&:hover': {
               color: THEME_COLORS.TEXT_SECONDARY,
             }
@@ -84,13 +88,22 @@ const PageBreadcrumbs: React.FC<PageBreadcrumbsProps> = ({ items, className }) =
                 key={index}
                 underline="hover" 
                 color="inherit" 
-                href={item.href || "#"} 
+                component="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (item.href && item.href !== "#") {
+                    window.location.href = item.href;
+                  }
+                }}
                 sx={{ 
                   display: 'flex', 
                   alignItems: 'center',
                   ...theme.customTypography?.legendLabel,
                   fontSize: { xs: '0.875rem', sm: '1rem' },
                   color: THEME_COLORS.TEXT_MUTED,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
                   '&:hover': {
                     color: THEME_COLORS.TEXT_SECONDARY,
                   }

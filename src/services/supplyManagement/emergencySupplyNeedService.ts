@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../shared/api';
 
 export interface EmergencySupplyNeed {
   emergencyNeedId: number;

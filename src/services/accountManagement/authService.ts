@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../shared/api';
 
 // 登入請求介面
 export interface LoginRequest {

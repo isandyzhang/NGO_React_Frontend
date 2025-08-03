@@ -10,16 +10,28 @@ interface NotificationCounts {
 }
 
 export const useNotificationStatus = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [counts, setCounts] = useState<NotificationCounts>({
     pendingSupplyRequests: 0,
     pendingSuperApproval: 0,
     pendingBatchApproval: 0,
     totalPending: 0
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const loadNotificationCounts = async () => {
+    // 如果用戶未登入，不執行API調用
+    if (!isAuthenticated || !user) {
+      setCounts({
+        pendingSupplyRequests: 0,
+        pendingSuperApproval: 0,
+        pendingBatchApproval: 0,
+        totalPending: 0
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -56,16 +68,21 @@ export const useNotificationStatus = () => {
       setCounts(newCounts);
     } catch (error) {
       console.error('載入通知狀態失敗:', error);
+      // 發生錯誤時重置為初始狀態
+      setCounts({
+        pendingSupplyRequests: 0,
+        pendingSuperApproval: 0,
+        pendingBatchApproval: 0,
+        totalPending: 0
+      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user) {
-      loadNotificationCounts();
-    }
-  }, [user]);
+    loadNotificationCounts();
+  }, [user, isAuthenticated]);
 
   // 提供刷新功能，讓其他組件可以手動更新通知狀態
   const refreshNotifications = () => {

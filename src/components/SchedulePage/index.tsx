@@ -29,7 +29,7 @@ import { Add, Event, Person, Business, School, PersonAdd, Home, Phone, LocationO
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles, getResponsiveSpacing } from '../../styles/commonStyles';
-import { CalendarEvent } from '../../services/scheduleService';
+import { CalendarEvent } from '../../services/schedule/scheduleService';
 import { formatDateForInput } from '../../utils/dateHelper';
 
 // 配置中文本地化
@@ -290,7 +290,7 @@ interface CalendarComponentProps {
  * 6. 中文本地化顯示
  * 7. 個案訪問特殊功能：個案ID、新個案創建、物資需求提醒
  */
-const CalendarComponent: React.FC<CalendarComponentProps> = ({
+const ScheduleComponent: React.FC<CalendarComponentProps> = ({
   events = [],
   onEventCreate,
   onEventUpdate,
@@ -1109,4 +1109,4 @@ const CalendarComponent: React.FC<CalendarComponentProps> = ({
   );
 };
 
-export default CalendarComponent; 
+export default ScheduleComponent; 

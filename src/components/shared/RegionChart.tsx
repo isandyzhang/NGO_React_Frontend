@@ -9,7 +9,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import LinearProgress, { linearProgressClasses } from '@mui/material/LinearProgress';
 import { LocationOn } from '@mui/icons-material';
-import { CountyDistribution } from '../../services/dashboardService';
+import { CountyDistribution } from '../../services/dashboard/dashboardService';
 
 interface StyledTextProps {
   variant: 'primary' | 'secondary';

@@ -38,8 +38,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 export const useNotificationContext = (): NotificationContextType => {
   const context = useContext(NotificationContext);
   if (context === undefined) {
-    // 如果在NotificationProvider外部使用，回退到直接使用hook
-    return useNotificationStatus();
+    // 如果在NotificationProvider外部使用，拋出錯誤而不是回退
+    // 因為這通常表示組件結構有問題
+    throw new Error('useNotificationContext must be used within a NotificationProvider');
   }
   return context;
 };

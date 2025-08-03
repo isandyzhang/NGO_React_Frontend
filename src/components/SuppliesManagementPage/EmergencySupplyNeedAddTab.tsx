@@ -19,8 +19,8 @@ import {
   Paper,
 } from '@mui/material';
 import { PhotoCamera, Delete } from '@mui/icons-material';
-import { emergencySupplyNeedService, CreateEmergencySupplyNeedRequest } from '../../services/emergencySupplyNeedService';
-import { caseService } from '../../services/caseService';
+import { emergencySupplyNeedService, CreateEmergencySupplyNeedRequest } from '../../services/supplyManagement/emergencySupplyNeedService';
+import { caseService } from '../../services/caseManagement/caseService';
 import { THEME_COLORS } from '../../styles/theme';
 
 interface CaseOption {

@@ -13,9 +13,9 @@ import { PieChart, BarChart } from '@mui/x-charts';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
 import StatCard from '../components/shared/StatCard';
-import { CalendarEvent, scheduleService } from '../services/scheduleService';
+import { CalendarEvent, scheduleService } from '../services/schedule/scheduleService';
 import { calendarService, caseService, activityService, authService } from '../services';
-import { dashboardService, DashboardStats, GenderDistribution, CaseDistribution, CountyDistribution, DifficultyAnalysis } from '../services/dashboardService';
+import { dashboardService, DashboardStats, GenderDistribution, CaseDistribution, CountyDistribution, DifficultyAnalysis } from '../services/dashboard/dashboardService';
 import { 
   People, 
   Assignment, 

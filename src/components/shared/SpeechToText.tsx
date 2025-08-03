@@ -24,9 +24,9 @@ import {
   VolumeUp,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
-import { speechService, AudioRecordingState, AudioUploadResponse } from '../../services/speechService';
+import { caseSpeechService, AudioRecordingState, AudioUploadResponse } from '../../services/caseManagement/caseSpeechService';
 import { parsePersonInfoFromSpeech, validateParsedInfo, type ParsedPersonInfo } from '../../utils/speechParser';
-import { aiService } from '../../services/aiService';
+import { aiService } from '../../services/activityManagement/activityAIService';
 import { CaseInfoSchema, normalizeAIParsingResult } from '../../types/caseAI';
 
 interface SpeechToTextProps {
@@ -76,11 +76,18 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
     };
   }, []);
 
+  // 格式化錄音時間
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // 開始錄音
   const handleStartRecording = async () => {
     try {
       setError(null);
-      const mediaRecorder = await speechService.startRecording();
+      const mediaRecorder = await caseSpeechService.startRecording();
       mediaRecorderRef.current = mediaRecorder;
 
       setRecordingState(prev => ({
@@ -119,7 +126,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
       }
 
       // 停止錄音並取得音檔
-      const audioBlob = await speechService.stopRecording(mediaRecorderRef.current);
+      const audioBlob = await caseSpeechService.stopRecording(mediaRecorderRef.current);
       mediaRecorderRef.current = null;
 
       setRecordingState(prev => ({
@@ -164,7 +171,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
       console.log('開始直接語音轉文字:', audioFile.name, '大小:', audioFile.size, '類型:', audioFile.type);
       
       // 直接使用本地音檔進行語音轉文字（這會上傳到後端但不會永久儲存）
-      const result = await speechService.uploadAudioAndTranscribe(audioFile);
+      const result = await caseSpeechService.uploadAudioAndTranscribe(audioFile);
       console.log('語音轉文字結果:', result);
       
       setTranscribedText(result.text);
@@ -478,7 +485,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
             {/* 錄音時間顯示 */}
             {recordingState.isRecording && (
               <Chip
-                label={speechService.formatDuration(recordingState.duration)}
+                label={formatDuration(recordingState.duration)}
                 color="error"
                 variant="outlined"
                 sx={{ 

@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../shared/api';
 
 // 分发批次接口
 export interface DistributionBatch {

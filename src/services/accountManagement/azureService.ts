@@ -1,7 +1,7 @@
 import { PublicClientApplication, AccountInfo, AuthenticationResult } from '@azure/msal-browser';
-import { msalConfig, loginRequest, popupLoginRequest, parseAzureError, isAzureConfigured } from '../config/azureConfig';
-import { config } from '../config/env';
-import { AzureUser, LoginMethod, LoginResult } from '../types/userTypes';
+import { msalConfig, loginRequest, popupLoginRequest, parseAzureError, isAzureConfigured } from '../../config/azureConfig';
+import { config } from '../../config/env';
+import { AzureUser, LoginMethod, LoginResult } from '../../types/userTypes';
 
 /**
  * Azure AD 身份驗證服務

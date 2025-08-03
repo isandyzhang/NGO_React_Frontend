@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { config } from '../config/env';
+import { config } from '../../config/env';
 
 // API 基礎配置
 const API_BASE_URL = config.apiBaseUrl;

@@ -1,5 +1,5 @@
-import { api } from './api';
-import { config } from '../config/env';
+import { api } from '../shared/api';
+import { config } from '../../config/env';
 
 /**
  * 活動資料介面

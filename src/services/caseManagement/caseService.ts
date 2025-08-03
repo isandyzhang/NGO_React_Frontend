@@ -1,5 +1,5 @@
-import { api } from './api';
-import { config } from '../config/env';
+import { api } from '../shared/api';
+import { config } from '../../config/env';
 
 // 個案相關的 API 接口
 export interface CaseFormData {
@@ -319,7 +319,19 @@ export const caseService = {
         const errorData = error.response.data;
         console.error('📋 詳細錯誤信息:', errorData);
         
-        if (errorData.message) {
+        // 處理 ASP.NET Core 模型驗證錯誤
+        if (errorData.errors && typeof errorData.errors === 'object') {
+          const errorMessages: string[] = [];
+          Object.keys(errorData.errors).forEach(field => {
+            const fieldErrors = errorData.errors[field];
+            if (Array.isArray(fieldErrors)) {
+              fieldErrors.forEach(errorMsg => {
+                errorMessages.push(`${field}: ${errorMsg}`);
+              });
+            }
+          });
+          throw new Error(`驗證錯誤：${errorMessages.join(', ')}`);
+        } else if (errorData.message) {
           throw new Error(errorData.message);
         } else if (errorData.errors && Array.isArray(errorData.errors)) {
           throw new Error(errorData.errors.join(', '));

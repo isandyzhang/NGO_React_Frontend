@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../shared/api';
 
 /**
  * 帳號資料介面

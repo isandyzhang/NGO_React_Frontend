@@ -29,7 +29,7 @@ import {
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles } from '../../styles/commonStyles';
-import registrationService, { PublicRegistration } from '../../services/registrationService';
+import registrationService, { PublicRegistration } from '../../services/activityManagement/registrationService';
 
 const PublicRegistrationReview: React.FC = () => {
   const [searchContent, setSearchContent] = useState('');

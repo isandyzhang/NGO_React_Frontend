@@ -1,5 +1,5 @@
-import { api } from './api';
-import { config } from '../config/env';
+import { api } from '../shared/api';
+import { config } from '../../config/env';
 
 // 新架構的 API 回應格式
 export interface ApiResponse<T> {

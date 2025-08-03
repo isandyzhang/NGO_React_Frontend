@@ -460,6 +460,199 @@ export const commonStyles = {
       animation: 'expandEditRow 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     },
   },
+
+  // ===================================
+  // 💬 對話框樣式 (Dialog Styles)
+  // ===================================
+  // 統一的對話框樣式，提供一致的用戶體驗
+  
+  /** 基礎對話框容器 */
+  dialogContainer: {
+    minHeight: '500px',
+    borderRadius: 2,
+  },
+  
+  /** 對話框標題 */
+  dialogTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    pb: 1,
+    fontWeight: 600,
+    color: THEME_COLORS.TEXT_PRIMARY,
+  },
+  
+  /** 對話框內容區域 */
+  dialogContent: {
+    pt: 2,
+  },
+  
+  /** 對話框操作區域 */
+  dialogActions: {
+    p: 2,
+    gap: 1,
+    justifyContent: 'flex-end',
+  },
+  
+  /** 比較對話框樣式 - 用於 AI 優化等比較功能 */
+  comparisonDialog: {
+    container: {
+      minHeight: '500px',
+      borderRadius: 2,
+    },
+    title: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 1,
+      pb: 1,
+      fontWeight: 600,
+      color: THEME_COLORS.TEXT_PRIMARY,
+    },
+    content: {
+      pt: 2,
+    },
+    actions: {
+      p: 2,
+      gap: 1,
+      justifyContent: 'flex-end',
+    },
+    // 統計資訊區域
+    statsContainer: {
+      display: 'flex',
+      gap: 2,
+      mb: 3,
+      flexWrap: 'wrap',
+    },
+    // 文字比較區域
+    textComparison: {
+      original: {
+        container: {
+          mb: 3,
+        },
+        title: {
+          color: 'text.secondary',
+          fontWeight: 600,
+          mb: 1,
+        },
+        content: {
+          p: 2,
+          backgroundColor: 'grey.50',
+          borderRadius: 1,
+          border: '1px solid',
+          borderColor: 'grey.200',
+        },
+        text: {
+          whiteSpace: 'pre-wrap',
+          lineHeight: 1.6,
+        },
+      },
+      optimized: {
+        container: {
+          // 繼承 original 的 container 樣式
+        },
+        title: {
+          color: THEME_COLORS.PRIMARY,
+          fontWeight: 600,
+          mb: 1,
+        },
+        content: {
+          p: 2,
+          backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
+          borderRadius: 1,
+          border: '1px solid',
+          borderColor: THEME_COLORS.PRIMARY,
+        },
+        text: {
+          whiteSpace: 'pre-wrap',
+          lineHeight: 1.6,
+        },
+      },
+    },
+    // 分隔線
+    divider: {
+      my: 2,
+    },
+  },
+  
+  /** 確認對話框樣式 - 用於刪除確認等操作 */
+  confirmDialog: {
+    container: {
+      borderRadius: 2,
+    },
+    title: {
+      fontWeight: 600,
+      color: THEME_COLORS.TEXT_PRIMARY,
+      textAlign: 'center',
+      pb: 1,
+    },
+    content: {
+      pt: 1,
+    },
+    contentText: {
+      mb: 2,
+      textAlign: 'center',
+      color: THEME_COLORS.TEXT_SECONDARY,
+    },
+    actions: {
+      px: 3,
+      pb: 3,
+      gap: 1,
+      justifyContent: 'center',
+    },
+  },
+  
+  /** 錯誤對話框樣式 - 用於錯誤訊息顯示 */
+  errorDialog: {
+    container: {
+      borderRadius: 2,
+    },
+    title: {
+      fontWeight: 600,
+      color: THEME_COLORS.ERROR,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 1,
+    },
+    content: {
+      pt: 1,
+    },
+    contentText: {
+      mb: 1,
+      color: THEME_COLORS.TEXT_SECONDARY,
+    },
+    actions: {
+      px: 2,
+      pb: 2,
+      gap: 1,
+      justifyContent: 'center',
+    },
+  },
+  
+  /** 資訊對話框樣式 - 用於一般資訊顯示 */
+  infoDialog: {
+    container: {
+      borderRadius: 2,
+    },
+    title: {
+      fontWeight: 600,
+      color: THEME_COLORS.PRIMARY,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 1,
+    },
+    content: {
+      pt: 2,
+    },
+    contentText: {
+      mb: 2,
+      color: THEME_COLORS.TEXT_SECONDARY,
+    },
+    actions: {
+      p: 2,
+      gap: 1,
+      justifyContent: 'flex-end',
+    },
+  },
 };
 
 // ===================================
@@ -639,5 +832,70 @@ export const getButtonVariant = (variant: ButtonVariant): 'contained' | 'outline
       return 'contained';
   }
 };
+
+// ===================================
+// 💬 對話框輔助函數 (Dialog Helper Functions)
+// ===================================
+
+/**
+ * 對話框類型定義
+ */
+export type DialogType = 'comparison' | 'confirm' | 'error' | 'info';
+
+/**
+ * 根據對話框類型獲取對應的樣式
+ * @param type 對話框類型
+ * @returns 對應的樣式對象
+ */
+export const getDialogStyle = (type: DialogType) => {
+  switch (type) {
+    case 'comparison':
+      return commonStyles.comparisonDialog;
+    case 'confirm':
+      return commonStyles.confirmDialog;
+    case 'error':
+      return commonStyles.errorDialog;
+    case 'info':
+      return commonStyles.infoDialog;
+    default:
+      return commonStyles.infoDialog;
+  }
+};
+
+/**
+ * 獲取對話框 PaperProps 樣式
+ * @param type 對話框類型
+ * @returns PaperProps 樣式對象
+ */
+export const getDialogPaperProps = (type: DialogType) => ({
+  sx: getDialogStyle(type).container
+});
+
+/**
+ * 獲取對話框標題樣式
+ * @param type 對話框類型
+ * @returns 標題樣式對象
+ */
+export const getDialogTitleStyle = (type: DialogType) => ({
+  sx: getDialogStyle(type).title
+});
+
+/**
+ * 獲取對話框內容樣式
+ * @param type 對話框類型
+ * @returns 內容樣式對象
+ */
+export const getDialogContentStyle = (type: DialogType) => ({
+  sx: getDialogStyle(type).content
+});
+
+/**
+ * 獲取對話框操作區域樣式
+ * @param type 對話框類型
+ * @returns 操作區域樣式對象
+ */
+export const getDialogActionsStyle = (type: DialogType) => ({
+  sx: getDialogStyle(type).actions
+});
 
 export default commonStyles; 

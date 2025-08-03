@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../shared/api';
 
 // Dashboard統計數據介面
 export interface DashboardStats {

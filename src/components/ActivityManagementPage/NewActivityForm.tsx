@@ -21,7 +21,7 @@ import {
   DialogContentText,
   CircularProgress,
 } from '@mui/material';
-import { Cancel, Person, People, AutoAwesome } from '@mui/icons-material';
+import { Cancel, Person, People, AutoAwesome, Close } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -29,8 +29,8 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/zh-tw'; // 中文本地化
 import { THEME_COLORS } from '../../styles/theme';
 import { commonStyles, getResponsiveSpacing, getButtonStyle, getButtonVariant } from '../../styles/commonStyles';
-import activityService, { CategoryOption } from '../../services/activityService';
-import imageGenerationService from '../../services/imageGenerationService';
+import activityService, { CategoryOption } from '../../services/activityManagement/activityService';
+import imageGenerationService from '../../services/activityManagement/activityImageService';
 import AIOptimizeButton from '../shared/AIOptimizeButton';
 import GoogleMapSelector from '../shared/GoogleMapSelector';
 
@@ -1320,12 +1320,65 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
         onClose={() => setAiImageDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            overflow: 'hidden'
+          }
+        }}
       >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AutoAwesome sx={{ color: dynamicColors.primary }} />
-            AI 圖片生成
+        <DialogTitle sx={{
+          background: `linear-gradient(135deg, ${dynamicColors.primary}15, ${dynamicColors.primary}25)`,
+          borderBottom: `2px solid ${dynamicColors.primary}30`,
+          py: 2,
+          px: 3,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'relative'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              background: `linear-gradient(135deg, ${dynamicColors.primary}, ${dynamicColors.primary}80)`,
+              boxShadow: `0 2px 8px ${dynamicColors.primary}40`
+            }}>
+              <AutoAwesome sx={{ color: 'white', fontSize: 20 }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 600, 
+                color: dynamicColors.primary,
+                lineHeight: 1.2
+              }}>
+                AI 圖片生成
+              </Typography>
+              <Typography variant="caption" sx={{ 
+                color: 'text.secondary',
+                display: 'block',
+                mt: 0.5
+              }}>
+                使用 AI 技術生成活動圖片
+              </Typography>
+            </Box>
           </Box>
+          <IconButton
+            onClick={() => setAiImageDialogOpen(false)}
+            sx={{
+              color: 'text.secondary',
+              '&:hover': {
+                backgroundColor: `${dynamicColors.primary}15`,
+                color: dynamicColors.primary
+              }
+            }}
+          >
+            <Close />
+          </IconButton>
         </DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>

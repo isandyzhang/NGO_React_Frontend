@@ -18,7 +18,6 @@ import {
   Autocomplete as MuiAutocomplete,
 } from '@mui/material';
 import {
-  Search,
   MyLocation,
   Clear,
   LocationOn,
@@ -377,51 +376,7 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
     }
   };
 
-  // 地址搜尋
-  const handleSearch = async () => {
-    if (!address.trim() || !geocoder) return;
 
-    setIsLoading(true);
-    setError(null);
-    setShowSuggestions(false);
-
-    try {
-      geocoder.geocode({ address: address }, (results: any, status: any) => {
-        setIsLoading(false);
-
-        if (status === 'OK' && results[0]) {
-          const location = results[0].geometry.location;
-          const locationData: LocationData = {
-            address: results[0].formatted_address,
-            placeName: results[0].formatted_address.split(',')[0] || results[0].formatted_address, // 取第一個逗號前的部分作為地點名稱
-            latitude: location.lat(),
-            longitude: location.lng(),
-            formattedAddress: results[0].formatted_address
-          };
-
-          // 更新地址顯示
-          setAddress(results[0].formatted_address.split(',')[0] || results[0].formatted_address); // 設置地點名稱
-          
-          // 更新地圖標記並聚焦到該位置
-          updateMarker(location);
-          
-          // 觸發回調
-          onChange?.(locationData);
-          setError(null);
-          
-          // 添加成功提示
-          console.log('✅ 地址搜尋成功:', results[0].formatted_address);
-        } else {
-          setError('找不到該地址，請檢查地址是否正確');
-          onError?.('地址搜尋失敗');
-        }
-      });
-    } catch (err) {
-      setIsLoading(false);
-      setError('搜尋失敗，請稍後再試');
-      onError?.('搜尋失敗');
-    }
-  };
 
   // 點擊地圖選擇位置
   useEffect(() => {
@@ -505,9 +460,8 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
         e.preventDefault();
         if (selectedSuggestionIndex >= 0) {
           handleSelectSuggestion(suggestions[selectedSuggestionIndex]);
-        } else {
-          handleSearch();
         }
+        // 移除搜尋功能，只保留建議選擇
         break;
       case 'Escape':
         setShowSuggestions(false);
@@ -525,7 +479,22 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
             ref={searchInputRef}
             label={label}
             value={value?.placeName || address}
-            onChange={(e) => handleAddressChange(e.target.value)}
+            onChange={(e) => {
+              // 允許用戶編輯活動地點
+              const newPlaceName = e.target.value;
+              setAddress(newPlaceName);
+              
+              // 同時更新建議
+              handleAddressChange(newPlaceName);
+              
+              // 如果有現有值，更新地點名稱
+              if (onChange && value) {
+                onChange({
+                  ...value,
+                  placeName: newPlaceName
+                });
+              }
+            }}
             onKeyDown={handleKeyDown}
             onFocus={() => {
               if (suggestions.length > 0) {
@@ -616,13 +585,24 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
         <TextField
           label="詳細地址"
           value={value?.formattedAddress || ''}
+          onChange={(e) => {
+            // 允許用戶編輯詳細地址
+            const newFormattedAddress = e.target.value;
+            if (onChange && value) {
+              onChange({
+                ...value,
+                formattedAddress: newFormattedAddress
+              });
+            }
+          }}
           fullWidth
-          InputProps={{ readOnly: true }}
           sx={{
             ...commonStyles.formInput,
             '& .MuiOutlinedInput-root': {
               backgroundColor: '#ffffff',
               '& fieldset': { borderColor: THEME_COLORS.BORDER_LIGHT },
+              '&:hover fieldset': { borderColor: THEME_COLORS.PRIMARY_HOVER },
+              '&.Mui-focused fieldset': { borderColor: THEME_COLORS.PRIMARY_HOVER },
             },
             '& .MuiInputLabel-root': {
               '&.Mui-focused': {
@@ -634,24 +614,6 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
       </Box>
       {/* 按鈕區塊 */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSearch}
-          disabled={disabled || !mapLoaded || isLoading || !address.trim()}
-          startIcon={isLoading ? <CircularProgress size={16} /> : <Search />}
-          sx={{
-            minWidth: 120,
-            px: 3,
-            bgcolor: THEME_COLORS.PRIMARY,
-            color: '#fff',
-            '&:hover': {
-              bgcolor: THEME_COLORS.PRIMARY_HOVER,
-            },
-          }}
-        >
-          {isLoading ? '搜尋中' : '搜尋'}
-        </Button>
         <Button
           variant="outlined"
           onClick={handleUseCurrentLocation}
@@ -672,7 +634,7 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
         </Button>
         <IconButton
           onClick={handleClear}
-          disabled={disabled || !address.trim()}
+          disabled={disabled || (!address.trim() && !value?.formattedAddress)}
           sx={{
             border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
             color: THEME_COLORS.TEXT_MUTED,
@@ -743,7 +705,7 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
       {/* 使用說明 */}
       <Box sx={{ mt: 1 }}>
         <Typography variant="caption" color="textSecondary">
-          💡 提示：您可以輸入地址搜尋（會顯示即時建議），點擊地圖選擇位置，或使用當前位置
+          💡 提示：您可以直接編輯活動地點和詳細地址，輸入時會顯示即時建議，也可以點擊地圖選擇位置或使用當前位置
         </Typography>
       </Box>
     </Box>

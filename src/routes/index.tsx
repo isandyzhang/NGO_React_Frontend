@@ -1,16 +1,31 @@
-import React, { Suspense, lazy } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { createBrowserRouter, RouterProvider, useLocation } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
-import ActivityManagement from '../pages/ActivityManagement';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
+import { getPreloadItemsByPath } from '../utils/preloadRegistry';
+import { predictPreload } from '../utils/preloadManager';
 
-// Lazy loading 其他頁面，提升首次載入效能
+// 使用更細緻的懶加載，按功能模組分割
+// 儀表板模組
 const Dashboard = lazy(() => import('../pages/Dashboard'));
+
+// 個案管理模組
 const CaseManagement = lazy(() => import('../pages/CaseManagement'));
+
+// 活動管理模組
+const ActivityManagement = lazy(() => import('../pages/ActivityManagement'));
+
+// 物資管理模組
 const SuppliesManagement = lazy(() => import('../pages/SuppliesManagement'));
-const CalendarManagement = lazy(() => import('../pages/CalendarManagement'));
+
+// 行事曆管理模組
+const CalendarManagement = lazy(() => import('../pages/schedule/CalendarManagement'));
+
+// 帳號管理模組
 const AccountManagement = lazy(() => import('../pages/AccountManagement'));
+
+// 登入模組
 const Login = lazy(() => import('../pages/Login'));
 
 /**
@@ -31,23 +46,68 @@ const Login = lazy(() => import('../pages/Login'));
  * 
  * 特色功能：
  * - 採用 MainLayout 統一版型設計
- * - 使用 React.Suspense 和 lazy loading 提升效能
+ * - 使用 React.Suspense 和懶加載提升效能
  * - 所有路由都有 Loading 狀態處理
  * - 自動重導向處理
+ * - 實施預加載策略優化用戶體驗
  */
 
-// 全域載入組件包裝器
-const PageWithSuspense = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={<LoadingSpinner />}>
-    {children}
-  </Suspense>
-);
+// 全域載入組件包裝器，添加預加載功能
+const PageWithSuspense = ({ 
+  children, 
+  preloadComponent 
+}: { 
+  children: React.ReactNode;
+  preloadComponent?: () => void;
+}) => {
+  React.useEffect(() => {
+    // 預加載相關組件
+    if (preloadComponent) {
+      const timer = setTimeout(preloadComponent, 1000); // 1秒後預加載
+      return () => clearTimeout(timer);
+    }
+  }, [preloadComponent]);
+
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      {children}
+    </Suspense>
+  );
+};
+
+/**
+ * 路由監聽組件 - 在Router上下文中監聽路由變化
+ */
+const RouteChangeListener: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    // 路由變更時觸發預加載預測
+    predictPreload(location.pathname);
+    
+    // 獲取當前路徑相關的預加載項目
+    const relatedItems = getPreloadItemsByPath(location.pathname);
+    console.log(`路由變更到: ${location.pathname}, 預加載項目:`, relatedItems);
+  }, [location.pathname]);
+
+  return null;
+};
+
+// 增強版MainLayout，包含路由監聽功能
+const EnhancedMainLayout: React.FC = () => {
+  return (
+    <>
+      <RouteChangeListener />
+      <MainLayout />
+    </>
+  );
+};
 
 // 路由配置
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <ProtectedRoute><MainLayout /></ProtectedRoute>,
+    element: <ProtectedRoute><EnhancedMainLayout /></ProtectedRoute>,
     children: [
       {
         index: true,
@@ -83,11 +143,7 @@ const router = createBrowserRouter([
     path: '/login',
     element: <PageWithSuspense><Login /></PageWithSuspense>,
   },
-], {
-  future: {
-    v7_startTransition: true,
-  },
-});
+]);
 
 /**
  * 路由提供者組件

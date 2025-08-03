@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthContextType, UnifiedUser, LoginResult, LoginMethod } from '../types/userTypes';
-import { authService } from '../services/authService';
-import { azureService } from '../services/azureService';
+import { authService } from '../services/accountManagement/authService';
+import { azureService } from '../services/accountManagement/azureService';
 
 /**
  * 混合模式身份驗證上下文
