@@ -39,7 +39,9 @@ import {
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { 
-  getResponsiveSpacing
+  getResponsiveSpacing,
+  getButtonStyle,
+  getButtonVariant
 } from '../../styles/commonStyles';
 import { supplyService } from '../../services';
 
@@ -474,15 +476,12 @@ const InventoryTab: React.FC = () => {
           />
           
           <Button
-            variant="contained"
+            variant={getButtonVariant('primary')}
             onClick={handleSearch}
             sx={{
+              ...getButtonStyle('primary'),
               height: 40,
               px: 3,
-              bgcolor: THEME_COLORS.PRIMARY,
-              '&:hover': {
-                bgcolor: THEME_COLORS.PRIMARY_DARK,
-              }
             }}
           >
             搜尋
@@ -732,11 +731,22 @@ const InventoryTab: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialog({ open: false, item: null })}>取消</Button>
           <Button 
-            variant="contained" 
+            onClick={() => setEditDialog({ open: false, item: null })}
+            variant={getButtonVariant('secondary')}
+            sx={{
+              ...getButtonStyle('secondary'),
+            }}
+          >
+            取消
+          </Button>
+          <Button 
+            variant={getButtonVariant('primary')}
             onClick={handleSaveEdit}
             disabled={editLoading}
+            sx={{
+              ...getButtonStyle('primary'),
+            }}
           >
             {editLoading ? <CircularProgress size={24} /> : '儲存'}
           </Button>
@@ -752,8 +762,22 @@ const InventoryTab: React.FC = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, item: null })}>取消</Button>
-          <Button variant="contained" color="error" onClick={confirmDelete}>
+          <Button 
+            onClick={() => setDeleteDialog({ open: false, item: null })}
+            variant={getButtonVariant('secondary')}
+            sx={{
+              ...getButtonStyle('secondary'),
+            }}
+          >
+            取消
+          </Button>
+          <Button 
+            variant={getButtonVariant('danger')}
+            onClick={confirmDelete}
+            sx={{
+              ...getButtonStyle('danger'),
+            }}
+          >
             刪除
           </Button>
         </DialogActions>

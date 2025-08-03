@@ -28,7 +28,7 @@ import {
   Warning,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../styles/theme';
-import { commonStyles, getResponsiveSpacing } from '../styles/commonStyles';
+import { commonStyles, getResponsiveSpacing, getButtonStyle, getButtonVariant } from '../styles/commonStyles';
 import PageHeader from '../components/shared/PageHeader';
 import PageContainer from '../components/shared/PageContainer';
 import { useAuth } from '../hooks/useAuth';
@@ -417,12 +417,9 @@ const AccountManagement: React.FC = () => {
           </Button>
           <Button
             onClick={executeDelete}
-            variant="contained"
+            variant={getButtonVariant('danger')}
             sx={{
-              bgcolor: THEME_COLORS.ERROR,
-              '&:hover': {
-                bgcolor: THEME_COLORS.ERROR,
-              },
+              ...getButtonStyle('danger'),
             }}
           >
             確認刪除

@@ -69,8 +69,22 @@ apiClient.interceptors.response.use(
  */
 export const api = {
   // GET 請求 - 獲取資料
-  get: <T>(url: string, params?: any) => 
-    apiClient.get(url, { params }).then((response: any) => response.data),
+  get: <T>(url: string, params?: any) => {
+    // 確保中文參數正確編碼
+    const config: any = {};
+    if (params) {
+      // 手動構建查詢字串，確保中文正確編碼
+      const queryString = Object.keys(params)
+        .filter(key => params[key] !== undefined && params[key] !== null && params[key] !== '')
+        .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+        .join('&');
+      
+      if (queryString) {
+        url = `${url}?${queryString}`;
+      }
+    }
+    return apiClient.get(url).then((response: any) => response.data);
+  },
   
   // POST 請求 - 創建新資料
   post: <T>(url: string, data?: any, config?: any) => 

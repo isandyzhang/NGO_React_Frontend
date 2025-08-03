@@ -10,6 +10,7 @@ export interface Activity {
   description: string;
   imageUrl?: string;
   location: string;
+  address?: string; // 新增：詳細地址欄位
   maxParticipants: number;
   currentParticipants: number;
   startDate: string;
@@ -113,10 +114,50 @@ class ActivityService {
    */
   async createActivity(activityData: Omit<Activity, 'activityId' | 'currentParticipants' | 'workerId'>): Promise<Activity> {
     try {
+      console.log('🚀 開始建立活動');
+      console.log('📤 提交的活動資料:', activityData);
+      
+      // 檢查 token 是否存在
+      const token = localStorage.getItem('authToken');
+      console.log('🔐 JWT Token 狀態:', token ? '存在' : '不存在');
+      if (token) {
+        console.log('🔐 Token 前 20 字符:', token.substring(0, 20) + '...');
+      }
+      
       const response = await api.post('/Activity', activityData);
+      console.log('✅ 活動建立成功:', response);
       return response.data;
-    } catch (error) {
-      console.error('建立活動失敗:', error);
+    } catch (error: any) {
+      console.error('❌ 建立活動失敗:', error);
+      console.error('❌ 錯誤詳情:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      
+      // 處理具體的錯誤類型
+      if (error.response?.status === 401) {
+        console.error('🚫 認證失敗 - JWT token 可能無效或過期');
+        alert('認證失敗，請重新登入');
+        // 清除無效的 token
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+        return Promise.reject(new Error('認證失敗，請重新登入'));
+      }
+      
+      if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.message || '請求參數錯誤';
+        console.error('📝 請求參數錯誤:', errorMessage);
+        throw new Error(errorMessage);
+      }
+      
+      if (error.response?.status === 500) {
+        const errorMessage = error.response?.data?.message || '伺服器內部錯誤';
+        console.error('🔥 伺服器錯誤:', errorMessage);
+        throw new Error(errorMessage);
+      }
+      
       throw error;
     }
   }

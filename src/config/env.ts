@@ -31,6 +31,14 @@ export const config = {
   // 分頁設定
   defaultPageSize: parseInt(import.meta.env.VITE_DEFAULT_PAGE_SIZE || '10'),
   
+  // Google Maps API 設定
+  googleMaps: {
+    apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDVg1dKKWpQDri4sQW0oSsXZYPRltzQV-A',
+    libraries: ['places', 'geometry'],
+    defaultCenter: { lat: 25.0330, lng: 121.5654 }, // 台北市中心
+    defaultZoom: 12,
+  },
+  
   // 開發模式檢查
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,

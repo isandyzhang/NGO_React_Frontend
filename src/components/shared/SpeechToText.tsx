@@ -129,7 +129,7 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
       }));
 
       // 將 Blob 轉換為 File 並直接處理
-      const audioFile = new File([audioBlob], `recording_${Date.now()}.webm`, { type: 'audio/webm' });
+      const audioFile = new File([audioBlob], `recording_${Date.now()}.wav`, { type: 'audio/wav' });
       await processAudioFile(audioFile);
 
     } catch (error) {
@@ -143,6 +143,12 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // 驗證檔案格式
+    if (file.type !== 'audio/wav') {
+      setError('目前只支援 WAV 格式的音檔，請重新選擇檔案');
+      return;
+    }
 
     // 直接處理音檔，不跳出對話框
     await processAudioFile(file);
@@ -427,14 +433,28 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
             </Alert>
           )}
 
-          {/* 錄音控制區域 */}
-          <Box sx={{ 
-            display: 'flex', 
-            gap: { xs: 1, md: 2 }, // 響應式間距
-            mb: { xs: 2, md: 3 }, // 響應式下方間距
-            flexWrap: 'wrap',
-            flexDirection: { xs: 'column', sm: 'row' }, // 手機版垂直排列，平板以上水平排列
-          }}>
+                      {/* 錄音控制區域 */}
+            <Box sx={{ 
+              display: 'flex', 
+              gap: { xs: 1, md: 2 }, // 響應式間距
+              mb: { xs: 2, md: 3 }, // 響應式下方間距
+              flexWrap: 'wrap',
+              flexDirection: { xs: 'column', sm: 'row' }, // 手機版垂直排列，平板以上水平排列
+            }}>
+              {/* 格式說明 */}
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: THEME_COLORS.TEXT_MUTED,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' },
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  width: '100%',
+                  mb: 1
+                }}
+              >
+                💡 支援格式：錄音自動產生 WAV 格式，上傳檔案請選擇 WAV 格式
+              </Typography>
             {/* 錄音按鈕 */}
             <Button
               variant={recordingState.isRecording ? "contained" : "outlined"}
@@ -475,31 +495,44 @@ const SpeechToText: React.FC<SpeechToTextProps> = ({
             )}
 
             {/* 上傳音檔按鈕 */}
-            <Button
-              variant="outlined"
-              component="label"
-              startIcon={<Upload />}
-              disabled={isProcessing}
-              sx={{
-                minWidth: { xs: '100%', sm: 'auto' }, // 手機版全寬，平板以上自動寬度
-                fontSize: { xs: '0.875rem', md: '1rem' }, // 響應式字體大小
-                py: { xs: 1, md: 1.5 }, // 響應式垂直內邊距
-                borderColor: THEME_COLORS.PRIMARY,
-                color: THEME_COLORS.PRIMARY,
-                '&:hover': {
-                  borderColor: THEME_COLORS.PRIMARY_HOVER,
-                  bgcolor: THEME_COLORS.PRIMARY_TRANSPARENT,
-                },
-              }}
-            >
-              上傳音檔
-              <input
-                hidden
-                accept="audio/*"
-                type="file"
-                onChange={handleFileUpload}
-              />
-            </Button>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<Upload />}
+                disabled={isProcessing}
+                sx={{
+                  minWidth: { xs: '100%', sm: 'auto' }, // 手機版全寬，平板以上自動寬度
+                  fontSize: { xs: '0.875rem', md: '1rem' }, // 響應式字體大小
+                  py: { xs: 1, md: 1.5 }, // 響應式垂直內邊距
+                  borderColor: THEME_COLORS.PRIMARY,
+                  color: THEME_COLORS.PRIMARY,
+                  '&:hover': {
+                    borderColor: THEME_COLORS.PRIMARY_HOVER,
+                    bgcolor: THEME_COLORS.PRIMARY_TRANSPARENT,
+                  },
+                }}
+              >
+                上傳音檔
+                <input
+                  hidden
+                  accept="audio/wav"
+                  type="file"
+                  onChange={handleFileUpload}
+                />
+              </Button>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: THEME_COLORS.TEXT_MUTED,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' },
+                  fontStyle: 'italic',
+                  textAlign: 'center'
+                }}
+              >
+                💡 目前只支援 WAV 格式音檔
+              </Typography>
+            </Box>
           </Box>
 
           {/* 處理中狀態 */}

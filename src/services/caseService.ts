@@ -173,14 +173,21 @@ export const caseService = {
   // 搜尋個案
   searchCases: async (params: CaseSearchParams): Promise<{ data: CaseResponse[]; total: number; page: number; pageSize: number; totalPages: number }> => {
     try {
+      console.log('🔍 搜尋參數:', params);
       const response = await api.get<ApiResponse<PagedResponse<CaseResponse>>>('/case/search', params);
-      const pageData = response.data!;
+      console.log('🔍 搜尋結果:', response);
+      console.log('🔍 搜尋結果 pageInfo:', response.pageInfo);
+      
+      // 後端返回格式: { success: true, data: CaseResponse[], pageInfo: {...} }
+      const cases = response.data || [];
+      const pageInfo = response.pageInfo || {};
+      
       return {
-        data: pageData.data,
-        total: pageData.totalCount,
-        page: pageData.page,
-        pageSize: pageData.pageSize,
-        totalPages: pageData.totalPages
+        data: cases,
+        total: pageInfo.totalCount || 0,
+        page: pageInfo.page || 1,
+        pageSize: pageInfo.pageSize || 10,
+        totalPages: pageInfo.totalPages || 0
       };
     } catch (error: any) {
       // 區分真正的錯誤和空結果
@@ -253,11 +260,27 @@ export const caseService = {
 
       const result = await response.json();
       console.log('✅ 個案圖片上傳成功:', result);
-      // 如果是統一 API 格式，則返回 data 中的內容
+      console.log('📋 響應格式檢查:', {
+        hasSuccess: 'success' in result,
+        hasData: 'data' in result,
+        hasImageUrl: 'imageUrl' in result,
+        resultKeys: Object.keys(result)
+      });
+      
+      // 處理不同的響應格式
       if (result.success && result.data) {
+        console.log('📦 使用 data 中的內容:', result.data);
         return result.data;
+      } else if (result.imageUrl) {
+        console.log('🖼️ 直接使用 imageUrl:', result.imageUrl);
+        return { imageUrl: result.imageUrl };
+      } else if (result.data && result.data.imageUrl) {
+        console.log('📦 使用 data.imageUrl:', result.data.imageUrl);
+        return { imageUrl: result.data.imageUrl };
+      } else {
+        console.log('⚠️ 未找到 imageUrl，返回完整響應:', result);
+        return result;
       }
-      return result;
     } catch (error: any) {
       console.error('💥 上傳個案圖片失敗:', error);
       console.error('💥 Error type:', typeof error);

@@ -57,9 +57,9 @@ const PageBreadcrumbs: React.FC<PageBreadcrumbsProps> = ({ items, className }) =
           if (isLast) {
             // 最後一項顯示為文字
             return (
-              <Typography 
+              <Box 
                 key={index}
-                color="text.primary" 
+                component="span"
                 sx={{
                   display: 'flex', 
                   alignItems: 'center',
@@ -75,7 +75,7 @@ const PageBreadcrumbs: React.FC<PageBreadcrumbsProps> = ({ items, className }) =
                   </Box>
                 )}
                 {item.label}
-              </Typography>
+              </Box>
             );
           } else {
             // 中間項目顯示為連結

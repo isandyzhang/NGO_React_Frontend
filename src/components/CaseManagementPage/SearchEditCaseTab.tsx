@@ -270,7 +270,6 @@ const SearchEditCaseTab: React.FC = () => {
         newDetailsCache.set(item.caseId, {
           identityNumber: item.identityNumber,
           district: item.district,
-          address: item.address,
           email: item.email,
           detailAddress: item.detailAddress,
           workerName: item.workerName,
@@ -339,10 +338,14 @@ const SearchEditCaseTab: React.FC = () => {
       }
       
       const response = await caseService.searchCases(searchParams);
+      console.log('🔍 完整搜尋回應:', response);
+      console.log('🔍 回應中的 data:', response.data);
+      console.log('🔍 回應中的 total:', response.total);
       
       // 🚀 Lazy Loading: 搜尋結果只載入基本資訊
       // 檢查搜尋回應格式
       const searchData = Array.isArray(response.data) ? response.data : [];
+      console.log('🔍 處理後的 searchData:', searchData);
       const transformedData: CaseRecord[] = searchData.map(item => ({
         // 基本資訊 - 立即載入
         caseId: item.caseId,
@@ -366,7 +369,6 @@ const SearchEditCaseTab: React.FC = () => {
         newDetailsCache.set(item.caseId, {
           identityNumber: item.identityNumber,
           district: item.district,
-          address: item.address,
           email: item.email,
           detailAddress: item.detailAddress,
           workerName: item.workerName,
@@ -433,10 +435,14 @@ const SearchEditCaseTab: React.FC = () => {
       }
       
       const response = await caseService.searchCases(searchParams);
+      console.log('🔍 完整搜尋回應:', response);
+      console.log('🔍 回應中的 data:', response.data);
+      console.log('🔍 回應中的 total:', response.total);
       
       // 🚀 Lazy Loading: 搜尋結果只載入基本資訊
       // 檢查搜尋回應格式
       const searchData = Array.isArray(response.data) ? response.data : [];
+      console.log('🔍 處理後的 searchData:', searchData);
       const transformedData: CaseRecord[] = searchData.map(item => ({
         // 基本資訊 - 立即載入
         caseId: item.caseId,
@@ -460,7 +466,6 @@ const SearchEditCaseTab: React.FC = () => {
         newDetailsCache.set(item.caseId, {
           identityNumber: item.identityNumber,
           district: item.district,
-          address: item.address,
           email: item.email,
           detailAddress: item.detailAddress,
           workerName: item.workerName,
@@ -954,30 +959,77 @@ const SearchEditCaseTab: React.FC = () => {
   // 圖片上傳功能
   const handleImageUpload = async (file: File, caseId: number) => {
     try {
+      console.log('🚀 開始上傳個案圖片:', { caseId, fileName: file.name });
       setImageUploadLoading(caseId);
       
+      // 驗證檔案類型
+      if (!file.type.startsWith('image/')) {
+        alert('請選擇有效的圖片檔案 (JPG, PNG, GIF)');
+        return;
+      }
+      
+      // 驗證檔案大小 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('圖片檔案大小不能超過 5MB');
+        return;
+      }
+      
       const formData = new FormData();
-      formData.append('imageFile', file);
+      formData.append('file', file); // 注意：後端期望的是 'file' 而不是 'imageFile'
       
-      // 這裡需要調用後端的圖片上傳 API
-      // const response = await caseService.uploadImage(caseId, formData);
+      // 調用後端的圖片上傳 API
+      console.log('📤 調用圖片上傳 API');
+      const response = await caseService.uploadProfileImage(formData);
       
-      // 暫時模擬上傳成功
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('📡 圖片上傳回應:', response);
+      
+      // 處理不同的回應格式
+      let imageUrl = '';
+      if (response) {
+        if (typeof response === 'string') {
+          imageUrl = response;
+        } else if (typeof response === 'object') {
+          if ('imageUrl' in response && response.imageUrl) {
+            imageUrl = response.imageUrl;
+          } else if ('data' in response && typeof response.data === 'string') {
+            imageUrl = response.data;
+          }
+        }
+      }
+      
+      if (!imageUrl) {
+        throw new Error('無法從上傳回應中獲取圖片 URL');
+      }
+      
+      console.log('✅ 解析到的圖片 URL:', imageUrl);
+      
+      // 更新個案的圖片 URL (注意：後端期望 PascalCase)
+      const updateData = { ProfileImage: imageUrl };
+      await caseService.updateCase(caseId, updateData);
       
       // 更新本地狀態
       setCaseRecords(prev => 
         prev.map(record => 
           record.caseId === caseId 
-            ? { ...record, profileImage: URL.createObjectURL(file) }
+            ? { ...record, profileImage: imageUrl }
             : record
         )
       );
       
-      alert('圖片上傳成功！');
-    } catch (error) {
-      console.error('圖片上傳失敗:', error);
-      alert('圖片上傳失敗，請稍後再試');
+      alert('圖片上傳並更新成功！');
+    } catch (error: any) {
+      console.error('❌ 圖片上傳失敗:', error);
+      
+      let errorMessage = '圖片上傳失敗：';
+      if (error.message) {
+        errorMessage += error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage += error.response.data.message;
+      } else {
+        errorMessage += '請稍後再試';
+      }
+      
+      alert(errorMessage);
     } finally {
       setImageUploadLoading(null);
     }

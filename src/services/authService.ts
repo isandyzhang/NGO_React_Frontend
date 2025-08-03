@@ -19,6 +19,7 @@ export interface WorkerInfo {
 export interface LoginResponse {
   success: boolean;
   message: string;
+  token?: string;
   worker?: WorkerInfo;
 }
 
@@ -93,7 +94,7 @@ export const authService = {
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
       // 呼叫後端登入API
-      const response = await api.post('/Worker/login', {
+      const response = await api.post('/Auth/login', {
         email,
         password
       });
@@ -105,10 +106,18 @@ export const authService = {
           loginSource: 'database' as const
         } as WorkerInfo;
         
-        // 儲存工作人員資訊到本地儲存
+        // 儲存工作人員資訊和 JWT token 到本地儲存
         localStorage.setItem('workerInfo', JSON.stringify(workerWithSource));
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('loginMethod', 'database');
+        
+        // 儲存 JWT token
+        if (response.token) {
+          localStorage.setItem('authToken', response.token);
+          console.log('JWT token 已儲存');
+        } else {
+          console.warn('後端未返回 JWT token');
+        }
         
         console.log('登入成功，工作人員資訊:', workerWithSource);
         console.log('用戶角色:', workerWithSource?.role);
@@ -276,6 +285,105 @@ export const authService = {
     } catch (error: any) {
       console.error('取得工作人員列表失敗:', error);
       throw error;
+    }
+  },
+
+  /**
+   * 同步Azure用戶到本地資料庫
+   * @param azureUser Azure用戶資訊
+   * @returns 同步結果包含JWT token
+   */
+  async syncAzureUser(azureUser: any): Promise<{ success: boolean; message: string; token?: string; worker?: any; defaultPassword?: string }> {
+    try {
+      const response = await api.post('/Auth/azure-user-sync', {
+        email: azureUser.email,
+        displayName: azureUser.displayName,
+        givenName: azureUser.givenName,
+        surname: azureUser.surname,
+        userPrincipalName: azureUser.userPrincipalName,
+        tenantId: azureUser.tenantId
+      });
+
+      if (response.success) {
+        // 儲存JWT token和工作人員資訊
+        if (response.token) {
+          localStorage.setItem('authToken', response.token);
+          console.log('Azure用戶JWT token已儲存');
+        }
+
+        if (response.worker) {
+          // 為Azure用戶加上本地Worker資訊
+          const workerWithSource = {
+            ...response.worker,
+            loginSource: 'azure' as const
+          };
+          localStorage.setItem('workerInfo', JSON.stringify(workerWithSource));
+          console.log('Azure用戶Worker資訊已儲存:', workerWithSource);
+        }
+
+        return {
+          success: true,
+          message: response.message,
+          token: response.token,
+          worker: response.worker,
+          defaultPassword: response.defaultPassword
+        };
+      } else {
+        throw new Error(response.message || 'Azure用戶同步失敗');
+      }
+    } catch (error: any) {
+      console.error('Azure用戶同步失敗:', error);
+      
+      if (error.response && error.response.data) {
+        throw new Error(error.response.data.message || 'Azure用戶同步失敗');
+      }
+      
+      throw new Error(error.message || 'Azure用戶同步失敗，請稍後再試');
+    }
+  },
+
+  /**
+   * 變更密碼
+   * @param workerId 工作人員ID
+   * @param currentPassword 目前密碼
+   * @param newPassword 新密碼
+   * @returns 變更結果
+   */
+  async changePassword(workerId: number, currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    try {
+      // 先驗證目前密碼是否正確
+      const currentWorker = this.getCurrentWorker();
+      if (!currentWorker) {
+        throw new Error('請先登入');
+      }
+
+      // 透過登入API驗證目前密碼
+      const loginResult = await this.login(currentWorker.email, currentPassword);
+      if (!loginResult.success) {
+        throw new Error('目前密碼錯誤');
+      }
+
+      // 呼叫變更密碼API
+      const response = await api.put(`/Worker/${workerId}/password`, {
+        newPassword
+      });
+
+      if (response.success) {
+        return {
+          success: true,
+          message: response.message || '密碼變更成功'
+        };
+      } else {
+        throw new Error(response.message || '密碼變更失敗');
+      }
+    } catch (error: any) {
+      console.error('變更密碼失敗:', error);
+      
+      if (error.response && error.response.data) {
+        throw new Error(error.response.data.message || '密碼變更失敗');
+      }
+      
+      throw new Error(error.message || '密碼變更失敗，請稍後再試');
     }
   }
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Drawer,
   List,
@@ -11,6 +11,8 @@ import {
   useTheme,
   useMediaQuery,
   Divider,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotificationContext } from '../../contexts/NotificationContext';
@@ -25,8 +27,10 @@ import {
   LocalShipping,
   CalendarToday,
   SupervisorAccount,
+  Settings,
 } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
+import ChangePasswordDialog from '../shared/ChangePasswordDialog';
 
 // 組件 Props 介面定義
 interface SidebarProps {
@@ -111,10 +115,26 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
   const location = useLocation();
   const { user, logout, loginMethod } = useAuth();
   const { counts, hasSupplyNotifications, hasDistributionNotifications } = useNotificationContext();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   // 用戶權限檢查
   const userRole = user?.role as 'staff' | 'supervisor' | 'admin' || 'staff';
   const canAccessAccountManagement = userRole === 'supervisor' || userRole === 'admin';
+
+  // 處理密碼變更
+  const handlePasswordChange = async (currentPassword: string, newPassword: string) => {
+    if (!user || !('workerId' in user)) {
+      throw new Error('用戶資訊不完整');
+    }
+
+    try {
+      // 呼叫密碼變更API
+      const authService = (await import('../../services/authService')).default;
+      await authService.changePassword(user.workerId, currentPassword, newPassword);
+    } catch (error) {
+      throw error;
+    }
+  };
 
   // 導航選單項目配置
   const menuItems = [
@@ -224,6 +244,23 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
             </Typography>
           )}
         </Box>
+        {/* 設定齒輪圖示 - 只有本地帳戶才顯示 */}
+        {user && loginMethod === LoginMethod.DATABASE && (
+          <Tooltip title="變更密碼">
+            <IconButton
+              onClick={() => setChangePasswordOpen(true)}
+              sx={{
+                color: 'rgba(255,255,255,0.7)',
+                '&:hover': {
+                  color: 'common.white',
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                },
+              }}
+            >
+              <Settings />
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
 
       {/* 主要導航選單 */}
@@ -315,6 +352,13 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose }) => {
           </ListItemButton>
         </List>
       </Box>
+
+      {/* 變更密碼對話框 */}
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+        onPasswordChange={handlePasswordChange}
+      />
     </Drawer>
   );
 };

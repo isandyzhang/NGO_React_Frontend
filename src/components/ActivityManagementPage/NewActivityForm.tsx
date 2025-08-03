@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import {
   Box,
@@ -28,13 +28,25 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/zh-tw'; // 中文本地化
 import { THEME_COLORS } from '../../styles/theme';
-import { commonStyles, getResponsiveSpacing } from '../../styles/commonStyles';
+import { commonStyles, getResponsiveSpacing, getButtonStyle, getButtonVariant } from '../../styles/commonStyles';
 import activityService, { CategoryOption } from '../../services/activityService';
 import imageGenerationService from '../../services/imageGenerationService';
 import AIOptimizeButton from '../shared/AIOptimizeButton';
+import GoogleMapSelector from '../shared/GoogleMapSelector';
 
 // 設置 dayjs 為中文
 dayjs.locale('zh-tw');
+
+/**
+ * 位置資料介面
+ */
+interface LocationData {
+  address: string;
+  placeName: string; // 修正：移除可選標記
+  latitude: number;
+  longitude: number;
+  formattedAddress: string;
+}
 
 /**
  * 活動表單資料介面
@@ -44,6 +56,7 @@ interface ActivityFormData {
   description: string;
   imageUrl?: string;
   location: string;
+  locationData?: LocationData; // 新增位置資料
   maxParticipants: number;
   startDate: Dayjs | null;
   endDate: Dayjs | null;
@@ -119,6 +132,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
   const [imagePrompt, setImagePrompt] = useState('');
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generatedImageData, setGeneratedImageData] = useState<string | null>(null);
+  const [isUploadingToAzure, setIsUploadingToAzure] = useState(false);
 
   // 表單資料狀態
   const [formData, setFormData] = useState<ActivityFormData>({
@@ -126,6 +140,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
     description: '',
     imageUrl: '',
     location: '',
+    locationData: undefined,
     maxParticipants: 0,
     startDate: dayjs().add(7, 'day').hour(12).minute(0), // 預設為七天後中午12點
     endDate: dayjs().add(7, 'day').hour(17).minute(0), // 預設為七天後下午5點（開始時間後5小時）
@@ -135,6 +150,10 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
     category: '',
     status: 'open',
   });
+
+  // 驗證狀態
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: boolean }>({});
+  const [fieldErrorMessages, setFieldErrorMessages] = useState<{ [key: string]: string }>({});
 
   // 載入分類選項
   useEffect(() => {
@@ -157,6 +176,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
   const dynamicInputStyles = useMemo(() => ({
     ...commonStyles.formInput,
     '& .MuiOutlinedInput-root': {
+      backgroundColor: '#ffffff',
       '&.Mui-focused fieldset': {
         borderColor: dynamicColors.primary,
       },
@@ -183,6 +203,134 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
     },
   }), [dynamicColors]);
 
+  // 即時欄位驗證函數
+  const validateField = (fieldName: string, value: any) => {
+    let isValid = true;
+    let errorMessage = '';
+
+    switch (fieldName) {
+      case 'activityName':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '活動名稱為必填欄位';
+        } else if (value.trim().length < 2) {
+          isValid = false;
+          errorMessage = '活動名稱至少需要2個字元';
+        } else if (value.trim().length > 100) {
+          isValid = false;
+          errorMessage = '活動名稱不能超過100個字元';
+        }
+        break;
+
+      case 'location':
+        // 檢查 locationData 而不是 location 字符串
+        if (!formData.locationData || !formData.locationData.address.trim()) {
+          isValid = false;
+          errorMessage = '請選擇活動地點';
+        } else if (formData.locationData.address.trim().length < 5) {
+          isValid = false;
+          errorMessage = '活動地點至少需要5個字元';
+        } else if (formData.locationData.address.trim().length > 200) {
+          isValid = false;
+          errorMessage = '活動地點不能超過200個字元';
+        }
+        break;
+
+      case 'maxParticipants':
+        if (!value || value <= 0) {
+          isValid = false;
+          errorMessage = '人數需求為必填欄位，且必須大於0';
+        } else if (value > 1000) {
+          isValid = false;
+          errorMessage = '人數需求不能超過1000人';
+        }
+        break;
+
+      case 'category':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '活動分類為必填欄位';
+        }
+        break;
+
+      case 'description':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '活動描述為必填欄位';
+        } else if (value.trim().length < 10) {
+          isValid = false;
+          errorMessage = '活動描述至少需要10個字元';
+        } else if (value.trim().length > 1000) {
+          isValid = false;
+          errorMessage = '活動描述不能超過1000個字元';
+        }
+        break;
+
+      case 'startDate':
+        if (!value) {
+          isValid = false;
+          errorMessage = '開始時間為必填欄位';
+        } else if (value.isBefore(dayjs())) {
+          isValid = false;
+          errorMessage = '開始時間不能早於現在';
+        }
+        break;
+
+      case 'endDate':
+        if (!value) {
+          isValid = false;
+          errorMessage = '結束時間為必填欄位';
+        } else if (formData.startDate && value.isBefore(formData.startDate)) {
+          isValid = false;
+          errorMessage = '結束時間不能早於開始時間';
+        }
+        break;
+
+      case 'signupDeadline':
+        if (!value) {
+          isValid = false;
+          errorMessage = '報名截止日為必填欄位';
+        } else if (formData.startDate && value.isAfter(formData.startDate)) {
+          isValid = false;
+          errorMessage = '報名截止日不能晚於開始時間';
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    return { isValid, errorMessage };
+  };
+
+  // 處理欄位失焦驗證
+  const handleFieldBlur = (fieldName: string, value: any) => {
+    const { isValid, errorMessage } = validateField(fieldName, value);
+    
+    setFieldErrors(prev => ({
+      ...prev,
+      [fieldName]: !isValid
+    }));
+    
+    setFieldErrorMessages(prev => ({
+      ...prev,
+      [fieldName]: errorMessage
+    }));
+  };
+
+  // 清除欄位錯誤
+  const clearFieldError = useCallback((fieldName: string) => {
+    setFieldErrors(prev => ({
+      ...prev,
+      [fieldName]: false
+    }));
+    
+    setFieldErrorMessages(prev => ({
+      ...prev,
+      [fieldName]: ''
+    }));
+  }, []);
+
   /**
    * 處理表單欄位變更
    */
@@ -191,7 +339,32 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
       ...prev,
       [field]: value,
     }));
+
+    // 清除該欄位的錯誤狀態
+    clearFieldError(field);
   };
+
+  /**
+   * 處理位置資料變更
+   */
+  const handleLocationChange = useCallback((locationData: LocationData) => {
+    setFormData(prev => ({
+      ...prev,
+      location: locationData.address,
+      locationData: locationData,
+    }));
+
+    // 清除地點欄位的錯誤狀態
+    clearFieldError('location');
+  }, [clearFieldError]);
+
+  /**
+   * 處理地圖錯誤
+   */
+  const handleMapError = useCallback((error: string) => {
+    console.error('Google Maps 錯誤:', error);
+    // 可以在这里添加错误处理逻辑
+  }, []);
 
   /**
    * 處理 AI 圖片生成
@@ -238,15 +411,11 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
   const handleUseGeneratedImage = async () => {
     if (generatedImageData) {
       try {
+        setIsUploadingToAzure(true);
+        
         // 如果是 URL 格式，需要下載並上傳到 Azure Blob Storage
         if (generatedImageData.startsWith('http')) {
           console.log('🔄 下載 AI 生成的圖片並上傳到 Azure Blob Storage');
-          
-          // 顯示上傳中狀態
-          setFormData(prev => ({
-            ...prev,
-            imageUrl: 'uploading...'
-          }));
 
           // 下載圖片
           const response = await fetch(generatedImageData);
@@ -290,6 +459,8 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
           ...prev,
           imageUrl: ''
         }));
+      } finally {
+        setIsUploadingToAzure(false);
       }
     }
   };
@@ -323,6 +494,11 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
       // 自動調整報名截止日為開始時間前3天
       signupDeadline: newValue ? newValue.subtract(3, 'day') : prev.signupDeadline
     }));
+
+    // 清除相關欄位的錯誤狀態
+    clearFieldError('startDate');
+    clearFieldError('endDate');
+    clearFieldError('signupDeadline');
   };
 
   /**
@@ -333,6 +509,9 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
       ...prev,
       endDate: newValue
     }));
+
+    // 清除錯誤狀態
+    clearFieldError('endDate');
   };
 
   /**
@@ -343,6 +522,9 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
       ...prev,
       signupDeadline: newValue
     }));
+
+    // 清除錯誤狀態
+    clearFieldError('signupDeadline');
   };
 
   /**
@@ -353,6 +535,9 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
       ...prev,
       maxParticipants: count
     }));
+
+    // 清除錯誤狀態
+    clearFieldError('maxParticipants');
   };
 
   /**
@@ -444,29 +629,38 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
    */
   const handleSubmit = async () => {
     try {
-      // 基本驗證
-      if (!formData.activityName.trim()) {
-        alert('請輸入活動名稱');
-        return;
-      }
+      // 完整表單驗證
+      const requiredFields = [
+        'activityName',
+        'location', 
+        'maxParticipants',
+        'category',
+        'description',
+        'startDate',
+        'endDate',
+        'signupDeadline'
+      ];
 
-      if (!formData.location.trim()) {
-        alert('請輸入活動地點');
-        return;
-      }
+      let hasError = false;
+      const newFieldErrors: { [key: string]: boolean } = {};
+      const newFieldErrorMessages: { [key: string]: string } = {};
 
-      if (!formData.startDate || !formData.endDate) {
-        alert('請選擇活動開始和結束時間');
-        return;
-      }
+      // 驗證所有必填欄位
+      requiredFields.forEach(field => {
+        const value = formData[field as keyof ActivityFormData];
+        const { isValid, errorMessage } = validateField(field, value);
+        
+        if (!isValid) {
+          hasError = true;
+          newFieldErrors[field] = true;
+          newFieldErrorMessages[field] = errorMessage;
+        }
+      });
 
-      if (formData.endDate.isBefore(formData.startDate)) {
-        alert('結束時間不能早於開始時間');
-        return;
-      }
-
-      if (formData.maxParticipants <= 0) {
-        alert('請輸入有效的人數需求');
+      // 如果有錯誤，更新錯誤狀態並返回
+      if (hasError) {
+        setFieldErrors(newFieldErrors);
+        setFieldErrorMessages(newFieldErrorMessages);
         return;
       }
 
@@ -474,6 +668,9 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
       const { workerId, ...dataWithoutWorkerId } = formData;
       const submitData = {
         ...dataWithoutWorkerId,
+        // 如果有 locationData，使用 placeName 作為 location，formattedAddress 作為 address
+        location: formData.locationData?.placeName || formData.location,
+        address: formData.locationData?.formattedAddress || '',
         startDate: formData.startDate?.toISOString() || '',
         endDate: formData.endDate?.toISOString() || '',
         signupDeadline: formData.signupDeadline?.toISOString() || '',
@@ -491,6 +688,7 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
         description: '',
         imageUrl: '',
         location: '',
+        locationData: undefined,
         maxParticipants: 0,
         startDate: dayjs().add(7, 'day').hour(12).minute(0),
         endDate: dayjs().add(7, 'day').hour(17).minute(0),
@@ -506,9 +704,27 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
         onSubmit(formData);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('建立活動失敗:', error);
-      alert('建立活動失敗，請稍後再試');
+      
+      // 根據錯誤類型顯示不同的錯誤訊息
+      let errorMessage = '建立活動失敗，請稍後再試';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.status === 401) {
+        errorMessage = '認證失敗，請重新登入';
+      } else if (error.response?.status === 403) {
+        errorMessage = '權限不足，無法建立活動';
+      } else if (error.response?.status === 500) {
+        errorMessage = '伺服器錯誤，請稍後再試';
+      }
+      
+      alert(errorMessage);
+      
+      // 如果是認證錯誤，不需要額外處理，因為 activityService 已經處理了
     }
   };
 
@@ -621,10 +837,22 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
             label="活動名稱 *"
             value={formData.activityName}
             onChange={(e) => handleInputChange('activityName', e.target.value)}
+            onBlur={(e) => handleFieldBlur('activityName', e.target.value)}
             fullWidth
             placeholder="雜貨旅遊 x 台積電二手作甜點體驗營"
             required
-            sx={dynamicInputStyles}
+            error={fieldErrors.activityName}
+            helperText={fieldErrorMessages.activityName}
+            sx={{
+              ...dynamicInputStyles,
+              ...(fieldErrors.activityName && {
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: THEME_COLORS.ERROR },
+                  '&:hover fieldset': { borderColor: THEME_COLORS.ERROR_DARK },
+                  '&.Mui-focused fieldset': { borderColor: THEME_COLORS.ERROR },
+                },
+              }),
+            }}
           />
 
           {/* 第二行：活動開始和結束時間 */}
@@ -648,14 +876,24 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
                 label="活動開始時間 *"
                 value={formData.startDate}
                 onChange={handleStartDateChange}
+                onAccept={(value) => handleFieldBlur('startDate', value)}
                 format="YYYY/MM/DD HH:mm"
                 slotProps={{
                   textField: {
                     fullWidth: true,
                     required: true,
+                    error: fieldErrors.startDate,
+                    helperText: fieldErrorMessages.startDate,
                     sx: { 
                       ...dynamicDatePickerStyles,
-                      flex: 1 
+                      flex: 1,
+                      ...(fieldErrors.startDate && {
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': { borderColor: THEME_COLORS.ERROR },
+                          '&:hover fieldset': { borderColor: THEME_COLORS.ERROR_DARK },
+                          '&.Mui-focused fieldset': { borderColor: THEME_COLORS.ERROR },
+                        },
+                      }),
                     }
                   }
                 }}
@@ -664,14 +902,24 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
                 label="活動結束時間 *"
                 value={formData.endDate}
                 onChange={handleEndDateChange}
+                onAccept={(value) => handleFieldBlur('endDate', value)}
                 format="YYYY/MM/DD HH:mm"
                 slotProps={{
                   textField: {
                     fullWidth: true,
                     required: true,
+                    error: fieldErrors.endDate,
+                    helperText: fieldErrorMessages.endDate,
                     sx: { 
                       ...dynamicDatePickerStyles,
-                      flex: 1 
+                      flex: 1,
+                      ...(fieldErrors.endDate && {
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': { borderColor: THEME_COLORS.ERROR },
+                          '&:hover fieldset': { borderColor: THEME_COLORS.ERROR_DARK },
+                          '&.Mui-focused fieldset': { borderColor: THEME_COLORS.ERROR },
+                        },
+                      }),
                     }
                   }
                 }}
@@ -691,12 +939,24 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
               label="報名截止日 *"
               value={formData.signupDeadline}
               onChange={handleSignupDeadlineChange}
+              onAccept={(value) => handleFieldBlur('signupDeadline', value)}
               format="YYYY/MM/DD HH:mm"
               slotProps={{
                 textField: {
                   fullWidth: true,
                   required: true,
-                  sx: dynamicDatePickerStyles,
+                  error: fieldErrors.signupDeadline,
+                  helperText: fieldErrorMessages.signupDeadline,
+                  sx: {
+                    ...dynamicDatePickerStyles,
+                    ...(fieldErrors.signupDeadline && {
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': { borderColor: THEME_COLORS.ERROR },
+                        '&:hover fieldset': { borderColor: THEME_COLORS.ERROR_DARK },
+                        '&.Mui-focused fieldset': { borderColor: THEME_COLORS.ERROR },
+                      },
+                    }),
+                  },
                   placeholder: "設定報名截止的日期和時間"
                 }
               }}
@@ -704,15 +964,29 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
           </Box>
 
           {/* 第四行：地點 */}
-          <TextField
-            label="活動地點 *"
-            value={formData.location}
-            onChange={(e) => handleInputChange('location', e.target.value)}
-            fullWidth
-            placeholder="請輸入活動地點，例如：NGO基地 (台北市南港區忠孝東路六段488號)"
-            required
-            sx={dynamicInputStyles}
-          />
+          <Box>
+            <Typography variant="body2" sx={{ 
+              color: 'text.secondary',
+              fontWeight: 500,
+              mb: 1
+            }}>
+              活動地點 *
+            </Typography>
+            <GoogleMapSelector
+              key="google-map-selector"
+              value={formData.locationData}
+              onChange={handleLocationChange}
+              onError={handleMapError}
+              disabled={false}
+              placeholder="輸入地址搜尋位置..."
+              label="活動地點"
+            />
+            {fieldErrors.location && (
+              <Typography variant="caption" sx={{ color: THEME_COLORS.ERROR, mt: 0.5, ml: 1.5 }}>
+                {fieldErrorMessages.location}
+              </Typography>
+            )}
+          </Box>
 
           {/* 第五行：人數需求 */}
           <Box sx={{ 
@@ -721,16 +995,26 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
             gap: 2
           }}>
             <TextField
-              label="需求活動人數"
+              label="需求活動人數 *"
               type="number"
               value={formData.maxParticipants}
               onChange={(e) => handleInputChange('maxParticipants', parseInt(e.target.value) || 0)}
+              onBlur={(e) => handleFieldBlur('maxParticipants', parseInt(e.target.value) || 0)}
               sx={{ 
-                ...dynamicInputStyles
+                ...dynamicInputStyles,
+                ...(fieldErrors.maxParticipants && {
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: THEME_COLORS.ERROR },
+                    '&:hover fieldset': { borderColor: THEME_COLORS.ERROR_DARK },
+                    '&.Mui-focused fieldset': { borderColor: THEME_COLORS.ERROR },
+                  },
+                }),
               }}
               placeholder="請輸入需求人數"
+              error={fieldErrors.maxParticipants}
+              helperText={fieldErrorMessages.maxParticipants}
               InputProps={{
-                inputProps: { min: 0, max: 100 }
+                inputProps: { min: 1, max: 1000 }
               }}
             />
             
@@ -778,21 +1062,35 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
           </Box>
 
           {/* 第六行：活動分類 */}
-          <FormControl fullWidth sx={dynamicInputStyles}>
-            <InputLabel id="category-label">活動分類</InputLabel>
+          <FormControl 
+            fullWidth 
+            error={fieldErrors.category}
+            sx={{
+              ...dynamicInputStyles,
+              ...(fieldErrors.category && {
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: THEME_COLORS.ERROR },
+                  '&:hover fieldset': { borderColor: THEME_COLORS.ERROR_DARK },
+                  '&.Mui-focused fieldset': { borderColor: THEME_COLORS.ERROR },
+                },
+              }),
+            }}
+          >
+            <InputLabel id="category-label">活動分類 *</InputLabel>
             <Select
               labelId="category-label"
               value={formData.category}
-              label="活動分類"
+              label="活動分類 *"
               onChange={(e) => handleInputChange('category', e.target.value)}
+              onBlur={() => handleFieldBlur('category', formData.category)}
               sx={{
                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: dynamicColors.primary,
+                  borderColor: fieldErrors.category ? THEME_COLORS.ERROR : dynamicColors.primary,
                 },
               }}
             >
               <MenuItem value="">
-                <em>不選擇分類</em>
+                <em>請選擇活動分類</em>
               </MenuItem>
               {categories.map((category) => (
                 <MenuItem key={category.value} value={category.value}>
@@ -800,6 +1098,11 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
                 </MenuItem>
               ))}
             </Select>
+            {fieldErrors.category && (
+              <Typography variant="caption" sx={{ color: THEME_COLORS.ERROR, mt: 0.5, ml: 1.5 }}>
+                {fieldErrorMessages.category}
+              </Typography>
+            )}
           </FormControl>
 
           {/* 第七行：活動圖片上傳 */}
@@ -813,10 +1116,11 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button
                   size="small"
-                  variant="outlined"
+                  variant={getButtonVariant('upload')}
                   startIcon={<AutoAwesome />}
                   onClick={() => setAiImageDialogOpen(true)}
                   sx={{ 
+                    ...getButtonStyle('upload'),
                     fontSize: '0.75rem', 
                     py: 0.5,
                     borderColor: dynamicColors.primary,
@@ -828,25 +1132,6 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
                   }}
                 >
                   AI 生成
-                </Button>
-
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={async () => {
-                    try {
-                      console.log('🧪 開始測試 Azure 連接');
-                      const result = await activityService.testAzureConnection();
-                      console.log('✅ Azure 連接測試結果:', result);
-                      alert(`Azure 連接測試成功！\n容器: ${result.containerName}\n容器存在: ${result.containerExists}`);
-                    } catch (error: any) {
-                      console.error('❌ Azure 連接測試失敗:', error);
-                      alert(`Azure 連接測試失敗：${error.message}`);
-                    }
-                  }}
-                  sx={{ fontSize: '0.75rem', py: 0.5 }}
-                >
-                  測試 Azure 連接
                 </Button>
               </Box>
             </Box>
@@ -926,9 +1211,10 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
                   />
                   <label htmlFor="image-upload">
                     <Button
-                      variant="outlined"
+                      variant={getButtonVariant('upload')}
                       component="span"
                       sx={{
+                        ...getButtonStyle('upload'),
                         borderColor: dynamicColors.primary,
                         color: dynamicColors.primary,
                         '&:hover': {
@@ -974,12 +1260,24 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
             <TextField
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
+              onBlur={(e) => handleFieldBlur('description', e.target.value)}
               fullWidth
               multiline
               rows={3}
               placeholder="請詳細描述活動內容..."
               required
-              sx={dynamicInputStyles}
+              error={fieldErrors.description}
+              helperText={fieldErrorMessages.description}
+              sx={{
+                ...dynamicInputStyles,
+                ...(fieldErrors.description && {
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: THEME_COLORS.ERROR },
+                    '&:hover fieldset': { borderColor: THEME_COLORS.ERROR_DARK },
+                    '&.Mui-focused fieldset': { borderColor: THEME_COLORS.ERROR },
+                  },
+                }),
+              }}
             />
           </Box>
         </Box>
@@ -992,23 +1290,19 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
           justifyContent: 'flex-end' 
         }}>
           <Button
-            variant="outlined"
+            variant={getButtonVariant('secondary')}
             onClick={handleCancel}
             sx={{
-              ...commonStyles.secondaryButton,
-              px: 4,
-              py: 1.5,
+              ...getButtonStyle('secondary'),
             }}
           >
             取消
           </Button>
           <Button
-            variant="contained"
+            variant={getButtonVariant('primary')}
             onClick={handleSubmit}
             sx={{
-              ...commonStyles.primaryButton,
-              px: 4,
-              py: 1.5,
+              ...getButtonStyle('primary'),
               backgroundColor: dynamicColors.primary,
               '&:hover': {
                 backgroundColor: dynamicColors.primaryHover,
@@ -1088,16 +1382,23 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAiImageDialogOpen(false)}>
+          <Button 
+            onClick={() => setAiImageDialogOpen(false)}
+            variant={getButtonVariant('secondary')}
+            sx={{
+              ...getButtonStyle('secondary'),
+            }}
+          >
             取消
           </Button>
           {!generatedImageData && (
             <Button 
               onClick={handleGenerateImage}
               disabled={isGeneratingImage || !imagePrompt.trim()}
-              variant="contained"
+              variant={getButtonVariant('primary')}
               startIcon={<AutoAwesome />}
               sx={{
+                ...getButtonStyle('primary'),
                 bgcolor: dynamicColors.primary,
                 '&:hover': {
                   bgcolor: dynamicColors.primaryHover,
@@ -1110,15 +1411,22 @@ const NewActivityForm: React.FC<NewActivityFormProps> = ({ onSubmit, onCancel })
           {generatedImageData && (
             <Button 
               onClick={handleUseGeneratedImage}
-              variant="contained"
+              disabled={isUploadingToAzure}
+              variant={getButtonVariant('primary')}
+              startIcon={isUploadingToAzure ? <CircularProgress size={16} color="inherit" /> : undefined}
               sx={{
+                ...getButtonStyle('primary'),
                 bgcolor: dynamicColors.primary,
                 '&:hover': {
                   bgcolor: dynamicColors.primaryHover,
+                },
+                '&:disabled': {
+                  bgcolor: `${dynamicColors.primary}80`,
+                  color: 'white',
                 }
               }}
             >
-              使用此圖片
+              {isUploadingToAzure ? '上傳中...' : '使用此圖片'}
             </Button>
           )}
         </DialogActions>

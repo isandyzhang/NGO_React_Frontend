@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -72,10 +72,180 @@ const AddCaseTab: React.FC = () => {
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: boolean }>({});
+  const [fieldErrorMessages, setFieldErrorMessages] = useState<{ [key: string]: string }>({});
   const [getAudioForUpload, setGetAudioForUpload] = useState<(() => Blob | null) | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
+
+  // 清理本地預覽 URL
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  // 即時欄位驗證函數
+  const validateField = (fieldName: string, value: string) => {
+    let isValid = true;
+    let errorMessage = '';
+
+    switch (fieldName) {
+      case 'name':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '姓名為必填欄位';
+        } else if (value.trim().length < 2) {
+          isValid = false;
+          errorMessage = '姓名至少需要2個字元';
+        } else if (value.trim().length > 50) {
+          isValid = false;
+          errorMessage = '姓名不能超過50個字元';
+        }
+        break;
+
+      case 'identityNumber':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '身分證字號為必填欄位';
+        } else if (!/^[A-Z][0-9]{9}$/.test(value.trim())) {
+          isValid = false;
+          errorMessage = '身分證字號格式錯誤（需1個英文字母+9個數字）';
+        } else {
+          // 台灣身分證字號檢核
+          const letterValues: { [key: string]: number } = {
+            'A': 10, 'B': 11, 'C': 12, 'D': 13, 'E': 14, 'F': 15, 'G': 16, 'H': 17, 'I': 34, 'J': 18,
+            'K': 19, 'L': 20, 'M': 21, 'N': 22, 'O': 35, 'P': 23, 'Q': 24, 'R': 25, 'S': 26, 'T': 27,
+            'U': 28, 'V': 29, 'W': 32, 'X': 30, 'Y': 31, 'Z': 33
+          };
+          
+          const firstLetter = value.charAt(0);
+          const letterValue = letterValues[firstLetter];
+          let sum = Math.floor(letterValue / 10) + (letterValue % 10) * 9;
+          
+          for (let i = 1; i < 9; i++) {
+            sum += parseInt(value.charAt(i)) * (9 - i);
+          }
+          sum += parseInt(value.charAt(9));
+          
+          if (sum % 10 !== 0) {
+            isValid = false;
+            errorMessage = '身分證字號檢核碼錯誤';
+          }
+        }
+        break;
+
+      case 'phone':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '電話為必填欄位';
+        } else if (!/^[0-9\-\s\(\)]+$/.test(value.trim())) {
+          isValid = false;
+          errorMessage = '電話號碼格式錯誤（只能包含數字、空格、括號、破折號）';
+        } else if (value.replace(/[\-\s\(\)]/g, '').length < 8) {
+          isValid = false;
+          errorMessage = '電話號碼至少需要8位數字';
+        }
+        break;
+
+      case 'email':
+        // Email 是選填的，只有當有輸入時才驗證格式
+        if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+          isValid = false;
+          errorMessage = 'Email格式錯誤';
+        }
+        break;
+
+      case 'birthday':
+        if (value) {
+          const birthDate = new Date(value);
+          const today = new Date();
+          const age = today.getFullYear() - birthDate.getFullYear();
+          
+          if (birthDate > today) {
+            isValid = false;
+            errorMessage = '生日不能晚於今天';
+          } else if (age > 150) {
+            isValid = false;
+            errorMessage = '年齡不能超過150歲';
+          }
+        }
+        break;
+
+      case 'city':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '請選擇城市';
+        }
+        break;
+
+      case 'district':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '請選擇地區';
+        }
+        break;
+
+      case 'address':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '詳細地址為必填欄位';
+        } else if (value.trim().length < 5) {
+          isValid = false;
+          errorMessage = '詳細地址至少需要5個字元';
+        }
+        break;
+
+      case 'difficulty':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '請選擇困難類型';
+        }
+        break;
+
+      case 'gender':
+        if (!value.trim()) {
+          isValid = false;
+          errorMessage = '請選擇性別';
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    // 更新錯誤狀態
+    setFieldErrors(prev => ({
+      ...prev,
+      [fieldName]: !isValid
+    }));
+
+    setFieldErrorMessages(prev => ({
+      ...prev,
+      [fieldName]: errorMessage
+    }));
+
+    return isValid;
+  };
+
+  // 處理欄位失焦事件
+  const handleFieldBlur = (fieldName: string, value: string) => {
+    validateField(fieldName, value);
+  };
+
+  // 清除特定欄位的錯誤
+  const clearFieldError = (fieldName: string) => {
+    setFieldErrors(prev => ({
+      ...prev,
+      [fieldName]: false
+    }));
+    setFieldErrorMessages(prev => ({
+      ...prev,
+      [fieldName]: ''
+    }));
+  };
 
   // 選項資料
   const genderOptions = [
@@ -197,12 +367,17 @@ const AddCaseTab: React.FC = () => {
       }
 
       try {
+        // 先創建本地預覽 URL
+        const localPreviewUrl = URL.createObjectURL(file);
+        console.log('創建本地預覽 URL:', localPreviewUrl);
+        setImagePreview(localPreviewUrl);
+        
         // 顯示上傳中狀態
         setFormData(prev => ({
           ...prev,
           profileImage: 'uploading...'
         }));
-        setImagePreview('uploading...');
+
 
         // 上傳到 Azure Blob Storage
         const formData = new FormData();
@@ -210,17 +385,49 @@ const AddCaseTab: React.FC = () => {
 
         const response = await caseService.uploadProfileImage(formData);
         
+        // 處理不同的回應格式
+        console.log('圖片上傳回應:', response);
+        let imageUrl = '';
+        
+        if (response) {
+          if (typeof response === 'string') {
+            imageUrl = response;
+          } else if (typeof response === 'object') {
+            if ('imageUrl' in response && response.imageUrl) {
+              imageUrl = response.imageUrl;
+            } else if ('data' in response && response.data && typeof response.data === 'object' && 'imageUrl' in response.data && typeof response.data.imageUrl === 'string') {
+              imageUrl = response.data.imageUrl;
+            }
+          }
+        }
+        
+        if (!imageUrl) {
+          throw new Error('無法從上傳回應中獲取圖片 URL');
+        }
+        
+        console.log('解析到的圖片 URL:', imageUrl);
+        
         // 設定 Azure URL
         setFormData(prev => ({
           ...prev,
-          profileImage: response.imageUrl
+          profileImage: imageUrl
         }));
-        setImagePreview(response.imageUrl);
-
+        
+        // 直接切換到伺服器 URL
+        console.log('切換到伺服器 URL:', imageUrl);
+        setImagePreview(imageUrl);
+        // 清理本地預覽 URL
+        if (localPreviewUrl) {
+          URL.revokeObjectURL(localPreviewUrl);
+        }
+        
         setSubmitMessage({
           type: 'success',
           text: '圖片上傳成功！'
         });
+        
+        console.log('imagePreview 已設定為:', imageUrl);
+        console.log('formData.profileImage 已設定為:', imageUrl);
       } catch (error: any) {
         console.error('圖片上傳失敗:', error);
         
@@ -238,12 +445,12 @@ const AddCaseTab: React.FC = () => {
         });
         console.log('完整錯誤物件:', error);
         
-        // 清除圖片
+        // 清除圖片，但保持本地預覽直到用戶手動移除
         setFormData(prev => ({
           ...prev,
           profileImage: undefined
         }));
-        setImagePreview(null);
+        // 不清除 imagePreview，讓用戶可以看到本地預覽
       }
     }
   };
@@ -252,6 +459,10 @@ const AddCaseTab: React.FC = () => {
    * 移除圖片
    */
   const handleRemoveImage = () => {
+    // 如果當前是本地預覽 URL，需要釋放它
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
     setImagePreview(null);
     setFormData(prev => ({
       ...prev,
@@ -575,17 +786,31 @@ const AddCaseTab: React.FC = () => {
                       fullWidth
                       label="姓名"
                       value={formData.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      onChange={(e) => {
+                        handleInputChange('name', e.target.value);
+                        if (fieldErrors.name && e.target.value.trim()) {
+                          clearFieldError('name');
+                        }
+                      }}
+                      onBlur={(e) => handleFieldBlur('name', e.target.value)}
                       sx={getValidationStyle(fieldErrors.name)}
                       required
+                      error={fieldErrors.name}
+                      helperText={fieldErrorMessages.name}
                     />
                   </Box>
                   <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
-                    <FormControl fullWidth sx={getSelectValidationStyle(fieldErrors.gender)}>
+                    <FormControl fullWidth sx={getSelectValidationStyle(fieldErrors.gender)} error={fieldErrors.gender}>
                       <InputLabel>性別</InputLabel>
                       <Select
                         value={formData.gender}
-                        onChange={(e) => handleInputChange('gender', e.target.value)}
+                        onChange={(e) => {
+                          handleInputChange('gender', e.target.value);
+                          if (fieldErrors.gender && e.target.value) {
+                            clearFieldError('gender');
+                          }
+                        }}
+                        onBlur={() => handleFieldBlur('gender', formData.gender)}
                         label="性別"
                         required
                       >
@@ -595,19 +820,36 @@ const AddCaseTab: React.FC = () => {
                           </MenuItem>
                         ))}
                       </Select>
+                      {fieldErrors.gender && (
+                        <Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, ml: 1.5 }}>
+                          請選擇性別
+                        </Typography>
+                      )}
                     </FormControl>
                   </Box>
                   <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                     <DatePicker
                       label="生日"
                       value={formData.birthDate}
-                      onChange={handleDateChange}
+                      onChange={(date) => {
+                        handleDateChange(date);
+                        if (fieldErrors.birthday && date) {
+                          clearFieldError('birthday');
+                        }
+                      }}
                       sx={getDatePickerValidationStyle(fieldErrors.birthDate)}
                       slotProps={{
                         textField: {
                           fullWidth: true,
                           required: true,
                           placeholder: "請選擇生日",
+                          error: fieldErrors.birthday,
+                          helperText: fieldErrorMessages.birthday,
+                          onBlur: () => {
+                            if (formData.birthDate) {
+                              handleFieldBlur('birthday', formData.birthDate.format('YYYY-MM-DD'));
+                            }
+                          }
                         },
                       }}
                       // 設置日期範圍，允許選擇 1900 年到今天
@@ -622,10 +864,18 @@ const AddCaseTab: React.FC = () => {
                       fullWidth
                       label="身分證字號"
                       value={formData.idNumber}
-                      onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                      sx={getValidationStyle(fieldErrors.idNumber)}
+                      onChange={(e) => {
+                        handleInputChange('idNumber', e.target.value);
+                        if (fieldErrors.identityNumber && e.target.value.trim()) {
+                          clearFieldError('identityNumber');
+                        }
+                      }}
+                      onBlur={(e) => handleFieldBlur('identityNumber', e.target.value)}
+                      sx={getValidationStyle(fieldErrors.identityNumber)}
                       required
                       placeholder="例：A123456789"
+                      error={fieldErrors.identityNumber}
+                      helperText={fieldErrorMessages.identityNumber}
                     />
                   </Box>
                 </Box>
@@ -656,10 +906,18 @@ const AddCaseTab: React.FC = () => {
                       fullWidth
                       label="手機號碼"
                       value={formData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      onChange={(e) => {
+                        handleInputChange('phone', e.target.value);
+                        if (fieldErrors.phone && e.target.value.trim()) {
+                          clearFieldError('phone');
+                        }
+                      }}
+                      onBlur={(e) => handleFieldBlur('phone', e.target.value)}
                       sx={getValidationStyle(fieldErrors.phone)}
                       required
                       placeholder="例：0912345678"
+                      error={fieldErrors.phone}
+                      helperText={fieldErrorMessages.phone}
                     />
                   </Box>
                   <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
@@ -668,10 +926,17 @@ const AddCaseTab: React.FC = () => {
                       label="Email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      onChange={(e) => {
+                        handleInputChange('email', e.target.value);
+                        if (fieldErrors.email && e.target.value.trim()) {
+                          clearFieldError('email');
+                        }
+                      }}
+                      onBlur={(e) => handleFieldBlur('email', e.target.value)}
                       sx={getValidationStyle(fieldErrors.email)}
-                      required
                       placeholder="例：example@email.com"
+                      error={fieldErrors.email}
+                      helperText={fieldErrorMessages.email}
                     />
                   </Box>
                 </Box>
@@ -698,11 +963,17 @@ const AddCaseTab: React.FC = () => {
                 </Box>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
                   <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
-                    <FormControl fullWidth sx={getSelectValidationStyle(fieldErrors.city)}>
+                    <FormControl fullWidth sx={getSelectValidationStyle(fieldErrors.city)} error={fieldErrors.city}>
                       <InputLabel>城市</InputLabel>
                       <Select
                         value={formData.city}
-                        onChange={(e) => handleInputChange('city', e.target.value)}
+                        onChange={(e) => {
+                          handleInputChange('city', e.target.value);
+                          if (fieldErrors.city && e.target.value) {
+                            clearFieldError('city');
+                          }
+                        }}
+                        onBlur={() => handleFieldBlur('city', formData.city)}
                         label="城市"
                         required
                       >
@@ -712,14 +983,25 @@ const AddCaseTab: React.FC = () => {
                           </MenuItem>
                         ))}
                       </Select>
+                      {fieldErrors.city && (
+                        <Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, ml: 1.5 }}>
+                          {fieldErrorMessages.city}
+                        </Typography>
+                      )}
                     </FormControl>
                   </Box>
                   <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
-                    <FormControl fullWidth sx={getSelectValidationStyle(fieldErrors.district)}>
+                    <FormControl fullWidth sx={getSelectValidationStyle(fieldErrors.district)} error={fieldErrors.district}>
                       <InputLabel>地區</InputLabel>
                       <Select
                         value={formData.district}
-                        onChange={(e) => handleInputChange('district', e.target.value)}
+                        onChange={(e) => {
+                          handleInputChange('district', e.target.value);
+                          if (fieldErrors.district && e.target.value) {
+                            clearFieldError('district');
+                          }
+                        }}
+                        onBlur={() => handleFieldBlur('district', formData.district)}
                         label="地區"
                         required
                         disabled={!formData.city}
@@ -730,6 +1012,11 @@ const AddCaseTab: React.FC = () => {
                           </MenuItem>
                         ))}
                       </Select>
+                      {fieldErrors.district && (
+                        <Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, ml: 1.5 }}>
+                          {fieldErrorMessages.district}
+                        </Typography>
+                      )}
                     </FormControl>
                   </Box>
                 </Box>
@@ -737,11 +1024,19 @@ const AddCaseTab: React.FC = () => {
                   fullWidth
                   label="詳細地址"
                   value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  onChange={(e) => {
+                    handleInputChange('address', e.target.value);
+                    if (fieldErrors.address && e.target.value.trim()) {
+                      clearFieldError('address');
+                    }
+                  }}
+                  onBlur={(e) => handleFieldBlur('address', e.target.value)}
                   sx={getValidationStyle(fieldErrors.address)}
                   required
                   multiline
                   rows={2}
+                  error={fieldErrors.address}
+                  helperText={fieldErrorMessages.address}
                 />
               </CardContent>
             </Card>
@@ -764,11 +1059,17 @@ const AddCaseTab: React.FC = () => {
                     困難類型
                   </Typography>
                 </Box>
-                <FormControl fullWidth sx={getSelectValidationStyle(fieldErrors.difficulty)}>
+                <FormControl fullWidth sx={getSelectValidationStyle(fieldErrors.difficulty)} error={fieldErrors.difficulty}>
                   <InputLabel>困難類型</InputLabel>
                   <Select
                     value={formData.difficulty}
-                    onChange={(e) => handleInputChange('difficulty', e.target.value)}
+                    onChange={(e) => {
+                      handleInputChange('difficulty', e.target.value);
+                      if (fieldErrors.difficulty && e.target.value) {
+                        clearFieldError('difficulty');
+                      }
+                    }}
+                    onBlur={() => handleFieldBlur('difficulty', formData.difficulty)}
                     label="困難類型"
                     required
                   >
@@ -778,6 +1079,11 @@ const AddCaseTab: React.FC = () => {
                       </MenuItem>
                     ))}
                   </Select>
+                  {fieldErrors.difficulty && (
+                    <Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, ml: 1.5 }}>
+                      {fieldErrorMessages.difficulty}
+                    </Typography>
+                  )}
                 </FormControl>
               </CardContent>
             </Card>
@@ -814,7 +1120,8 @@ const AddCaseTab: React.FC = () => {
                   borderRadius: 2,
                   border: `2px dashed ${THEME_COLORS.BORDER_DASHED}`,
                 }}>
-                  {imagePreview === 'uploading...' ? (
+
+                  {formData.profileImage === 'uploading...' ? (
                     <Box sx={{ 
                       display: 'flex', 
                       flexDirection: 'column', 
@@ -869,19 +1176,19 @@ const AddCaseTab: React.FC = () => {
                         onClick={() => setShowImageModal(true)}
                         onError={(e) => {
                           console.error('圖片加載失敗:', imagePreview);
-                          // 加載失敗時顯示默認頭像
-                          setImagePreview(null);
-                          setSubmitMessage({
-                            type: 'error',
-                            text: '圖片加載失敗，請重新上傳'
-                          });
+                          // 只有在本地預覽載入失敗時才清除
+                          if (imagePreview && imagePreview.startsWith('blob:')) {
+                            setImagePreview(null);
+                            setSubmitMessage({
+                              type: 'error',
+                              text: '圖片加載失敗，請重新上傳'
+                            });
+                          }
+                          // 伺服器圖片載入失敗時不顯示警告，因為可能只是暫時的網路問題
                         }}
                         onLoad={() => {
                           console.log('圖片加載成功:', imagePreview);
-                          setSubmitMessage({
-                            type: 'success',
-                            text: '圖片預覽載入成功！'
-                          });
+                          // 不重複顯示成功訊息，避免干擾用戶
                         }}
                       />
                       {/* 懸停時顯示的放大鏡圖標 */}
@@ -928,7 +1235,7 @@ const AddCaseTab: React.FC = () => {
                       variant="outlined"
                       component="label"
                       startIcon={<PhotoCamera />}
-                      disabled={imagePreview === 'uploading...'}
+                      disabled={formData.profileImage === 'uploading...'}
                       sx={{
                         color: THEME_COLORS.PRIMARY,
                         borderColor: THEME_COLORS.PRIMARY,
@@ -947,7 +1254,7 @@ const AddCaseTab: React.FC = () => {
                       />
                     </Button>
                     
-                    {imagePreview && imagePreview !== 'uploading...' && (
+                    {imagePreview && formData.profileImage !== 'uploading...' && (
                       <Button
                         variant="outlined"
                         color="error"
@@ -972,7 +1279,7 @@ const AddCaseTab: React.FC = () => {
                   }}>
                     支援 JPG、PNG 格式<br />
                     檔案大小不超過 5MB<br />
-                    {imagePreview && imagePreview !== 'uploading...' && '點擊圖片可放大預覽'}
+                    {imagePreview && formData.profileImage !== 'uploading...' && '點擊圖片可放大預覽'}
                   </Typography>
                 </Box>
               </CardContent>
@@ -1025,7 +1332,7 @@ const AddCaseTab: React.FC = () => {
       </Box>
 
       {/* 圖片放大預覽模態框 */}
-      {showImageModal && imagePreview && imagePreview !== 'uploading...' && (
+      {showImageModal && imagePreview && formData.profileImage !== 'uploading...' && (
         <Box
           sx={{
             position: 'fixed',

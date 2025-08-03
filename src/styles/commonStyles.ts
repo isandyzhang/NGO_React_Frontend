@@ -128,6 +128,10 @@ export const commonStyles = {
     color: 'white !important',
     fontSize: '1rem',
     fontWeight: 600,
+    textTransform: 'none',
+    borderRadius: 2,
+    px: 3,
+    py: 1.5,
     '&:hover': {
       bgcolor: THEME_COLORS.PRIMARY_DARK,
       color: 'white !important',
@@ -136,12 +140,17 @@ export const commonStyles = {
       bgcolor: THEME_COLORS.DISABLED_BG,
       color: THEME_COLORS.DISABLED_TEXT,
     },
+    '& .MuiButton-label': {
+      color: 'white !important',
+    },
   },
 
   /** 上傳按鈕 - 用於文件上傳操作 */
   uploadButton: {
     color: THEME_COLORS.PRIMARY,
     borderColor: THEME_COLORS.PRIMARY,
+    textTransform: 'none',
+    borderRadius: 2,
     '&:hover': {
       borderColor: THEME_COLORS.PRIMARY_HOVER,
       bgcolor: THEME_COLORS.PRIMARY_TRANSPARENT,
@@ -151,9 +160,10 @@ export const commonStyles = {
   /** 移除按鈕 - 用於刪除項目的小按鈕 */
   removeButton: {
     color: THEME_COLORS.TEXT_MUTED,
-    textTransform: 'lowercase',
+    textTransform: 'none',
     minWidth: 'auto',
     px: 1,
+    borderRadius: 2,
     '&:hover': {
       color: THEME_COLORS.TEXT_SECONDARY,
       bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
@@ -166,8 +176,15 @@ export const commonStyles = {
     color: 'white !important',
     fontSize: '1rem',
     fontWeight: 600,
+    textTransform: 'none',
+    borderRadius: 2,
+    px: 3,
+    py: 1.5,
     '&:hover': {
       bgcolor: THEME_COLORS.ERROR_DARK,
+      color: 'white !important',
+    },
+    '& .MuiButton-label': {
       color: 'white !important',
     },
   },
@@ -178,7 +195,11 @@ export const commonStyles = {
     color: 'white !important',
     fontSize: '1rem',
     fontWeight: 600,
+    textTransform: 'none',
+    borderRadius: 2,
     minWidth: 80,
+    px: 3,
+    py: 1.5,
     '&:hover': {
       bgcolor: THEME_COLORS.SUCCESS,
       color: 'white !important',
@@ -186,6 +207,9 @@ export const commonStyles = {
     '&:disabled': {
       bgcolor: THEME_COLORS.DISABLED_BG,
       color: THEME_COLORS.DISABLED_TEXT,
+    },
+    '& .MuiButton-label': {
+      color: 'white !important',
     },
   },
 
@@ -195,7 +219,11 @@ export const commonStyles = {
     color: 'white !important',
     fontSize: '1rem',
     fontWeight: 600,
+    textTransform: 'none',
+    borderRadius: 2,
     minWidth: 80,
+    px: 3,
+    py: 1.5,
     '&:hover': {
       bgcolor: THEME_COLORS.ERROR,
       color: 'white !important',
@@ -204,6 +232,9 @@ export const commonStyles = {
       bgcolor: THEME_COLORS.DISABLED_BG,
       color: THEME_COLORS.DISABLED_TEXT,
     },
+    '& .MuiButton-label': {
+      color: 'white !important',
+    },
   },
   
   /** 次要按鈕 - 用於取消、返回等次要操作 */
@@ -211,6 +242,10 @@ export const commonStyles = {
     bgcolor: 'transparent',
     color: THEME_COLORS.TEXT_MUTED,
     border: `1px solid ${THEME_COLORS.BORDER_DEFAULT}`,
+    textTransform: 'none',
+    borderRadius: 2,
+    px: 3,
+    py: 1.5,
     '&:hover': {
       bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
       borderColor: THEME_COLORS.PRIMARY_DARK,
@@ -540,6 +575,69 @@ export const getResponsiveSpacing = (size: 'xs' | 'sm' | 'md' | 'lg' | 'xl') => 
     xl: { xs: 3, sm: 4, md: 5 },   // 最大間距
   };
   return spacingMap[size];
+};
+
+// ===================================
+// 🔘 按鈕組件 (Button Components)
+// ===================================
+
+/**
+ * 按鈕類型定義
+ */
+export type ButtonVariant = 
+  | 'primary' 
+  | 'secondary' 
+  | 'danger' 
+  | 'approve' 
+  | 'reject' 
+  | 'upload' 
+  | 'remove';
+
+/**
+ * 根據按鈕類型獲取對應的樣式
+ * @param variant 按鈕類型
+ * @returns 對應的樣式對象
+ */
+export const getButtonStyle = (variant: ButtonVariant) => {
+  switch (variant) {
+    case 'primary':
+      return commonStyles.primaryButton;
+    case 'secondary':
+      return commonStyles.secondaryButton;
+    case 'danger':
+      return commonStyles.dangerButton;
+    case 'approve':
+      return commonStyles.approveButton;
+    case 'reject':
+      return commonStyles.rejectButton;
+    case 'upload':
+      return commonStyles.uploadButton;
+    case 'remove':
+      return commonStyles.removeButton;
+    default:
+      return commonStyles.primaryButton;
+  }
+};
+
+/**
+ * 根據按鈕類型獲取對應的 Material-UI variant
+ * @param variant 按鈕類型
+ * @returns Material-UI variant
+ */
+export const getButtonVariant = (variant: ButtonVariant): 'contained' | 'outlined' | 'text' => {
+  switch (variant) {
+    case 'primary':
+    case 'danger':
+    case 'approve':
+    case 'reject':
+      return 'contained';
+    case 'secondary':
+    case 'upload':
+    case 'remove':
+      return 'outlined';
+    default:
+      return 'contained';
+  }
 };
 
 export default commonStyles; 

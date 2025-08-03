@@ -168,6 +168,26 @@ class AzureService {
           console.log('Azure AD 登入成功:', azureUser);
         }
 
+        // 同步Azure用戶到本地資料庫
+        try {
+          const { authService } = await import('./authService');
+          const syncResult = await authService.syncAzureUser(azureUser);
+          
+          if (syncResult.success) {
+            console.log('Azure用戶同步成功:', syncResult.message);
+            
+            // 如果有預設密碼，提醒用戶
+            if (syncResult.defaultPassword) {
+              console.log('您的預設密碼是:', syncResult.defaultPassword);
+              console.log('建議您登入後立即變更密碼');
+            }
+          } else {
+            console.warn('Azure用戶同步失敗:', syncResult.message);
+          }
+        } catch (syncError: any) {
+          console.error('Azure用戶同步過程中發生錯誤:', syncError.message);
+        }
+
         return {
           success: true,
           message: '登入成功',
@@ -224,6 +244,26 @@ class AzureService {
         
         if (config.azure.debugMode) {
           console.log('處理重導向登入結果成功:', azureUser);
+        }
+
+        // 同步Azure用戶到本地資料庫
+        try {
+          const { authService } = await import('./authService');
+          const syncResult = await authService.syncAzureUser(azureUser);
+          
+          if (syncResult.success) {
+            console.log('Azure用戶同步成功:', syncResult.message);
+            
+            // 如果有預設密碼，提醒用戶
+            if (syncResult.defaultPassword) {
+              console.log('您的預設密碼是:', syncResult.defaultPassword);
+              console.log('建議您登入後立即變更密碼');
+            }
+          } else {
+            console.warn('Azure用戶同步失敗:', syncResult.message);
+          }
+        } catch (syncError: any) {
+          console.error('Azure用戶同步過程中發生錯誤:', syncError.message);
         }
 
         // 清理 URL 中的 hash 和參數

@@ -16,6 +16,7 @@ import {
   Avatar,
   Alert,
   CircularProgress,
+  LinearProgress,
   Chip,
   InputAdornment,
   FormControl,
@@ -37,6 +38,14 @@ import { THEME_COLORS } from '../../styles/theme';
 import activityService from '../../services/activityService';
 import { Activity } from '../../services/activityService';
 import { formatDate, formatDateForInput } from '../../utils/dateHelper';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { Dayjs } from 'dayjs';
+import 'dayjs/locale/zh-tw';
+
+// 設置 dayjs 為中文
+dayjs.locale('zh-tw');
 
 interface ActivityRecord extends Activity {
   workerName?: string;
@@ -57,6 +66,10 @@ const ActivityManagement: React.FC = () => {
   const [categories, setCategories] = useState<{value: string, label: string}[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   // 載入活動資料
   const loadActivities = async () => {
@@ -89,6 +102,15 @@ const ActivityManagement: React.FC = () => {
     loadActivities();
     loadCategories();
   }, []);
+
+  // 清理本地預覽 URL
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
 
   // 篩選活動資料
   const filteredActivities = useMemo(() => {
@@ -154,6 +176,16 @@ const ActivityManagement: React.FC = () => {
     setEditingRow(record.activityId);
     setEditFormData({ ...record });
     setFieldErrors({});
+    
+    // 重置圖片相關狀態
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+    setImageFile(null);
+    setImagePreviewUrl(null);
+    setUploadProgress(0);
+    setIsUploadingImage(false);
+    
     if (!expandedRows.includes(record.activityId)) {
       setExpandedRows(prev => [...prev, record.activityId]);
     }
@@ -190,6 +222,19 @@ const ActivityManagement: React.FC = () => {
       setEditingRow(null);
       setEditFormData(null);
       setFieldErrors({});
+      
+      // 清理圖片相關狀態
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+      setImageFile(null);
+      setImagePreviewUrl(null);
+      setUploadProgress(0);
+      setIsUploadingImage(false);
+      
+      // 收起所有展開的 row
+      setExpandedRows([]);
+      
       alert('活動資料已成功更新！');
     } catch (err) {
       setError(err instanceof Error ? err.message : '更新時發生錯誤');
@@ -203,6 +248,15 @@ const ActivityManagement: React.FC = () => {
     setEditingRow(null);
     setEditFormData(null);
     setFieldErrors({});
+    
+    // 清理圖片相關狀態
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+    setImageFile(null);
+    setImagePreviewUrl(null);
+    setUploadProgress(0);
+    setIsUploadingImage(false);
   };
 
   const handleDelete = async (activityId: number, activityName: string) => {
@@ -247,17 +301,109 @@ const ActivityManagement: React.FC = () => {
     }
   };
 
-  // 處理圖片變更（模擬功能）
-  const handleImageChange = () => {
-    // 模擬圖片上傳成功
-    const newImageUrl = 'https://res.cloudinary.com/dblw3jamh/image/upload/v1705123456/activity_images/new_activity_image.jpg';
+  // 處理日期變更
+  const handleDateChange = (field: string, value: Dayjs | null) => {
     setEditFormData(prev => 
-      prev ? { ...prev, imageUrl: newImageUrl } : null
+      prev ? { ...prev, [field]: value ? value.format('YYYY-MM-DD') : '' } : null
     );
-    setImagePreview(newImageUrl);
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [field]: false
+      }));
+    }
+  };
+
+  // 處理圖片檔案選擇
+  const handleImageFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // 檢查檔案格式
+      if (!file.type.startsWith('image/')) {
+        alert('請選擇有效的圖片檔案 (JPG, PNG, GIF)');
+        return;
+      }
+
+      // 檢查檔案大小 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('圖片檔案大小不能超過 5MB');
+        return;
+      }
+
+      // 創建本地預覽 URL
+      const localPreviewUrl = URL.createObjectURL(file);
+      setImageFile(file);
+      setImagePreviewUrl(localPreviewUrl);
+    }
+  };
+
+  // 處理圖片上傳
+  const handleImageUpload = async () => {
+    if (!imageFile || !editFormData) return;
+
+    try {
+      setIsUploadingImage(true);
+      setUploadProgress(0);
+
+      // 創建 FormData
+      const formData = new FormData();
+      formData.append('file', imageFile);
+
+      // 模擬上傳進度
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      // 上傳到 Azure Blob Storage
+      const response = await activityService.uploadImage(formData);
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      // 更新表單資料
+      setEditFormData(prev => 
+        prev ? { ...prev, imageUrl: response.imageUrl } : null
+      );
+
+      // 清理本地預覽
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+      setImageFile(null);
+      setImagePreviewUrl(null);
+      setUploadProgress(0);
+
+      alert('圖片已成功更新！');
+    } catch (error: any) {
+      console.error('圖片上傳失敗:', error);
+      alert(`圖片上傳失敗：${error.message || '未知錯誤'}`);
+    } finally {
+      setIsUploadingImage(false);
+      setUploadProgress(0);
+    }
+  };
+
+  // 處理圖片移除
+  const handleImageRemove = () => {
+    if (editFormData) {
+      setEditFormData(prev => 
+        prev ? { ...prev, imageUrl: undefined } : null
+      );
+    }
     
-    // 顯示成功訊息
-    alert('圖片已成功更新！');
+    // 清理本地預覽
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+    setImageFile(null);
+    setImagePreviewUrl(null);
+    setUploadProgress(0);
   };
 
   // 處理圖片預覽
@@ -302,7 +448,8 @@ const ActivityManagement: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-tw">
+      <Box sx={{ p: 3 }}>
       {/* 錯誤訊息 */}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -578,8 +725,8 @@ const ActivityManagement: React.FC = () => {
                                     活動圖片
                                   </Typography>
                                   
-                                  {/* 圖片預覽 */}
-                                  {editFormData.imageUrl && (
+                                  {/* 圖片預覽區域 */}
+                                  {(editFormData.imageUrl || imagePreviewUrl) && (
                                     <Box sx={{ 
                                       display: 'flex', 
                                       alignItems: 'center', 
@@ -605,10 +752,10 @@ const ActivityManagement: React.FC = () => {
                                           borderColor: THEME_COLORS.PRIMARY
                                         }
                                       }}
-                                      onClick={() => handleImagePreview(editFormData.imageUrl!)}
+                                      onClick={() => handleImagePreview(imagePreviewUrl || editFormData.imageUrl!)}
                                     >
                                         <img 
-                                          src={editFormData.imageUrl} 
+                                          src={imagePreviewUrl || editFormData.imageUrl} 
                                           alt="活動圖片預覽"
                                           style={{ 
                                             width: '100%', 
@@ -636,7 +783,7 @@ const ActivityManagement: React.FC = () => {
                                       
                                       <Box sx={{ flex: 1 }}>
                                         <Typography variant="body2" sx={{ color: THEME_COLORS.TEXT_SECONDARY, mb: 1 }}>
-                                          點擊圖片可放大預覽
+                                          {imagePreviewUrl ? '新選擇的圖片預覽' : '點擊圖片可放大預覽'}
                                         </Typography>
                                         <TextField
                                           label="圖片URL"
@@ -647,27 +794,84 @@ const ActivityManagement: React.FC = () => {
                                         />
                                       </Box>
                                       
-                                      <Button
-                                        variant="outlined"
-                                        onClick={handleImageChange}
-                                        startIcon={<PhotoCamera />}
-                                        size="small"
-                                        sx={{ 
-                                          borderColor: THEME_COLORS.PRIMARY,
-                                          color: THEME_COLORS.PRIMARY,
-                                          '&:hover': {
-                                            borderColor: THEME_COLORS.PRIMARY_HOVER,
-                                            bgcolor: THEME_COLORS.PRIMARY_LIGHT_BG
-                                          }
-                                        }}
-                                      >
-                                        變更圖片
-                                      </Button>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                        {imageFile && (
+                                          <Box sx={{ width: '100%' }}>
+                                            <Button
+                                              variant="contained"
+                                              onClick={handleImageUpload}
+                                              disabled={isUploadingImage}
+                                              startIcon={isUploadingImage ? <CircularProgress size={16} /> : <PhotoCamera />}
+                                              size="small"
+                                              sx={{ 
+                                                bgcolor: THEME_COLORS.PRIMARY,
+                                                width: '100%',
+                                                '&:hover': {
+                                                  bgcolor: THEME_COLORS.PRIMARY_HOVER
+                                                }
+                                              }}
+                                            >
+                                              {isUploadingImage ? `上傳中 ${uploadProgress}%` : '上傳圖片'}
+                                            </Button>
+                                            {isUploadingImage && (
+                                              <LinearProgress 
+                                                variant="determinate" 
+                                                value={uploadProgress} 
+                                                sx={{ mt: 1 }}
+                                              />
+                                            )}
+                                          </Box>
+                                        )}
+                                        
+                                        <Button
+                                          variant="outlined"
+                                          component="label"
+                                          startIcon={<PhotoCamera />}
+                                          size="small"
+                                          disabled={isUploadingImage}
+                                          sx={{ 
+                                            borderColor: THEME_COLORS.PRIMARY,
+                                            color: THEME_COLORS.PRIMARY,
+                                            '&:hover': {
+                                              borderColor: THEME_COLORS.PRIMARY_HOVER,
+                                              bgcolor: THEME_COLORS.PRIMARY_LIGHT_BG
+                                            }
+                                          }}
+                                        >
+                                          {editFormData.imageUrl ? '變更圖片' : '選擇圖片'}
+                                          <input
+                                            hidden
+                                            accept="image/*"
+                                            type="file"
+                                            onChange={handleImageFileSelect}
+                                          />
+                                        </Button>
+                                        
+                                        {(editFormData.imageUrl || imageFile) && (
+                                          <Button
+                                            variant="outlined"
+                                            color="error"
+                                            onClick={handleImageRemove}
+                                            size="small"
+                                            disabled={isUploadingImage}
+                                            sx={{ 
+                                              borderColor: THEME_COLORS.ERROR,
+                                              color: THEME_COLORS.ERROR,
+                                              '&:hover': {
+                                                borderColor: THEME_COLORS.ERROR_DARK,
+                                                bgcolor: THEME_COLORS.ERROR_LIGHT
+                                              }
+                                            }}
+                                          >
+                                            移除圖片
+                                          </Button>
+                                        )}
+                                      </Box>
                                     </Box>
                                   )}
                                   
                                   {/* 無圖片時的顯示 */}
-                                  {!editFormData.imageUrl && (
+                                  {!editFormData.imageUrl && !imagePreviewUrl && (
                                     <Box sx={{ 
                                       display: 'flex', 
                                       alignItems: 'center', 
@@ -708,7 +912,7 @@ const ActivityManagement: React.FC = () => {
                                       
                                       <Button
                                         variant="outlined"
-                                        onClick={handleImageChange}
+                                        component="label"
                                         startIcon={<PhotoCamera />}
                                         size="small"
                                         sx={{ 
@@ -720,10 +924,25 @@ const ActivityManagement: React.FC = () => {
                                           }
                                         }}
                                       >
-                                        新增圖片
+                                        選擇圖片
+                                        <input
+                                          hidden
+                                          accept="image/*"
+                                          type="file"
+                                          onChange={handleImageFileSelect}
+                                        />
                                       </Button>
                                     </Box>
                                   )}
+                                  
+                                  {/* 檔案要求說明 */}
+                                  <Typography variant="caption" sx={{ 
+                                    color: THEME_COLORS.TEXT_MUTED,
+                                    display: 'block',
+                                    mt: 1
+                                  }}>
+                                    支援 JPG、PNG、GIF 格式，檔案大小不超過 5MB
+                                  </Typography>
                                 </Box>
                                 <TextField
                                   label="最大人數"
@@ -732,33 +951,50 @@ const ActivityManagement: React.FC = () => {
                                   onChange={(e) => handleEditInputChange('maxParticipants', parseInt(e.target.value))}
                                   fullWidth
                                 />
-                                <TextField
+                                <DatePicker
                                   label="開始日期"
-                                  type="date"
-                                  value={formatDateForInput(editFormData.startDate)}
-                                  onChange={(e) => handleEditInputChange('startDate', e.target.value)}
-                                  error={fieldErrors.startDate}
-                                  helperText={fieldErrors.startDate ? '請選擇開始日期' : ''}
-                                  fullWidth
-                                  InputLabelProps={{ shrink: true }}
+                                  value={editFormData.startDate ? dayjs(editFormData.startDate) : null}
+                                  onChange={(value) => handleDateChange('startDate', value)}
+                                  slotProps={{
+                                    textField: {
+                                      fullWidth: true,
+                                      error: fieldErrors.startDate,
+                                      helperText: fieldErrors.startDate ? '請選擇開始日期' : '',
+                                      required: true,
+                                      placeholder: "請選擇開始日期"
+                                    },
+                                  }}
+                                  disablePast={false}
+                                  format="YYYY-MM-DD"
                                 />
-                                <TextField
+                                <DatePicker
                                   label="結束日期"
-                                  type="date"
-                                  value={formatDateForInput(editFormData.endDate)}
-                                  onChange={(e) => handleEditInputChange('endDate', e.target.value)}
-                                  error={fieldErrors.endDate}
-                                  helperText={fieldErrors.endDate ? '請選擇結束日期' : ''}
-                                  fullWidth
-                                  InputLabelProps={{ shrink: true }}
+                                  value={editFormData.endDate ? dayjs(editFormData.endDate) : null}
+                                  onChange={(value) => handleDateChange('endDate', value)}
+                                  slotProps={{
+                                    textField: {
+                                      fullWidth: true,
+                                      error: fieldErrors.endDate,
+                                      helperText: fieldErrors.endDate ? '請選擇結束日期' : '',
+                                      required: true,
+                                      placeholder: "請選擇結束日期"
+                                    },
+                                  }}
+                                  disablePast={false}
+                                  format="YYYY-MM-DD"
                                 />
-                                <TextField
+                                <DatePicker
                                   label="報名截止日"
-                                  type="date"
-                                  value={formatDateForInput(editFormData.signupDeadline)}
-                                  onChange={(e) => handleEditInputChange('signupDeadline', e.target.value)}
-                                  fullWidth
-                                  InputLabelProps={{ shrink: true }}
+                                  value={editFormData.signupDeadline ? dayjs(editFormData.signupDeadline) : null}
+                                  onChange={(value) => handleDateChange('signupDeadline', value)}
+                                  slotProps={{
+                                    textField: {
+                                      fullWidth: true,
+                                      placeholder: "請選擇報名截止日"
+                                    },
+                                  }}
+                                  disablePast={false}
+                                  format="YYYY-MM-DD"
                                 />
                                 <FormControl fullWidth>
                                   <InputLabel>對象</InputLabel>
@@ -906,7 +1142,8 @@ const ActivityManagement: React.FC = () => {
           </Box>
         </Box>
       )}
-    </Box>
+      </Box>
+    </LocalizationProvider>
   );
 };
 
