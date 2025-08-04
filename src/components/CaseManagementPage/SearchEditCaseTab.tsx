@@ -47,6 +47,7 @@ import {
   PhotoCamera,
   Visibility as VisibilityIcon,
   ErrorOutline,
+  Audiotrack,
 } from '@mui/icons-material';
 import { THEME_COLORS } from '../../styles/theme';
 import { caseService, CaseResponse } from '../../services/caseManagement/caseService';
@@ -98,6 +99,7 @@ const SearchEditCaseTab: React.FC = () => {
     workerName?: string;
     speechToTextAudioUrl?: string;
     imageFile?: File;  // 暫存的圖片檔案
+    audioFile?: File;  // 暫存的音檔檔案
   }
   
   // 🔧 修正：為每個個案維護獨立的編輯資料
@@ -134,10 +136,17 @@ const SearchEditCaseTab: React.FC = () => {
   const [volume, setVolume] = useState(1); // 音量控制 (0-1)
   const [transcriptionText, setTranscriptionText] = useState<string>(''); // 語音轉字幕文字
   const [isTranscribing, setIsTranscribing] = useState(false); // 轉字幕中狀態
+  const [currentTime, setCurrentTime] = useState(0); // 當前播放時間
+  const [duration, setDuration] = useState(0); // 音檔總時長
+  const [isDragging, setIsDragging] = useState(false); // 是否正在拖拽時間軸
 
   // 圖片上傳相關狀態
   const [imageUploadLoading, setImageUploadLoading] = useState<number | null>(null);
   const [imagePreviewMap, setImagePreviewMap] = useState<Map<number, string>>(new Map());
+
+  // 音檔上傳相關狀態
+  const [audioUploadLoading, setAudioUploadLoading] = useState<number | null>(null);
+  const [audioPreviewMap, setAudioPreviewMap] = useState<Map<number, string>>(new Map());
 
   // 🚀 Lazy Loading: 載入個案詳細資料
   const loadCaseDetails = async (caseId: number): Promise<CaseDetailInfo | null> => {
@@ -398,6 +407,9 @@ const SearchEditCaseTab: React.FC = () => {
 
   // 處理分頁變更
   const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
+    // 阻止默認行為，避免頁面重整
+    event.preventDefault();
+    
     if (searchContent.trim()) {
       // 如果有搜尋內容，執行搜尋分頁
       handleSearchPage(page);
@@ -686,6 +698,34 @@ const SearchEditCaseTab: React.FC = () => {
         }
       }
 
+      // 如果有新的音檔檔案，先上傳音檔
+      console.log('🎵 檢查是否有音檔需要上傳:', { 
+        hasAudioFile: !!editFormData.audioFile,
+        audioFileName: editFormData.audioFile?.name,
+        caseId: editFormData.caseId
+      });
+      
+      if (editFormData.audioFile) {
+        console.log('🎵 開始上傳新音檔...', {
+          fileName: editFormData.audioFile.name,
+          fileSize: editFormData.audioFile.size,
+          fileType: editFormData.audioFile.type,
+          caseId: editFormData.caseId
+        });
+        
+        try {
+          // 使用 caseSpeechService 上傳音檔並自動關聯到個案
+          const response = await caseService.uploadAudioFile(editFormData.audioFile, editFormData.caseId);
+          
+          console.log('✅ 音檔上傳成功，後端已自動更新個案音檔URL:', response);
+        } catch (audioError) {
+          console.error('❌ 音檔上傳失敗:', audioError);
+          throw new Error(`音檔上傳失敗: ${audioError.message}`);
+        }
+      } else {
+        console.log('ℹ️ 沒有音檔需要上傳');
+      }
+
       // 更新其他資料
       await caseService.updateCase(editFormData.caseId, updateData);
 
@@ -706,6 +746,13 @@ const SearchEditCaseTab: React.FC = () => {
       
       // 清除預覽圖片
       setImagePreviewMap(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(editFormData.caseId);
+        return newMap;
+      });
+
+      // 清除預覽音檔
+      setAudioPreviewMap(prev => {
         const newMap = new Map(prev);
         newMap.delete(editFormData.caseId);
         return newMap;
@@ -767,6 +814,13 @@ const SearchEditCaseTab: React.FC = () => {
       
       // 清除預覽圖片
       setImagePreviewMap(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(editingRow);
+        return newMap;
+      });
+
+      // 清除預覽音檔
+      setAudioPreviewMap(prev => {
         const newMap = new Map(prev);
         newMap.delete(editingRow);
         return newMap;
@@ -938,10 +992,14 @@ const SearchEditCaseTab: React.FC = () => {
       setIsPlaying(false);
       setCurrentPlayingCaseId(null);
       setAudioPlayer(null);
+      setCurrentTime(0);
+      setDuration(0);
     } else {
       // 開始播放
       if (audioPlayer) {
         audioPlayer.pause();
+        audioPlayer.removeEventListener('timeupdate', () => {});
+        audioPlayer.removeEventListener('loadedmetadata', () => {});
       }
       
       const newAudioPlayer = new Audio(audioUrl);
@@ -949,10 +1007,27 @@ const SearchEditCaseTab: React.FC = () => {
       // 設定音量
       newAudioPlayer.volume = volume;
       
+      // 時間更新事件
+      const updateTime = () => {
+        if (!isDragging) {
+          setCurrentTime(newAudioPlayer.currentTime);
+        }
+      };
+      
+      // 載入元數據事件（獲取總時長）
+      const updateDuration = () => {
+        setDuration(newAudioPlayer.duration);
+      };
+      
+      newAudioPlayer.addEventListener('timeupdate', updateTime);
+      newAudioPlayer.addEventListener('loadedmetadata', updateDuration);
+      
       newAudioPlayer.addEventListener('ended', () => {
         setIsPlaying(false);
         setCurrentPlayingCaseId(null);
         setAudioPlayer(null);
+        setCurrentTime(0);
+        setDuration(0);
       });
       
       newAudioPlayer.addEventListener('error', () => {
@@ -960,6 +1035,8 @@ const SearchEditCaseTab: React.FC = () => {
         setIsPlaying(false);
         setCurrentPlayingCaseId(null);
         setAudioPlayer(null);
+        setCurrentTime(0);
+        setDuration(0);
       });
       
       newAudioPlayer.play().then(() => {
@@ -971,6 +1048,8 @@ const SearchEditCaseTab: React.FC = () => {
         setIsPlaying(false);
         setCurrentPlayingCaseId(null);
         setAudioPlayer(null);
+        setCurrentTime(0);
+        setDuration(0);
       });
     }
   };
@@ -984,6 +1063,36 @@ const SearchEditCaseTab: React.FC = () => {
     if (audioPlayer) {
       audioPlayer.volume = newVolume;
     }
+  };
+
+  // 時間軸控制
+  const handleTimelineChange = (event: Event, newValue: number | number[]) => {
+    const newTime = newValue as number;
+    setCurrentTime(newTime);
+    
+    // 如果正在播放，更新播放位置
+    if (audioPlayer) {
+      audioPlayer.currentTime = newTime;
+    }
+  };
+
+  // 時間軸拖拽開始
+  const handleTimelineDragStart = () => {
+    setIsDragging(true);
+  };
+
+  // 時間軸拖拽結束
+  const handleTimelineDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  // 格式化時間顯示
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return '0:00';
+    
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   // 語音轉字幕功能
@@ -1071,6 +1180,62 @@ const SearchEditCaseTab: React.FC = () => {
         const updatedFormData = { ...editFormData, imageFile: file };
         setEditFormDataMap(prev => new Map(prev).set(caseId, updatedFormData));
       }
+    }
+  };
+
+  // 處理音檔選擇
+  const handleAudioSelect = (event: React.ChangeEvent<HTMLInputElement>, caseId: number) => {
+    const file = event.target.files?.[0];
+    console.log('🎵 音檔選擇事件觸發:', { file, caseId });
+    
+    if (file) {
+      console.log('🎵 選擇的音檔資訊:', { 
+        name: file.name, 
+        type: file.type, 
+        size: file.size,
+        sizeInMB: (file.size / 1024 / 1024).toFixed(2) + 'MB'
+      });
+      
+      // 檢查檔案類型
+      if (!file.type.startsWith('audio/')) {
+        console.error('❌ 檔案類型錯誤:', file.type);
+        setErrorMessage('請選擇音檔檔案');
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
+        return;
+      }
+      
+      // 檢查檔案大小 (限制為 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        console.error('❌ 檔案大小超過限制:', file.size);
+        setErrorMessage('音檔大小不能超過 50MB');
+        setErrorDetails([]);
+        setErrorDialogOpen(true);
+        return;
+      }
+      
+      // 先預覽音檔
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const previewUrl = e.target?.result as string;
+        setAudioPreviewMap(prev => new Map(prev).set(caseId, previewUrl));
+        console.log('🎵 音檔預覽 URL 已設定:', previewUrl.substring(0, 50) + '...');
+      };
+      reader.readAsDataURL(file);
+      
+      // 將檔案暫存，等待儲存時再上傳
+      const editFormData = editFormDataMap.get(caseId);
+      console.log('🎵 當前編輯資料:', editFormData);
+      
+      if (editFormData) {
+        const updatedFormData = { ...editFormData, audioFile: file };
+        setEditFormDataMap(prev => new Map(prev).set(caseId, updatedFormData));
+        console.log('✅ 音檔已暫存到編輯資料中');
+      } else {
+        console.error('❌ 找不到對應的編輯資料');
+      }
+    } else {
+      console.log('❌ 沒有選擇檔案');
     }
   };
 
@@ -1581,7 +1746,15 @@ const SearchEditCaseTab: React.FC = () => {
                                   語音檔案
                                 </Typography>
                                 {editFormData.speechToTextAudioUrl ? (
-                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                  <Box sx={{ 
+                                    p: 2, 
+                                    bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                                    borderRadius: 1,
+                                    border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 1.5
+                                  }}>
                                     {/* 播放控制 */}
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                       <IconButton
@@ -1597,49 +1770,97 @@ const SearchEditCaseTab: React.FC = () => {
                                       >
                                         {currentPlayingCaseId === record.caseId && isPlaying ? <Pause /> : <PlayArrow />}
                                       </IconButton>
-                                      <Typography variant="body2" color="textSecondary">
+                                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: '0.875rem' }}>
                                         {currentPlayingCaseId === record.caseId && isPlaying ? "播放中..." : "點擊播放語音"}
                                       </Typography>
                                     </Box>
 
-                                    {/* 音量控制 */}
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                      <VolumeUp sx={{ fontSize: 20, color: THEME_COLORS.TEXT_SECONDARY }} />
+                                    {/* 播放時間軸 - 預設顯示 */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                      <Typography variant="body2" color="textSecondary" sx={{ minWidth: 40, fontSize: '0.75rem' }}>
+                                        {formatTime(currentTime)}
+                                      </Typography>
+                                      <Slider
+                                        value={currentTime}
+                                        onChange={handleTimelineChange}
+                                        onMouseDown={handleTimelineDragStart}
+                                        onMouseUp={handleTimelineDragEnd}
+                                        min={0}
+                                        max={duration || 0}
+                                        step={0.1}
+                                        disabled={!duration}
+                                        sx={{
+                                          flex: 1,
+                                          '& .MuiSlider-thumb': {
+                                            backgroundColor: THEME_COLORS.PRIMARY,
+                                            width: 16,
+                                            height: 16,
+                                            '&:hover': {
+                                              boxShadow: `0 0 0 8px ${THEME_COLORS.PRIMARY}1A`,
+                                            },
+                                          },
+                                          '& .MuiSlider-track': {
+                                            backgroundColor: THEME_COLORS.PRIMARY,
+                                            height: 4,
+                                          },
+                                          '& .MuiSlider-rail': {
+                                            backgroundColor: THEME_COLORS.BORDER_DEFAULT,
+                                            height: 4,
+                                          }
+                                        }}
+                                      />
+                                      <Typography variant="body2" color="textSecondary" sx={{ minWidth: 40, fontSize: '0.75rem' }}>
+                                        {formatTime(duration)}
+                                      </Typography>
+                                    </Box>
+
+                                    {/* 音量控制 - 小型化 */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <VolumeUp sx={{ fontSize: 16, color: THEME_COLORS.TEXT_SECONDARY }} />
                                       <Slider
                                         value={volume}
                                         onChange={handleVolumeChange}
                                         min={0}
                                         max={1}
                                         step={0.1}
+                                        size="small"
                                         sx={{
-                                          flex: 1,
+                                          width: 100,
                                           '& .MuiSlider-thumb': {
                                             backgroundColor: THEME_COLORS.PRIMARY,
+                                            width: 12,
+                                            height: 12,
                                           },
                                           '& .MuiSlider-track': {
                                             backgroundColor: THEME_COLORS.PRIMARY,
+                                            height: 2,
                                           },
                                           '& .MuiSlider-rail': {
                                             backgroundColor: THEME_COLORS.BORDER_DEFAULT,
+                                            height: 2,
                                           }
                                         }}
                                       />
-                                      <Typography variant="body2" color="textSecondary" sx={{ minWidth: 40 }}>
+                                      <Typography variant="caption" color="textSecondary" sx={{ minWidth: 30, fontSize: '0.7rem' }}>
                                         {Math.round(volume * 100)}%
                                       </Typography>
                                     </Box>
 
-                                    {/* 語音轉字幕按鈕 */}
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {/* 音檔操作按鈕 */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                      {/* 語音轉字幕按鈕 */}
                                       <Button
                                         size="small"
                                         variant="outlined"
                                         onClick={() => handleTranscribeAudio(editFormData.speechToTextAudioUrl!, record.caseId)}
                                         disabled={isTranscribing}
-                                        startIcon={isTranscribing ? <CircularProgress size={16} /> : null}
+                                        startIcon={isTranscribing ? <CircularProgress size={14} /> : null}
                                         sx={{
                                           borderColor: THEME_COLORS.PRIMARY,
                                           color: THEME_COLORS.PRIMARY,
+                                          fontSize: '0.75rem',
+                                          py: 0.5,
+                                          px: 1.5,
                                           '&:hover': {
                                             borderColor: THEME_COLORS.PRIMARY_DARK,
                                             backgroundColor: THEME_COLORS.PRIMARY_LIGHT_BG,
@@ -1652,6 +1873,44 @@ const SearchEditCaseTab: React.FC = () => {
                                       >
                                         {isTranscribing ? '轉字幕中...' : '語音轉字幕'}
                                       </Button>
+
+                                      {/* 變更音檔按鈕 */}
+                                      <Box>
+                                        <input
+                                          accept="audio/*"
+                                          style={{ display: 'none' }}
+                                          id={`audio-upload-${record.caseId}`}
+                                          type="file"
+                                          onChange={(e) => handleAudioSelect(e, record.caseId)}
+                                        />
+                                        <label htmlFor={`audio-upload-${record.caseId}`}>
+                                          <Button
+                                            variant="outlined"
+                                            component="span"
+                                            size="small"
+                                            startIcon={audioUploadLoading === record.caseId ? <CircularProgress size={14} /> : <Audiotrack />}
+                                            disabled={audioUploadLoading === record.caseId}
+                                            onClick={() => console.log('🎵 變更音檔按鈕被點擊！', record.caseId)}
+                                            sx={{
+                                              borderColor: THEME_COLORS.INFO,
+                                              color: THEME_COLORS.INFO,
+                                              fontSize: '0.75rem',
+                                              py: 0.5,
+                                              px: 1.5,
+                                              '&:hover': {
+                                                borderColor: THEME_COLORS.INFO,
+                                                backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                                              },
+                                              '&:disabled': {
+                                                borderColor: THEME_COLORS.DISABLED_BG,
+                                                color: THEME_COLORS.DISABLED_TEXT,
+                                              }
+                                            }}
+                                          >
+                                            {audioUploadLoading === record.caseId ? '上傳中...' : '變更音檔'}
+                                          </Button>
+                                        </label>
+                                      </Box>
                                     </Box>
 
                                     {/* 字幕顯示區域 */}
@@ -1659,7 +1918,7 @@ const SearchEditCaseTab: React.FC = () => {
                                       <Box sx={{ 
                                         mt: 1, 
                                         p: 2, 
-                                        bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                                        bgcolor: THEME_COLORS.BACKGROUND_PRIMARY,
                                         borderRadius: 1,
                                         border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`
                                       }}>
@@ -1677,9 +1936,57 @@ const SearchEditCaseTab: React.FC = () => {
                                     )}
                                   </Box>
                                 ) : (
-                                  <Typography variant="body2" color="textSecondary">
-                                    此個案暫無語音檔案
-                                  </Typography>
+                                  <Box sx={{ 
+                                    p: 2, 
+                                    bgcolor: THEME_COLORS.BACKGROUND_SECONDARY,
+                                    borderRadius: 1,
+                                    border: `1px solid ${THEME_COLORS.BORDER_LIGHT}`,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 1.5
+                                  }}>
+                                    <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                                      此個案暫無語音檔案
+                                    </Typography>
+                                    
+                                    {/* 新增音檔按鈕 */}
+                                    <Box>
+                                      <input
+                                        accept="audio/*"
+                                        style={{ display: 'none' }}
+                                        id={`audio-upload-${record.caseId}`}
+                                        type="file"
+                                        onChange={(e) => handleAudioSelect(e, record.caseId)}
+                                      />
+                                      <label htmlFor={`audio-upload-${record.caseId}`}>
+                                        <Button
+                                          variant="outlined"
+                                          component="span"
+                                          size="small"
+                                          startIcon={audioUploadLoading === record.caseId ? <CircularProgress size={14} /> : <Audiotrack />}
+                                          disabled={audioUploadLoading === record.caseId}
+                                          onClick={() => console.log('🎵 新增音檔按鈕被點擊！', record.caseId)}
+                                          sx={{
+                                            borderColor: THEME_COLORS.INFO,
+                                            color: THEME_COLORS.INFO,
+                                            fontSize: '0.75rem',
+                                            py: 0.5,
+                                            px: 1.5,
+                                            '&:hover': {
+                                              borderColor: THEME_COLORS.INFO,
+                                              backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                                            },
+                                            '&:disabled': {
+                                              borderColor: THEME_COLORS.DISABLED_BG,
+                                              color: THEME_COLORS.DISABLED_TEXT,
+                                            }
+                                          }}
+                                        >
+                                          {audioUploadLoading === record.caseId ? '上傳中...' : '新增音檔'}
+                                        </Button>
+                                      </label>
+                                    </Box>
+                                  </Box>
                                 )}
                               </Box>
 

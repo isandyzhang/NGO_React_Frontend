@@ -1,5 +1,6 @@
 import { api } from '../shared/api';
 import { config } from '../../config/env';
+import { caseSpeechService } from './caseSpeechService';
 
 // 個案相關的 API 接口
 export interface CaseFormData {
@@ -289,6 +290,24 @@ export const caseService = {
       
       // 重新拋出錯誤，但確保有有意義的訊息
       throw new Error(error.message || '個案圖片上傳失敗：網路錯誤或伺服器無回應');
+    }
+  },
+
+  // 上傳個案音檔 - 使用現有的 caseSpeechService
+  uploadAudioFile: async (audioFile: File, caseId: number): Promise<any> => {
+    try {
+      console.log('🎵 開始上傳個案音檔...', { caseId, fileName: audioFile.name });
+      
+      // 使用現有的 caseSpeechService.uploadAudio 方法
+      const response = await caseSpeechService.uploadAudio(audioFile, caseId);
+      
+      console.log('✅ 個案音檔上傳成功:', response);
+      
+      // 返回音檔 URL - 後端會自動更新個案的 SpeechToTextAudioUrl
+      return response;
+    } catch (error: any) {
+      console.error('💥 上傳個案音檔失敗:', error);
+      throw error;
     }
   },
 

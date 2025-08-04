@@ -81,6 +81,7 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const [initRetryCount, setInitRetryCount] = useState(0);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -109,13 +110,22 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
 
       window.googleMapsLoading = true;
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=places&callback=initMap`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMaps.apiKey}&libraries=places&language=zh-TW&callback=initMap`;
       script.async = true;
       script.defer = true;
       
       window.initMap = () => {
-        setMapLoaded(true);
-        window.googleMapsLoading = false;
+        // 確保 Google Maps API 完全載入後再設置狀態
+        setTimeout(() => {
+          if (window.google && window.google.maps && window.google.maps.Map) {
+            setMapLoaded(true);
+            window.googleMapsLoading = false;
+          } else {
+            console.error('Google Maps API 載入不完整');
+            setError('地圖載入失敗，請重新整理頁面');
+            window.googleMapsLoading = false;
+          }
+        }, 100);
       };
 
       script.onerror = () => {
@@ -141,8 +151,13 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
   // 初始化地圖
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
-    if (!window.google || !window.google.maps) {
-      // 不要 setError，只 return，等 try/catch 真的失敗才 setError
+    if (!window.google || !window.google.maps || !window.google.maps.Map) {
+      // 確保 Google Maps API 完全載入
+      console.log('等待 Google Maps API 完全載入...', {
+        google: !!window.google,
+        maps: !!(window.google && window.google.maps),
+        Map: !!(window.google && window.google.maps && window.google.maps.Map)
+      });
       return;
     }
 
@@ -201,17 +216,30 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
 
     } catch (err) {
       console.error('地圖初始化失敗:', err);
-      setError('地圖載入失敗，請檢查網路連線');
-      onError?.('地圖載入失敗');
+      
+      // 重試機制：最多重試3次
+      if (initRetryCount < 3) {
+        console.log(`地圖初始化失敗，${1000 * (initRetryCount + 1)}ms 後重試...`);
+        setTimeout(() => {
+          setInitRetryCount(prev => prev + 1);
+        }, 1000 * (initRetryCount + 1));
+      } else {
+        setError('地圖載入失敗，請檢查網路連線');
+        onError?.('地圖載入失敗');
+      }
     }
-  }, [mapLoaded, value, onChange, onError, map]);
+  }, [mapLoaded, value, onChange, onError, map, initRetryCount]);
 
   // 反向地理編碼
   const reverseGeocode = useCallback(async (position: any) => {
     if (!geocoder) return;
 
     try {
-      geocoder.geocode({ location: position }, (results: any, status: any) => {
+      // 請求中文地址
+      geocoder.geocode({ 
+        location: position,
+        language: 'zh-TW' // 指定中文語言
+      }, (results: any, status: any) => {
         if (status === 'OK' && results[0]) {
           // 支援兩種型別：Google Maps LatLng 物件和普通物件
           const getLat = (pos: any) => (typeof pos.lat === 'function' ? pos.lat() : pos.lat);
@@ -298,7 +326,8 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
       autocomplete.getPlacePredictions({
         input: input,
         componentRestrictions: { country: 'tw' },
-        types: ['geocode', 'establishment']
+        types: ['geocode', 'establishment'],
+        language: 'zh-TW' // 指定中文語言
       }, (predictions: SuggestionItem[], status: any) => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
           setSuggestions(predictions.slice(0, 5)); // 限制顯示5個建議
@@ -347,7 +376,8 @@ const GoogleMapSelector: React.FC<GoogleMapSelectorProps> = React.memo(({
       
       placesService.getDetails({
         placeId: suggestion.place_id,
-        fields: ['geometry', 'formatted_address']
+        fields: ['geometry', 'formatted_address'],
+        language: 'zh-TW' // 指定中文語言
       }, (place: any, status: any) => {
         setIsLoading(false);
         
